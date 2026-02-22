@@ -10,6 +10,10 @@ from .base import Evolver
 # Decision evolvers
 from .decision_confidence import DecisionConfidenceEvolver
 
+# Enhanced evolvers
+from .enhanced.exponential_decay import ExponentialDecayEvolver
+from .enhanced.interference_based_consolidation import InterferenceBasedConsolidationEvolver
+
 # Maintenance evolvers
 from .episodic_decay import EpisodicDecayEvolver
 from .episodic_to_semantic import EpisodicToSemanticEvolver
@@ -44,4 +48,8 @@ __all__ = [
 
     # Decision
     'DecisionConfidenceEvolver',
+
+    # Enhanced
+    'ExponentialDecayEvolver',
+    'InterferenceBasedConsolidationEvolver',
 ]

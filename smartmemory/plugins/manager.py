@@ -103,15 +103,13 @@ class PluginManager:
             from smartmemory.plugins.enrichers.skills_tools import ExtractSkillsToolsEnricher
             from smartmemory.plugins.enrichers.temporal import TemporalEnricher
             from smartmemory.plugins.enrichers.topic import TopicEnricher
-            from smartmemory.plugins.enrichers.wikipedia import WikipediaEnricher
-            
+
             enrichers = [
                 BasicEnricher,
                 SentimentEnricher,
                 TemporalEnricher,
                 ExtractSkillsToolsEnricher,
                 TopicEnricher,
-                WikipediaEnricher,
             ]
             
             for enricher_class in enrichers:
@@ -145,25 +143,11 @@ class PluginManager:
                 ConversationAwareLLMExtractor,
             ]
             
-            # Deprecated extractors (kept for backwards compatibility)
             try:
                 from smartmemory.plugins.extractors.spacy import SpacyExtractor
                 class_based_extractors.append(SpacyExtractor)
             except ImportError:
                 pass
-            
-            try:
-                from smartmemory.plugins.extractors.relik import RelikExtractor
-                class_based_extractors.append(RelikExtractor)
-            except ImportError:
-                pass
-            
-            # Try to load GLiNER2 extractor (optional dependency)
-            try:
-                from smartmemory.plugins.extractors.gliner2 import GLiNER2Extractor
-                class_based_extractors.append(GLiNER2Extractor)
-            except ImportError:
-                logger.debug("GLiNER2 extractor not available (gliner2 package not installed)")
             
             for extractor_class in class_based_extractors:
                 try:
@@ -183,6 +167,10 @@ class PluginManager:
         
         # Load built-in evolvers
         try:
+            from smartmemory.plugins.evolvers.enhanced.exponential_decay import ExponentialDecayEvolver
+            from smartmemory.plugins.evolvers.enhanced.interference_based_consolidation import (
+                InterferenceBasedConsolidationEvolver,
+            )
             from smartmemory.plugins.evolvers.episodic_decay import EpisodicDecayEvolver
             from smartmemory.plugins.evolvers.episodic_to_semantic import EpisodicToSemanticEvolver
             from smartmemory.plugins.evolvers.episodic_to_zettel import EpisodicToZettelEvolver
@@ -190,7 +178,7 @@ class PluginManager:
             from smartmemory.plugins.evolvers.working_to_episodic import WorkingToEpisodicEvolver
             from smartmemory.plugins.evolvers.working_to_procedural import WorkingToProceduralEvolver
             from smartmemory.plugins.evolvers.zettel_prune import ZettelPruneEvolver
-            
+
             evolvers = [
                 WorkingToEpisodicEvolver,
                 WorkingToProceduralEvolver,
@@ -199,6 +187,8 @@ class PluginManager:
                 SemanticDecayEvolver,
                 EpisodicToZettelEvolver,
                 ZettelPruneEvolver,
+                ExponentialDecayEvolver,
+                InterferenceBasedConsolidationEvolver,
             ]
             
             for evolver_class in evolvers:

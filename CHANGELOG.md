@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### CORE-EVO-ENH-1 — ExponentialDecay and InterferenceBasedConsolidation Enhanced Evolvers
+
+- **`ExponentialDecayEvolver`** (`smartmemory/plugins/evolvers/enhanced/exponential_decay.py`): Applies the Ebbinghaus forgetting curve to episodic memories. Computes `retention = exp(-elapsed_days / stability)` where `stability` is a per-memory value read from `metadata["stability"]` (defaults to 30 days). Writes `retention_score` to each item's metadata; archives items below the configurable `archive_threshold` (default 0.1) by setting `metadata["archived"] = True` and `metadata["archive_reason"] = "exponential_decay"`. Registered in `ENHANCED_EVOLVERS` and `_load_builtin_plugins()`.
+- **`ExponentialDecayConfig`** (`smartmemory/plugins/evolvers/enhanced/exponential_decay.py`): `default_stability=30.0`, `archive_threshold=0.1`, `max_memories=500`.
+- **`InterferenceBasedConsolidationEvolver`** (`smartmemory/plugins/evolvers/enhanced/interference_based_consolidation.py`): Models retroactive and proactive interference between similar episodic and semantic memories. For each embedded memory, searches up to `top_k_neighbors` similar memories and applies a cosine-similarity-based retention penalty to pairs that exceed `similarity_threshold` (default 0.85): `new_score = current_score * (1 - similarity * interference_weight)`. Pair deduplication ensures each `(A, B)` pair is penalised exactly once. Items without embeddings are skipped. Writes `retention_score` and `interference_count` to metadata.
+- **`InterferenceBasedConsolidationConfig`** (`smartmemory/plugins/evolvers/enhanced/interference_based_consolidation.py`): `similarity_threshold=0.85`, `interference_weight=0.05`, `top_k_neighbors=5`, `max_memories=200`.
+- Both evolvers added to `ENHANCED_EVOLVERS` list (`enhanced/__init__.py`) and to `_load_builtin_plugins()` in `manager.py`.
+- Both classes exported from `smartmemory.plugins.evolvers` (`__all__` + import).
+- 48 unit tests across `tests/unit/plugins/evolvers/test_exponential_decay_evolver.py` and `tests/unit/plugins/evolvers/test_interference_based_consolidation_evolver.py`.
+
 #### DIST-PLUGIN-1 Prerequisite — `entity_ruler_patterns` Constructor Param
 
 - **`SmartMemory(entity_ruler_patterns=...)` parameter** (`smartmemory/smart_memory.py`): Accepts any object with a `get_patterns() → dict[str, str]` interface (duck-types `PatternManager`). When non-None, overrides the post-ontology-block `pattern_manager` variable so `EntityRulerStage` receives the injected manager. Placement is after the `if self._enable_ontology:` block, so it works in Lite mode where `enable_ontology=False` leaves `pattern_manager=None`. In full mode it overrides the FalkorDB-backed `PatternManager` if explicitly injected. Defaults to `None` (no behaviour change for existing callers).
