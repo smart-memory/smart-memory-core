@@ -309,12 +309,7 @@ class SmartMemory(MemoryBase):
             EvolveStage(self),
         ]
 
-        emitter = None
-        if self._observability:
-            from smartmemory.pipeline.metrics import PipelineMetricsEmitter
-
-            emitter = PipelineMetricsEmitter(workspace_id=workspace_id)
-        return PipelineRunner(stages, InProcessTransport(), metrics_emitter=emitter)
+        return PipelineRunner(stages, InProcessTransport())
 
     @property
     def last_token_summary(self) -> dict | None:
@@ -654,6 +649,19 @@ class SmartMemory(MemoryBase):
 
         item_id = state.item_id
 
+        # CORE-BG-1: emit pipeline event to Redis Stream for background worker consumers.
+        # Fire-and-forget — failure must never raise or slow ingest().
+        try:
+            from smartmemory.streams.pipeline_producer import emit_pipeline_event
+
+            emit_pipeline_event(
+                item_id=item_id or "",
+                workspace_id=pipeline_cfg.workspace_id,
+                memory_type=str(getattr(normalized_item, "memory_type", "semantic")),
+            )
+        except Exception:
+            pass  # observability failure must never break ingestion
+
         # Auto-version initial creation
         if item_id and self.version_tracker:
             try:
@@ -748,7 +756,7 @@ class SmartMemory(MemoryBase):
             ) as span:
                 result = self._crud.add(item, **kwargs)
                 item_id = result["memory_node_id"]
-                span.attributes["item_id"] = item_id
+                span.attributes["memory_id"] = item_id
                 return item_id
 
     def _add_impl(self, item, **kwargs) -> str:
@@ -764,7 +772,7 @@ class SmartMemory(MemoryBase):
         return self._crud.update(item, **kwargs)
 
     def get(self, item_id: str, **kwargs):
-        with trace_span("memory.get", {"item_id": item_id}) as span:
+        with trace_span("memory.get", {"memory_id": item_id}) as span:
             result = self._crud.get(item_id)
             span.attributes["found"] = result is not None
             return result
@@ -883,7 +891,7 @@ class SmartMemory(MemoryBase):
         return item_id
 
     def delete(self, item_id: str, **kwargs) -> bool:
-        with trace_span("memory.delete", {"item_id": item_id}) as span:
+        with trace_span("memory.delete", {"memory_id": item_id}) as span:
             result = self._crud.delete(item_id)
             span.attributes["success"] = result
             return result

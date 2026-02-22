@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### CORE-BG-1 — Pipeline Stream Producer
+
+- **`smartmemory/streams/pipeline_producer.py`** (new): Emits `{item_id, workspace_id, memory_type, ts}` to `smartmemory:pipeline` (Redis DB 2) after `ingest()` completes. Uses a lazy singleton sync `redis.Redis` client. MAXLEN `~ 10,000` (approximate, O(1)). All exceptions are swallowed — pipeline event emission never breaks `ingest()`.
+- **`smartmemory/streams/__init__.py`** (new): Streams subpackage.
+- **`smartmemory/smart_memory.py`** (modified): `ingest()` calls `emit_pipeline_event()` after `pipeline_runner.run()` returns. Wrapped in `try/except Exception: pass` — observability failures are non-fatal.
+
 #### CORE-EVO-ENH-1 — ExponentialDecay and InterferenceBasedConsolidation Enhanced Evolvers
 
 - **`ExponentialDecayEvolver`** (`smartmemory/plugins/evolvers/enhanced/exponential_decay.py`): Applies the Ebbinghaus forgetting curve to episodic memories. Computes `retention = exp(-elapsed_days / stability)` where `stability` is a per-memory value read from `metadata["stability"]` (defaults to 30 days). Writes `retention_score` to each item's metadata; archives items below the configurable `archive_threshold` (default 0.1) by setting `metadata["archived"] = True` and `metadata["archive_reason"] = "exponential_decay"`. Registered in `ENHANCED_EVOLVERS` and `_load_builtin_plugins()`.
