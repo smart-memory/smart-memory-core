@@ -53,8 +53,16 @@ def _build_typed_config(evolver_cls: Type, config_snapshot: Optional[Dict[str, A
 
 
 def run_enhanced_evolution_cycle(memory, config: Optional[Dict[str, Any]] = None, logger=None):
-    """
-    Run enhanced evolution cycle with improved algorithms.
+    """Run enhanced evolution cycle with improved algorithms.
+
+    Args:
+        memory: SmartMemory instance passed to each evolver.
+        config: Optional flat dict of config overrides. MUST be None when running
+            multiple evolvers — each evolver's Config dataclass has distinct fields,
+            and passing a dict with keys from one evolver's schema will raise TypeError
+            in _build_typed_config for the others, silently disabling them. To configure
+            individual evolvers, instantiate them directly with their typed Config.
+        logger: Optional logger instance.
     """
     for EvolverClass in ENHANCED_EVOLVERS:
         typed_config = _build_typed_config(EvolverClass, config)

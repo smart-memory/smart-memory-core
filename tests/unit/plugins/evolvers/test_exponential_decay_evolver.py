@@ -234,14 +234,9 @@ class TestExponentialDecayUpdateCalls:
         evolver = ExponentialDecayEvolver(config=cfg)
         evolver.evolve(memory)
         memory.search.assert_called_once()
-        call_kwargs = memory.search.call_args
-        # Accept both positional and keyword args
-        args, kwargs = call_kwargs
-        all_kwargs = {**kwargs}
-        if args:
-            # If called positionally, skip check
-            pass
-        assert "episodic" in str(all_kwargs) or "episodic" in str(args)
+        _, kwargs = memory.search.call_args
+        assert kwargs.get("memory_types") == ["episodic"]
+        assert kwargs.get("limit") == 42
 
 
 # ---------------------------------------------------------------------------

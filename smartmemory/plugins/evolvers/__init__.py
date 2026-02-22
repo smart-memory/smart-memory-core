@@ -17,6 +17,7 @@ from .enhanced.interference_based_consolidation import InterferenceBasedConsolid
 # Maintenance evolvers
 from .episodic_decay import EpisodicDecayEvolver
 from .episodic_to_semantic import EpisodicToSemanticEvolver
+from .semantic_decay import SemanticDecayEvolver
 from .episodic_to_zettel import EpisodicToZettelEvolver
 from .observation_synthesis import ObservationSynthesisEvolver
 from .opinion_reinforcement import OpinionReinforcementEvolver
@@ -40,6 +41,7 @@ __all__ = [
 
     # Maintenance
     'EpisodicDecayEvolver',
+    'SemanticDecayEvolver',
 
     # Synthesis
     'OpinionSynthesisEvolver',
