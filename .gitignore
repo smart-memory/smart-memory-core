@@ -180,3 +180,7 @@ CLAUDE.md
 
 # Benchmark result artifacts
 benchmark_*.json
+
+# Local secrets
+.secrets
+.act.secrets
