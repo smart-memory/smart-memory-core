@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### CORE-EVO-ENH-2 — Retrieval-Based Memory Strengthening
+
+- **`smartmemory/observability/retrieval_tracking.py`** (new): Retrieval event accumulation layer. Exports a `retrieval_source: ContextVar[str]` (default `"internal"`) for service-layer source annotation. `emit_retrieval_get(item, scope_provider)` emits one `{type: "get", item_id, source, ts}` event to `smartmemory:retrievals:{ws_id}` (Redis DB 2, MAXLEN `~ 50,000`). `emit_retrieval_search(results, query, scope_provider)` emits one batched event per call with `results_json` containing per-result `{item_id, rank, score}`. Both functions call `SADD smartmemory:active_workspaces {ws_id}` on every write. All exceptions are swallowed — observability failure never affects `get()` or `search()` return values. Uses the same lazy singleton `redis.Redis` pattern as `pipeline_producer.py`.
+- **`smartmemory/smart_memory.py`** (modified): `get()` calls `emit_retrieval_get()` after a successful fetch (result is not None). `search()` calls `emit_retrieval_search()` after the canonical search path collects results. Both hooks wrapped in `try/except Exception: pass`.
+- **`smartmemory/plugins/evolvers/enhanced/retrieval_based_strengthening.py`** (new): `RetrievalBasedStrengtheningEvolver` reads `metadata["retrieval__profile"]` (written by `RetrievalFlushConsumer`) and adjusts `metadata["retention_score"]` using the formula: `boost = retrieval_weight × log(1+total_count) × (1/(1+avg_rank)) × (v7d/(v30d+ε))`, `retention = min(1.0, base + boost)`. For memories with zero retrievals, applies gentle unretrieved decay: `retention *= (1 - rate × elapsed_days)`. Handles JSON string vs dict profile shapes with explicit `json.loads()` guard (FalkorDB serialises dicts to JSON strings). Registered in `ENHANCED_EVOLVERS`, `_load_builtin_plugins()`, and `evolvers/__init__.py`.
+- **`RetrievalBasedStrengtheningConfig`**: `retrieval_weight=0.1`, `unretrieved_decay_rate=0.005`, `lookback_days=30`, `max_memories=500`, `memory_types=["episodic", "semantic", "procedural"]`.
+- **`smart-memory-service/memory_service/api/routes/crud.py`** (modified): Imports `retrieval_source` and sets it at the top of `get_memory()`, `search_memory()`, and `search_memory_advanced()` handlers so events are attributed to their API origin.
+- **78 unit tests** across `tests/unit/plugins/evolvers/test_retrieval_based_strengthening_evolver.py` (34 tests) and `tests/unit/observability/test_retrieval_tracking.py` (22 tests), all passing.
+
 #### CORE-BG-1 — Pipeline Stream Producer
 
 - **`smartmemory/streams/pipeline_producer.py`** (new): Emits `{item_id, workspace_id, memory_type, ts}` to `smartmemory:pipeline` (Redis DB 2) after `ingest()` completes. Uses a lazy singleton sync `redis.Redis` client. MAXLEN `~ 10,000` (approximate, O(1)). All exceptions are swallowed — pipeline event emission never breaks `ingest()`.

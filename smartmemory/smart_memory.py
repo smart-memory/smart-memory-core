@@ -775,6 +775,13 @@ class SmartMemory(MemoryBase):
         with trace_span("memory.get", {"memory_id": item_id}) as span:
             result = self._crud.get(item_id)
             span.attributes["found"] = result is not None
+            if result is not None:
+                try:
+                    from smartmemory.observability.retrieval_tracking import emit_retrieval_get
+
+                    emit_retrieval_get(result, self.scope_provider)
+                except Exception:
+                    pass  # observability failure must never affect get() return
             return result
 
     # Archive facades (provider hidden behind SmartMemory interface)
@@ -995,7 +1002,14 @@ class SmartMemory(MemoryBase):
         ) as span:
             results = self._search.search(query, top_k=top_k, memory_type=memory_type, **kwargs)
             span.attributes["results_count"] = len(results) if results else 0
-            return results[:top_k]
+            final_results = results[:top_k]
+            try:
+                from smartmemory.observability.retrieval_tracking import emit_retrieval_search
+
+                emit_retrieval_search(final_results, query, self.scope_provider)
+            except Exception:
+                pass  # observability failure must never affect search() return
+            return final_results
 
     # Linking
     def link(self, source_id: str, target_id: str, link_type: Union[str, "LinkType"] = "RELATED") -> str:

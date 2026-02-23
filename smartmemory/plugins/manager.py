@@ -171,6 +171,9 @@ class PluginManager:
             from smartmemory.plugins.evolvers.enhanced.interference_based_consolidation import (
                 InterferenceBasedConsolidationEvolver,
             )
+            from smartmemory.plugins.evolvers.enhanced.retrieval_based_strengthening import (
+                RetrievalBasedStrengtheningEvolver,
+            )
             from smartmemory.plugins.evolvers.episodic_decay import EpisodicDecayEvolver
             from smartmemory.plugins.evolvers.episodic_to_semantic import EpisodicToSemanticEvolver
             from smartmemory.plugins.evolvers.episodic_to_zettel import EpisodicToZettelEvolver
@@ -189,6 +192,7 @@ class PluginManager:
                 ZettelPruneEvolver,
                 ExponentialDecayEvolver,
                 InterferenceBasedConsolidationEvolver,
+                RetrievalBasedStrengtheningEvolver,
             ]
             
             for evolver_class in evolvers:

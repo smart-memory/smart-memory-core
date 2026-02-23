@@ -13,6 +13,7 @@ from .decision_confidence import DecisionConfidenceEvolver
 # Enhanced evolvers
 from .enhanced.exponential_decay import ExponentialDecayEvolver
 from .enhanced.interference_based_consolidation import InterferenceBasedConsolidationEvolver
+from .enhanced.retrieval_based_strengthening import RetrievalBasedStrengtheningEvolver
 
 # Maintenance evolvers
 from .episodic_decay import EpisodicDecayEvolver
@@ -54,4 +55,5 @@ __all__ = [
     # Enhanced
     'ExponentialDecayEvolver',
     'InterferenceBasedConsolidationEvolver',
+    'RetrievalBasedStrengtheningEvolver',
 ]

@@ -13,14 +13,14 @@ from smartmemory.plugins.evolvers.enhanced.exponential_decay import ExponentialD
 from smartmemory.plugins.evolvers.enhanced.interference_based_consolidation import InterferenceBasedConsolidationEvolver
 from smartmemory.plugins.evolvers.enhanced.working_to_episodic import EnhancedWorkingToEpisodicEvolver
 
-# Note: RetrievalBasedStrengtheningEvolver is deferred to CORE-EVO-ENH-2 (requires retrieval-tracking infrastructure)
-# from smartmemory.plugins.evolvers.enhanced.retrieval_based_strengthening import RetrievalBasedStrengtheningEvolver
+from smartmemory.plugins.evolvers.enhanced.retrieval_based_strengthening import RetrievalBasedStrengtheningEvolver
 
 # Enhanced evolver list including new algorithms
 ENHANCED_EVOLVERS = [
     EnhancedWorkingToEpisodicEvolver,
     ExponentialDecayEvolver,
     InterferenceBasedConsolidationEvolver,
+    RetrievalBasedStrengtheningEvolver,
 
     # Keep the good existing ones
     # EpisodicToSemanticEvolver,  # This one is already optimal
