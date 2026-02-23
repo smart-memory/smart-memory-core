@@ -16,10 +16,8 @@ from unittest.mock import Mock, MagicMock, patch
 
 from smartmemory.plugins.extractors.spacy import SpacyExtractor
 from smartmemory.plugins.extractors.llm import LLMExtractor
-from smartmemory.plugins.extractors.relik import RelikExtractor
 
 
-@pytest.mark.skip(reason="deprecated extractor")
 class TestSpacyExtractor:
     """Test SpacyExtractor plugin."""
     
@@ -175,61 +173,5 @@ class TestLLMExtractor:
             assert result['entities'] == []
             assert result['relations'] == []
 
-
-@pytest.mark.skip(reason="deprecated extractor")
-class TestRelikExtractor:
-    """Test RelikExtractor plugin."""
-    
-    @pytest.fixture
-    def mock_relik_module(self):
-        """Mock relik module to prevent import errors."""
-        import sys
-        
-        # Create mock module
-        mock_relik = MagicMock()
-        mock_relik.Relik = MagicMock()
-        
-        # Patch sys.modules
-        with patch.dict(sys.modules, {'relik': mock_relik}):
-            yield mock_relik
-    
-    @pytest.fixture
-    def mock_relik_model(self):
-        """Create mock Relik model."""
-        mock_model = Mock()
-        mock_model.return_value = {"entities": [], "relations": []}
-        return mock_model
-    
-    @pytest.fixture
-    def extractor(self, mock_relik_module, mock_relik_model):
-        """Create RelikExtractor with mocked model."""
-        # patch inside the context where relik module exists
-        with patch('relik.Relik.from_pretrained', return_value=mock_relik_model):
-            extractor = RelikExtractor()
-            # Ensure the mock is used and prevent loading
-            extractor.model = mock_relik_model
-            extractor._load_model = Mock()  # Prevent actual model loading
-            return extractor
-    
-    def test_initialization(self, extractor):
-        """Test extractor initializes correctly."""
-        assert extractor is not None
-        metadata = extractor.metadata()
-        assert metadata.name == "relik"
-    
-    def test_extract_basic(self, extractor, mock_relik_model):
-        """Test basic Relik extraction."""
-        # Relik model returns an object with .triples attribute
-        mock_output = Mock()
-        mock_output.triples = [("Python", "is", "language")]
-        mock_relik_model.return_value = mock_output
-        
-        result = extractor.extract("Python programming")
-        
-        assert isinstance(result, dict)
-        assert 'entities' in result
-        assert 'relations' in result
-        assert len(result['entities']) == 2  # Python and language
-        assert len(result['relations']) == 1
 
 

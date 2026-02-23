@@ -1,5 +1,5 @@
 from smartmemory.models.memory_item import MemoryItem
-from smartmemory.observability.instrumentation import emit_after
+from smartmemory.observability.tracing import trace_span
 
 
 class ExternalResolver:
@@ -20,13 +20,6 @@ class ExternalResolver:
         except Exception:
             return {}
 
-    @emit_after(
-        "performance_metrics",
-        component="resolver",
-        operation="resolve_external",
-        payload_fn=lambda self, args, kwargs, result: self._payload(args[0] if args else kwargs.get('node'), result),
-        measure_time=True,
-    )
     def resolve_external(self, node: MemoryItem):
         """
         Resolve linked resources from other registered memory backends (hybrid memory).
@@ -34,6 +27,10 @@ class ExternalResolver:
         For backward compatibility, also supports single 'external_ref' and 'external_type'.
         Returns a list of resolved MemoryItems (empty if none resolved).
         """
+        with trace_span("resolver.resolve_external", {}):
+            return self._resolve_external_impl(node)
+
+    def _resolve_external_impl(self, node: MemoryItem):
         results = []
         if node and getattr(node, 'metadata', None):
             refs = node.metadata.get('external_refs')

@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Set
 from smartmemory.models.base import MemoryBaseModel, StageRequest
 from smartmemory.models.memory_item import MemoryItem
 from smartmemory.models.opinion import ObservationMetadata
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EvolverPlugin, PluginMetadata
 
 logger = logging.getLogger(__name__)
@@ -70,55 +71,56 @@ class ObservationSynthesisEvolver(EvolverPlugin):
     def evolve(self, memory, log=None):
         """
         Main evolution method - synthesizes observations from entity facts.
-        
+
         Args:
             memory: SmartMemory instance
             log: Optional logger
         """
         log = log or logger
         cfg = self.config
-        
-        # 1. Gather all entities and their related facts
-        entity_facts = self._gather_entity_facts(memory, cfg.lookback_days)
-        if not entity_facts:
-            log.info("No entities with sufficient facts found for observation synthesis")
-            return
-        
-        log.info(f"Found {len(entity_facts)} entities with facts")
-        
-        # 2. Filter to entities with enough facts
-        eligible_entities = {
-            entity_id: facts 
-            for entity_id, facts in entity_facts.items() 
-            if len(facts) >= cfg.min_facts_per_entity
-        }
-        
-        if not eligible_entities:
-            log.info(f"No entities have >= {cfg.min_facts_per_entity} facts")
-            return
-        
-        log.info(f"{len(eligible_entities)} entities eligible for observation synthesis")
-        
-        # 3. Synthesize observations
-        observations_created = 0
-        for entity_id, facts in list(eligible_entities.items())[:cfg.max_observations_per_run]:
-            # Check if observation already exists
-            existing = self._find_existing_observation(memory, entity_id)
-            if existing:
-                # Update existing observation with new facts
-                updated = self._update_observation(memory, existing, facts)
-                if updated:
-                    log.debug(f"Updated observation for entity {entity_id}")
-                continue
-            
-            # Create new observation
-            observation = self._synthesize_observation(entity_id, facts)
-            if observation:
-                self._store_observation(memory, observation)
-                observations_created += 1
-                log.info(f"Created observation for entity {entity_id}: {observation.content[:50]}...")
-        
-        log.info(f"Observation synthesis complete: {observations_created} observations created")
+        memory_id = getattr(memory, 'item_id', None)
+        with trace_span("pipeline.evolve.observation_synthesis", {"memory_id": memory_id, "lookback_days": cfg.lookback_days}):
+            # 1. Gather all entities and their related facts
+            entity_facts = self._gather_entity_facts(memory, cfg.lookback_days)
+            if not entity_facts:
+                log.info("No entities with sufficient facts found for observation synthesis")
+                return
+
+            log.info(f"Found {len(entity_facts)} entities with facts")
+
+            # 2. Filter to entities with enough facts
+            eligible_entities = {
+                entity_id: facts
+                for entity_id, facts in entity_facts.items()
+                if len(facts) >= cfg.min_facts_per_entity
+            }
+
+            if not eligible_entities:
+                log.info(f"No entities have >= {cfg.min_facts_per_entity} facts")
+                return
+
+            log.info(f"{len(eligible_entities)} entities eligible for observation synthesis")
+
+            # 3. Synthesize observations
+            observations_created = 0
+            for entity_id, facts in list(eligible_entities.items())[:cfg.max_observations_per_run]:
+                # Check if observation already exists
+                existing = self._find_existing_observation(memory, entity_id)
+                if existing:
+                    # Update existing observation with new facts
+                    updated = self._update_observation(memory, existing, facts)
+                    if updated:
+                        log.debug(f"Updated observation for entity {entity_id}")
+                    continue
+
+                # Create new observation
+                observation = self._synthesize_observation(entity_id, facts)
+                if observation:
+                    self._store_observation(memory, observation)
+                    observations_created += 1
+                    log.info(f"Created observation for entity {entity_id}: {observation.content[:50]}...")
+
+            log.info(f"Observation synthesis complete: {observations_created} observations created")
 
     def _gather_entity_facts(self, memory, days: int) -> Dict[str, List[MemoryItem]]:
         """

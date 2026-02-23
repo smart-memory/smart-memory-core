@@ -36,7 +36,7 @@ class IngestionObserver:
         """
         attrs = data.copy() if data else {}
         attrs["session_id"] = self._session_id
-        with trace_span(f"observer.{event_type}", attributes=attrs):
+        with trace_span(f"observer.{event_type}", attrs):
             pass
 
     @contextmanager
@@ -56,9 +56,9 @@ class IngestionObserver:
         """
         attrs = {}
         if item_id:
-            attrs["item_id"] = item_id
+            attrs["memory_id"] = item_id
         attrs.update(metadata)
-        with trace_span(f"pipeline.{stage_name}", attributes=attrs):
+        with trace_span(f"pipeline.{stage_name}", attrs):
             start = time.perf_counter()
             yield
             self._stage_timers[stage_name] = time.perf_counter() - start
@@ -66,7 +66,8 @@ class IngestionObserver:
     def emit_ingestion_start(self, item_id: str, content_length: int, extractor: str, adapter: str):
         """Emit ingestion start event."""
         self.emit_event(
-            "ingestion_start", {"content_length": content_length, "extractor": extractor, "adapter": adapter}
+            "ingestion_start",
+            {"memory_id": item_id, "content_length": content_length, "extractor": extractor, "adapter": adapter},
         )
 
     def emit_extraction_results(
@@ -74,7 +75,7 @@ class IngestionObserver:
     ):
         """Emit extraction results event."""
         data = {
-            "item_id": item_id,
+            "memory_id": item_id,
             "entities_count": entities_count,
             "relations_count": relations_count,
             "extractor": extractor,
@@ -97,7 +98,7 @@ class IngestionObserver:
         self.emit_event(
             "ingestion_complete",
             {
-                "item_id": item_id,
+                "memory_id": item_id,
                 "entities_extracted": entities_extracted,
                 "relations_extracted": relations_extracted,
                 "total_duration_ms": total_duration_ms,
@@ -228,7 +229,7 @@ class IngestionObserver:
         """Emit error event during ingestion."""
         self.emit_event(
             "ingestion_error",
-            {"item_id": item_id, "error": error, "error_type": error_type, "stage": stage, "timestamp": time.time()},
+            {"memory_id": item_id, "error": error, "error_type": error_type, "stage": stage, "timestamp": time.time()},
         )
 
     def emit_edge_creation_start(self, subject: str, predicate: str, object_node: str):

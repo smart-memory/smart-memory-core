@@ -330,7 +330,7 @@ class SmartGraphNodes:
                 "delta_edges": delta_edges,
                 "details": details or {},
             }
-            with trace_span("graph.stats_update", attributes={**data, "operation": operation}):
+            with trace_span("graph.stats_update", {**data, "operation": operation}):
                 pass
         except Exception:
             # Observability must never break graph operations

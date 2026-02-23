@@ -6,6 +6,7 @@ from typing import Optional, Dict, Any
 
 from smartmemory.integration.llm.prompts.prompt_provider import get_prompt_value, apply_placeholders
 from smartmemory.models.base import MemoryBaseModel, StageRequest
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EnricherPlugin, PluginMetadata
 
 
@@ -55,27 +56,29 @@ class TemporalEnricher(EnricherPlugin):
     def enrich(self, item, node_ids=None, prompt_template=None):
         content = getattr(item, "content", str(item))
         entities = node_ids.get("semantic_entities", []) if isinstance(node_ids, dict) else []
+        memory_id = getattr(item, "item_id", None)
         template_key = self.config.prompt_template_key
         template = prompt_template or get_prompt_value(template_key)
         if not template:
             raise ValueError(f"Missing prompt template '{template_key}' in prompts.json")
         prompt = apply_placeholders(template, {"TEXT": content, "ENTITIES": json.dumps(entities)})
-        try:
-            response = openai.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.0,
-                max_tokens=512,
-                response_format={"type": "json_object"},
-            )
-            # Track token usage (CFS-1b)
-            self._track_usage(response)
+        with trace_span("pipeline.enrich.temporal_enricher", {"memory_id": memory_id, "entity_count": len(entities)}):
+            try:
+                response = openai.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.0,
+                    max_tokens=512,
+                    response_format={"type": "json_object"},
+                )
+                # Track token usage (CFS-1b)
+                self._track_usage(response)
 
-            result = response.choices[0].message.content
-            temporal = json.loads(result)
-        except Exception:
-            logging.exception("TemporalEnricher: failed to obtain or parse OpenAI response")
-            temporal = {}
+                result = response.choices[0].message.content
+                temporal = json.loads(result)
+            except Exception:
+                logging.exception("TemporalEnricher: failed to obtain or parse OpenAI response")
+                temporal = {}
         return {"temporal": temporal}
 
     def _track_usage(self, response) -> None:

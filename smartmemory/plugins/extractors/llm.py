@@ -21,6 +21,7 @@ from smartmemory.integration.llm.prompts.prompt_provider import get_prompt_value
 from smartmemory.models.base import MemoryBaseModel
 from smartmemory.models.entity_types import ENTITY_TYPES
 from smartmemory.models.memory_item import MemoryItem
+from smartmemory.observability.tracing import trace_span
 from smartmemory.utils import get_config
 from smartmemory.utils.cache import get_cache
 from smartmemory.utils.llm import call_llm
@@ -90,44 +91,45 @@ class LLMExtractor(ExtractorPlugin):
         """
         Extract entities and relations from text using two-step LLM process.
         """
-        content = text
-        
-        # 1. Check Cache
-        try:
-            cache = get_cache()
-            cached_result = cache.get_entity_extraction(content)
-            if cached_result:
-                logger.debug(f"Cache hit: {content[:50]}...")
-                return cached_result
-        except Exception as e:
-            logger.warning(f"Cache unavailable: {e}")
-            cache = None
+        with trace_span("pipeline.extract.llm", {"text_length": len(text)}):
+            content = text
 
-        # 2. Setup API Key
-        api_key = self._get_api_key()
-        
-        # 3. Step 1: Extract Entities
-        entities = self._extract_entities(content, api_key)
-        
-        # 4. Step 2: Extract Relations (if entities found)
-        relations = []
-        if entities:
-            relations = self._extract_relations(content, entities, api_key)
-            
-        # 5. Format Result
-        extraction_result = {
-            'entities': entities,
-            'relations': relations,
-        }
-
-        # 6. Cache Result
-        if cache:
+            # 1. Check Cache
             try:
-                cache.set_entity_extraction(content, extraction_result)
+                cache = get_cache()
+                cached_result = cache.get_entity_extraction(content)
+                if cached_result:
+                    logger.debug(f"Cache hit: {content[:50]}...")
+                    return cached_result
             except Exception as e:
-                logger.warning(f"Failed to cache: {e}")
+                logger.warning(f"Cache unavailable: {e}")
+                cache = None
 
-        return extraction_result
+            # 2. Setup API Key
+            api_key = self._get_api_key()
+
+            # 3. Step 1: Extract Entities
+            entities = self._extract_entities(content, api_key)
+
+            # 4. Step 2: Extract Relations (if entities found)
+            relations = []
+            if entities:
+                relations = self._extract_relations(content, entities, api_key)
+
+            # 5. Format Result
+            extraction_result = {
+                'entities': entities,
+                'relations': relations,
+            }
+
+            # 6. Cache Result
+            if cache:
+                try:
+                    cache.set_entity_extraction(content, extraction_result)
+                except Exception as e:
+                    logger.warning(f"Failed to cache: {e}")
+
+            return extraction_result
 
     def _get_api_key(self) -> str:
         api_key = os.getenv(self.cfg.api_key_env)

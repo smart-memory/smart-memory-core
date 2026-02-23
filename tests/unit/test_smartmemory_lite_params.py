@@ -182,60 +182,6 @@ def test_pipeline_profile_applied_in_build():
 
 
 # ---------------------------------------------------------------------------
-# observability=False nulls PipelineMetricsEmitter
-# ---------------------------------------------------------------------------
-
-def test_observability_false_nulls_emitter():
-    """SmartMemory(observability=False) causes _create_pipeline_runner to set emitter=None."""
-    old = os.environ.get("SMARTMEMORY_OBSERVABILITY")
-    _base_patches = [
-        "smartmemory.smart_memory.EvolutionOrchestrator",
-        "smartmemory.smart_memory.GlobalClustering",
-        "smartmemory.smart_memory.VersionTracker",
-        "smartmemory.smart_memory.TemporalQueries",
-        "smartmemory.smart_memory.ProcedureMatcher",
-        "smartmemory.smart_memory.DriftDetector",
-    ]
-    _runner_patches = [
-        "smartmemory.pipeline.transport.InProcessTransport",
-        "smartmemory.pipeline.stages.classify.ClassifyStage",
-        "smartmemory.pipeline.stages.coreference.CoreferenceStageCommand",
-        "smartmemory.pipeline.stages.simplify.SimplifyStage",
-        "smartmemory.pipeline.stages.entity_ruler.EntityRulerStage",
-        "smartmemory.pipeline.stages.llm_extract.LLMExtractStage",
-        "smartmemory.pipeline.stages.store.StoreStage",
-        "smartmemory.pipeline.stages.link.LinkStage",
-        "smartmemory.pipeline.stages.enrich.EnrichStage",
-        "smartmemory.pipeline.stages.ground.GroundStage",
-        "smartmemory.pipeline.stages.evolve.EvolveStage",
-        "smartmemory.memory.ingestion.flow.MemoryIngestionFlow",
-        "smartmemory.memory.ingestion.enrichment.EnrichmentPipeline",
-        "smartmemory.memory.ingestion.observer.IngestionObserver",
-    ]
-    try:
-        with ExitStack() as stack:
-            for target in _base_patches:
-                stack.enter_context(patch(target))
-            from smartmemory.smart_memory import SmartMemory
-            mem = SmartMemory(graph=_make_mock_graph(), observability=False)
-
-            MockRunner = stack.enter_context(patch("smartmemory.pipeline.runner.PipelineRunner"))
-            for target in _runner_patches:
-                stack.enter_context(patch(target))
-
-            mem._create_pipeline_runner()
-            _, kwargs = MockRunner.call_args
-            assert kwargs.get("metrics_emitter") is None, (
-                "observability=False must pass metrics_emitter=None to PipelineRunner"
-            )
-    finally:
-        if old is None:
-            os.environ.pop("SMARTMEMORY_OBSERVABILITY", None)
-        else:
-            os.environ["SMARTMEMORY_OBSERVABILITY"] = old
-
-
-# ---------------------------------------------------------------------------
 # defaults unchanged
 # ---------------------------------------------------------------------------
 

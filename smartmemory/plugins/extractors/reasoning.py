@@ -24,6 +24,7 @@ from smartmemory.models.memory_item import MemoryItem
 from smartmemory.models.reasoning import (
     ReasoningStep, ReasoningTrace, ReasoningEvaluation, TaskContext
 )
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import ExtractorPlugin, PluginMetadata
 from smartmemory.utils.llm import call_llm
 
@@ -96,42 +97,43 @@ class ReasoningExtractor(ExtractorPlugin):
     def extract(self, text: str) -> dict:
         """
         Extract reasoning trace from text.
-        
+
         Returns:
             dict with 'entities', 'relations', and 'reasoning_trace' keys
         """
-        result = {
-            'entities': [],
-            'relations': [],
-            'reasoning_trace': None,
-        }
-        
-        if not text or len(text.strip()) < 50:
+        with trace_span("pipeline.extract.reasoning", {"text_length": len(text)}):
+            result = {
+                'entities': [],
+                'relations': [],
+                'reasoning_trace': None,
+            }
+
+            if not text or len(text.strip()) < 50:
+                return result
+
+            # 1. Try explicit markup extraction first
+            trace = None
+            has_explicit = self._has_explicit_markers(text)
+
+            if has_explicit and self.cfg.prefer_explicit_markup:
+                trace = self._extract_explicit(text)
+
+            # 2. Fall back to LLM detection if no explicit markers or extraction failed
+            if trace is None and self.cfg.use_llm_detection:
+                if self._likely_contains_reasoning(text):
+                    trace = self._extract_implicit(text)
+
+            # 3. Evaluate quality
+            if trace and trace.steps:
+                trace.evaluation = self._evaluate_trace(trace)
+
+                # Only include if passes quality threshold
+                if trace.evaluation.should_store:
+                    result['reasoning_trace'] = trace
+                else:
+                    logger.debug(f"Trace rejected: quality={trace.evaluation.quality_score:.2f}")
+
             return result
-        
-        # 1. Try explicit markup extraction first
-        trace = None
-        has_explicit = self._has_explicit_markers(text)
-        
-        if has_explicit and self.cfg.prefer_explicit_markup:
-            trace = self._extract_explicit(text)
-        
-        # 2. Fall back to LLM detection if no explicit markers or extraction failed
-        if trace is None and self.cfg.use_llm_detection:
-            if self._likely_contains_reasoning(text):
-                trace = self._extract_implicit(text)
-        
-        # 3. Evaluate quality
-        if trace and trace.steps:
-            trace.evaluation = self._evaluate_trace(trace)
-            
-            # Only include if passes quality threshold
-            if trace.evaluation.should_store:
-                result['reasoning_trace'] = trace
-            else:
-                logger.debug(f"Trace rejected: quality={trace.evaluation.quality_score:.2f}")
-        
-        return result
     
     def _has_explicit_markers(self, text: str) -> bool:
         """Check if text contains explicit reasoning markers."""

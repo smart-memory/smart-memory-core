@@ -85,21 +85,20 @@ class WikipediaGrounder(GrounderPlugin):
                 return provenance_candidates
 
             # Only call Wikipedia API for entities not already in the graph
-            from smartmemory.plugins.enrichers import WikipediaEnricher
+            from smartmemory.integration.wikipedia_client import WikipediaClient
 
-            wiki = WikipediaEnricher()
-            wiki_data = wiki.enrich(item, {"semantic_entities": needs_lookup})
-
-            for entity_name, data in wiki_data.get("wikipedia_data", {}).items():
-                if not data.get("exists"):
+            wiki_client = WikipediaClient()
+            for entity_name in needs_lookup:
+                article = wiki_client.get_article(entity_name)
+                if not article.get("exists"):
                     continue
 
                 wiki_id = f"wikipedia:{entity_name.replace(' ', '_').lower()}"
                 node_properties = {
                     "entity": entity_name,
-                    "summary": data.get("summary", "")[:300],
-                    "categories": data.get("categories", []),
-                    "url": data.get("url"),
+                    "summary": article.get("summary", "")[:300],
+                    "categories": article.get("categories", []),
+                    "url": article.get("url"),
                     "type": "wikipedia_article",
                     "node_category": "grounding",
                 }

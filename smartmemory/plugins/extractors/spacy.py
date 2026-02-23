@@ -1,30 +1,26 @@
 """
-DEPRECATED: spaCy-based entity extractor.
+spaCy-based entity extractor.
 
-This extractor is deprecated in favor of:
-- HybridGlinerRebelExtractor (GLiNER2 + ReLiK) for local extraction
-- CascadingExtractor for local + LLM enhancement
-- EnsembleExtractor for best quality
-
-GLiNER2 provides better entity extraction than spaCy NER.
+Fallback extractor requiring no API key. Used when LLM extractors are unavailable
+and as the base model for the EntityRuler stage (en_core_web_sm + pattern rules).
 """
 
-import warnings
+from smartmemory.observability.tracing import trace_span
 from smartmemory.utils import get_config
 from smartmemory.plugins.base import ExtractorPlugin, PluginMetadata
 
 
 class SpacyExtractor(ExtractorPlugin):
     """
-    DEPRECATED: spaCy-based entity and relationship extractor.
-    
-    Use HybridGlinerRebelExtractor, CascadingExtractor, or EnsembleExtractor instead.
-    GLiNER2 provides better entity extraction than spaCy NER.
+    spaCy-based entity and relationship extractor.
+
+    Zero-dependency fallback: no API key, no external network calls.
+    Used directly and as the underlying model for the EntityRuler stage.
     """
-    
+
     # Class-level cache for spaCy model
     _nlp_cache = {'nlp': None, 'loaded_name': None}
-    
+
     @classmethod
     def metadata(cls) -> PluginMetadata:
         """Return plugin metadata for discovery."""
@@ -32,21 +28,15 @@ class SpacyExtractor(ExtractorPlugin):
             name="spacy",
             version="1.0.0",
             author="SmartMemory Team",
-            description="[DEPRECATED] Use HybridGlinerRebelExtractor instead",
+            description="spaCy NER extractor — zero-dependency fallback",
             plugin_type="extractor",
             dependencies=["spacy>=3.0.0"],
             min_smartmemory_version="0.1.0",
-            tags=["ner", "relation-extraction", "nlp", "deprecated"]
+            tags=["ner", "relation-extraction", "nlp", "local"]
         )
-    
+
     def __init__(self):
         """Initialize the spaCy extractor."""
-        warnings.warn(
-            "SpacyExtractor is deprecated. Use HybridGlinerRebelExtractor, "
-            "CascadingExtractor, or EnsembleExtractor instead.",
-            DeprecationWarning,
-            stacklevel=2
-        )
         self._load_nlp()
     
     def _load_nlp(self):
@@ -136,15 +126,19 @@ class SpacyExtractor(ExtractorPlugin):
     def extract(self, text: str) -> dict:
         """
         Extract entities and relationships from text.
-        
+
         Args:
             text: The text to extract from
-        
+
         Returns:
             dict: Dictionary with 'entities' and 'relations' keys
         """
+        with trace_span("pipeline.extract.spacy", {"text_length": len(text)}):
+            return self._extract_impl(text)
+
+    def _extract_impl(self, text: str) -> dict:
         import re
-        
+
         nlp = self.nlp
         entities = []  # list[dict{name, type}]
         relations = []

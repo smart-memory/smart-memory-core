@@ -1,30 +1,7 @@
 from typing import Any
 
-from smartmemory.observability.instrumentation import emit_after
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.manager import get_plugin_manager
-
-
-def _make_payload_fn(plugin_name: str):
-    def _pf(self_or_none, args, kwargs, result):
-        try:
-            props_count = 0
-            rels_count = 0
-            if isinstance(result, dict):
-                props = result.get('properties') or {}
-                if isinstance(props, dict):
-                    props_count = len(props)
-                rels = result.get('relations') or []
-                if isinstance(rels, list):
-                    rels_count = len(rels)
-            return {
-                "plugin": plugin_name,
-                "properties_added": props_count,
-                "relationships_added": rels_count,
-            }
-        except Exception:
-            return {"plugin": plugin_name}
-
-    return _pf
 
 
 class Enrichment:
@@ -57,20 +34,6 @@ class Enrichment:
         # Default pipeline: all enrichers, in registry order
         self._enricher_pipeline = list(self.enricher_registry.keys())
 
-        # Wrap registry callables to emit performance metrics automatically
-        for _name, _callable in list(self.enricher_registry.items()):
-            try:
-                wrapped = emit_after(
-                    "performance_metrics",
-                    component="enricher",
-                    operation_fn=lambda s, a, k, r, n=_name: f"enricher:{n}",
-                    payload_fn=_make_payload_fn(_name),
-                    measure_time=True,
-                )(_callable)
-                self.enricher_registry[_name] = wrapped
-            except Exception:
-                # If wrapping fails, keep original callable
-                pass
 
     def _make_enricher_callable(self, cls, config: dict[str, Any] | None = None):
         """Create a callable that instantiates an enricher with optional config."""
@@ -129,6 +92,8 @@ class Enrichment:
         enricher_configs = enricher_configs or {}
         result = {}
 
+        memory_id = getattr(context.get("item"), "item_id", None) if isinstance(context, dict) else None
+
         for enricher_name in pipeline:
             # Get enricher callable - use config-aware version if config provided
             config = enricher_configs.get(enricher_name)
@@ -140,7 +105,8 @@ class Enrichment:
             if enricher is None:
                 raise ValueError(f"Enricher '{enricher_name}' not registered.")
 
-            enricher_result = enricher(context["item"], context["node_ids"])
+            with trace_span(f"pipeline.enrich.{enricher_name}", {"memory_id": memory_id, "plugin": enricher_name}):
+                enricher_result = enricher(context["item"], context["node_ids"])
             if enricher_result:
                 # Merge 'properties' deeply so multiple enrichers can contribute
                 if 'properties' in enricher_result:

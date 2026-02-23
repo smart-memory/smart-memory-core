@@ -27,6 +27,7 @@ from typing import Optional, Dict, Any, List
 
 from smartmemory.models.base import MemoryBaseModel
 from smartmemory.models.memory_item import MemoryItem
+from smartmemory.observability.tracing import trace_span
 from smartmemory.utils import get_config
 from smartmemory.utils.cache import get_cache
 from smartmemory.utils.llm import call_llm
@@ -203,6 +204,11 @@ class LLMSingleExtractor(ExtractorPlugin):
         Returns:
             dict with 'entities' (List[MemoryItem]) and 'relations' (List[dict])
         """
+        plugin_name = self.metadata().name  # llm_single or groq
+        with trace_span(f"pipeline.extract.{plugin_name}", {"text_length": len(text)}):
+            return self._extract_impl(text)
+
+    def _extract_impl(self, text: str) -> dict:
         if not text or not text.strip():
             return {"entities": [], "relations": []}
 

@@ -27,7 +27,7 @@ from smartmemory.memory.pipeline.config import (
 )
 from smartmemory.memory.pipeline.stages.coreference import CoreferenceStage
 from smartmemory.models.memory_item import MemoryItem
-from smartmemory.observability.instrumentation import emit_after
+from smartmemory.observability.tracing import trace_span
 
 
 logger = logging.getLogger(__name__)
@@ -139,13 +139,6 @@ class MemoryIngestionFlow:
 
         return bundle
 
-    @emit_after(
-        "performance_metrics",
-        component="ingestion",
-        operation="ingest_run",
-        payload_fn=lambda self, args, kwargs, result: ingestion_utils.extract_payload_for_instrumentation(result),
-        measure_time=True,
-    )
     def run(self, item, context: IngestionContext = None,
             # Legacy parameters for backward compatibility
             adapter_name=None, converter_name=None, extractor_name=None, enricher_names=None,
@@ -160,10 +153,21 @@ class MemoryIngestionFlow:
             input_adapter_config: InputAdapterConfig = None) -> IngestionContext:
         """
         Execute the streamlined ingestion flow with modular pipeline delegation.
-        
+
         This orchestrator coordinates the pipeline stages while delegating complex
         operations to specialized pipeline modules.
         """
+        with trace_span("ingestion.ingest_run", {}):
+            return self._run(item, context, adapter_name, converter_name, extractor_name, enricher_names,
+                             pipeline_config, classification_config, linking_config, storage_config,
+                             grounding_config, enrichment_config, extraction_config, input_adapter_config)
+
+    def _run(self, item, context: IngestionContext = None,
+             adapter_name=None, converter_name=None, extractor_name=None, enricher_names=None,
+             pipeline_config=None, classification_config=None, linking_config=None,
+             storage_config=None, grounding_config=None, enrichment_config=None,
+             extraction_config=None, input_adapter_config=None) -> IngestionContext:
+        """Internal run implementation, wrapped by trace_span in run()."""
         context = context or IngestionContext()
         context['start_time'] = time.time()
 

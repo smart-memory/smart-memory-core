@@ -142,7 +142,11 @@ class OntologyConstrainStage:
 
         # Step 5: Enqueue promotion candidates (async) or auto-promote (fallback)
         if not promotion_cfg.require_approval:
-            self._handle_promotion(promotion_candidates)
+            self._handle_promotion(
+                promotion_candidates,
+                workspace_id=state.workspace_id,
+                source_memory_id=state.item_id,
+            )
 
         return replace(
             state,
@@ -156,7 +160,12 @@ class OntologyConstrainStage:
             unresolved_entities=unresolved,
         )
 
-    def _handle_promotion(self, candidates: List[Dict[str, Any]]) -> None:
+    def _handle_promotion(
+        self,
+        candidates: List[Dict[str, Any]],
+        workspace_id: str | None = None,
+        source_memory_id: str | None = None,
+    ) -> None:
         """Enqueue candidates to promotion stream, or auto-promote as fallback."""
         for candidate in candidates:
             entity_type = self._get_entity_type(candidate)
@@ -170,6 +179,8 @@ class OntologyConstrainStage:
                             "entity_name": entity_name,
                             "entity_type": entity_type,
                             "confidence": confidence,
+                            "workspace_id": workspace_id or "default",
+                            "source_memory_id": source_memory_id,
                         }
                     )
                     continue

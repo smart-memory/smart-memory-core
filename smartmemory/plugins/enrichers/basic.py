@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from smartmemory.models.base import MemoryBaseModel, StageRequest
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EnricherPlugin, PluginMetadata
 
 
@@ -48,27 +49,29 @@ class BasicEnricher(EnricherPlugin):
         # Fail fast on typed config
         if not isinstance(self.config, BasicEnricherConfig):
             raise TypeError("BasicEnricher requires a typed config (BasicEnricherConfig)")
-        content = getattr(item, 'content', str(item))
-        result: Dict[str, Any] = {'new_items': []}
+        memory_id = getattr(item, 'item_id', None)
+        entities = (node_ids.get('semantic_entities') or [] if isinstance(node_ids, dict) else [])
+        with trace_span("pipeline.enrich.basic_enricher", {"memory_id": memory_id, "entity_count": len(entities)}):
+            content = getattr(item, 'content', str(item))
+            result: Dict[str, Any] = {'new_items': []}
 
-        # Summary
-        if self.config.enable_summary:
-            result['summary'] = content.split('.')[0] + '.' if '.' in content else content[:100]
+            # Summary
+            if self.config.enable_summary:
+                result['summary'] = content.split('.')[0] + '.' if '.' in content else content[:100]
 
-        # Entity tags and temporal annotations if node_ids provided
-        if isinstance(node_ids, dict) and self.config.enable_entity_tags:
-            entities = node_ids.get('semantic_entities') or []
-            result['tags'] = list(entities)
-            from datetime import datetime
-            temporal = {}
-            now = datetime.now()
-            for entity in entities:
-                temporal[entity] = {
-                    'valid_start': now,
-                    'valid_end': None,
-                    'transaction_time': now
-                }
-            if temporal:
-                result['temporal'] = temporal
+            # Entity tags and temporal annotations if node_ids provided
+            if isinstance(node_ids, dict) and self.config.enable_entity_tags:
+                result['tags'] = list(entities)
+                from datetime import datetime
+                temporal = {}
+                now = datetime.now()
+                for entity in entities:
+                    temporal[entity] = {
+                        'valid_start': now,
+                        'valid_end': None,
+                        'transaction_time': now
+                    }
+                if temporal:
+                    result['temporal'] = temporal
 
         return result

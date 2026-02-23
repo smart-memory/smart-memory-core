@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from smartmemory.models.base import MemoryBaseModel, StageRequest
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EvolverPlugin, PluginMetadata
 
 if TYPE_CHECKING:
@@ -76,41 +77,43 @@ class WorkingToProceduralEvolver(EvolverPlugin):
             )
 
         k = int(cfg.k)
-        patterns = memory.working.detect_skill_patterns(min_count=k)
+        memory_id = getattr(memory, 'item_id', None)
+        with trace_span("pipeline.evolve.working_to_procedural", {"memory_id": memory_id, "k": k}):
+            patterns = memory.working.detect_skill_patterns(min_count=k)
 
-        # Get workspace context from memory's scope provider if available
-        workspace_id = ""
-        user_id = ""
-        if hasattr(memory, "scope_provider") and memory.scope_provider:
-            write_ctx = memory.scope_provider.get_write_context()
-            workspace_id = write_ctx.get("workspace_id", "")
-            user_id = write_ctx.get("user_id", "")
+            # Get workspace context from memory's scope provider if available
+            workspace_id = ""
+            user_id = ""
+            if hasattr(memory, "scope_provider") and memory.scope_provider:
+                write_ctx = memory.scope_provider.get_write_context()
+                workspace_id = write_ctx.get("workspace_id", "")
+                user_id = write_ctx.get("user_id", "")
 
-        for pattern in patterns:
-            # Check if this pattern already exists as a procedure
-            existing_procedure = self._find_existing_procedure(memory, pattern)
+            for pattern in patterns:
+                # Check if this pattern already exists as a procedure
+                existing_procedure = self._find_existing_procedure(memory, pattern)
 
-            if existing_procedure:
-                # Refinement case: update existing procedure
-                self._handle_refinement(
-                    memory=memory,
-                    existing_procedure=existing_procedure,
-                    pattern=pattern,
-                    workspace_id=workspace_id,
-                    user_id=user_id,
-                    pattern_count=k,
-                    logger=logger,
-                )
-            else:
-                # Creation case: new procedure from working memory
-                self._handle_creation(
-                    memory=memory,
-                    pattern=pattern,
-                    workspace_id=workspace_id,
-                    user_id=user_id,
-                    pattern_count=k,
-                    logger=logger,
-                )
+                if existing_procedure:
+                    # Refinement case: update existing procedure
+                    self._handle_refinement(
+                        memory=memory,
+                        existing_procedure=existing_procedure,
+                        pattern=pattern,
+                        workspace_id=workspace_id,
+                        user_id=user_id,
+                        pattern_count=k,
+                        logger=logger,
+                    )
+                else:
+                    # Creation case: new procedure from working memory
+                    self._handle_creation(
+                        memory=memory,
+                        pattern=pattern,
+                        workspace_id=workspace_id,
+                        user_id=user_id,
+                        pattern_count=k,
+                        logger=logger,
+                    )
 
     def _find_existing_procedure(self, memory, pattern) -> Optional[Dict[str, Any]]:
         """Find an existing procedure that matches the pattern.

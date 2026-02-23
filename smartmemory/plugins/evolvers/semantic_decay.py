@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from smartmemory.models.base import MemoryBaseModel, StageRequest
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EvolverPlugin, PluginMetadata
 
 
@@ -43,8 +44,10 @@ class SemanticDecayEvolver(EvolverPlugin):
                 "Provide SemanticDecayConfig or a compatible typed config."
             )
         threshold = float(getattr(cfg, "threshold"))
-        old_facts = memory.semantic.get_low_relevance(threshold=threshold)
-        for fact in old_facts:
-            memory.semantic.archive(fact)
-            if logger:
-                logger.info(f"Archived low-relevance semantic fact: {fact}")
+        memory_id = getattr(memory, 'item_id', None)
+        with trace_span("pipeline.evolve.semantic_decay", {"memory_id": memory_id, "threshold": threshold}):
+            old_facts = memory.semantic.get_low_relevance(threshold=threshold)
+            for fact in old_facts:
+                memory.semantic.archive(fact)
+                if logger:
+                    logger.info(f"Archived low-relevance semantic fact: {fact}")

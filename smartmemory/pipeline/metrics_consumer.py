@@ -24,8 +24,9 @@ from typing import Any
 
 import redis
 
-from smartmemory.pipeline.metrics import METRICS_STREAM
 from smartmemory.utils import get_config
+
+METRICS_STREAM = "smartmemory:metrics:pipeline"
 
 logger = logging.getLogger(__name__)
 

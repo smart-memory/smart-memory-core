@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from smartmemory.models.base import MemoryBaseModel, StageRequest
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EvolverPlugin, PluginMetadata
 
 
@@ -43,8 +44,10 @@ class EpisodicDecayEvolver(EvolverPlugin):
                 "Provide EpisodicDecayConfig or a compatible typed config."
             )
         half_life = int(getattr(cfg, "half_life"))
-        stale_events = memory.episodic.get_stale_events(half_life=half_life)
-        for event in stale_events:
-            memory.episodic.archive(event)
-            if logger:
-                logger.info(f"Archived stale episodic event: {event}")
+        memory_id = getattr(memory, 'item_id', None)
+        with trace_span("pipeline.evolve.episodic_decay", {"memory_id": memory_id, "half_life": half_life}):
+            stale_events = memory.episodic.get_stale_events(half_life=half_life)
+            for event in stale_events:
+                memory.episodic.archive(event)
+                if logger:
+                    logger.info(f"Archived stale episodic event: {event}")

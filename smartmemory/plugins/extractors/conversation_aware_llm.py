@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from smartmemory.plugins.extractors.llm import LLMExtractor, LLMExtractorConfig, EntityOut, TripleOut
 from smartmemory.plugins.base import PluginMetadata
 from smartmemory.conversation.context import ConversationContext
+from smartmemory.observability.tracing import trace_span
 from smartmemory.utils.llm import call_llm
 
 logger = logging.getLogger(__name__)
@@ -81,6 +82,14 @@ class ConversationAwareLLMExtractor(LLMExtractor):
         Returns:
             dict with 'entities', 'relations', and optionally 'speaker_relations'
         """
+        with trace_span("pipeline.extract.conversation_aware_llm", {"text_length": len(text)}):
+            return self._extract_impl(text, conversation_context)
+
+    def _extract_impl(
+        self,
+        text: str,
+        conversation_context: Optional[ConversationContext] = None,
+    ) -> dict:
         # Check if we have any useful context (coreference chains count as useful context)
         has_useful_context = (
             conversation_context and (

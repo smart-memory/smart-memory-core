@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 from smartmemory.models.base import MemoryBaseModel, StageRequest
 from smartmemory.models.memory_item import MemoryItem
 from smartmemory.models.opinion import OpinionMetadata, Disposition
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EvolverPlugin, PluginMetadata
 
 logger = logging.getLogger(__name__)
@@ -80,58 +81,59 @@ class OpinionSynthesisEvolver(EvolverPlugin):
     def evolve(self, memory, log=None):
         """
         Main evolution method - synthesizes opinions from episodic patterns.
-        
+
         Args:
             memory: SmartMemory instance with access to episodic store
             log: Optional logger
         """
         log = log or logger
-        
         cfg = self.config
-        disposition = Disposition(
-            skepticism=cfg.skepticism,
-            literalism=cfg.literalism,
-            empathy=cfg.empathy,
-        )
-        
-        # 1. Get recent episodic memories
-        episodic_items = self._get_recent_episodic(memory, cfg.lookback_days)
-        if not episodic_items:
-            log.info("No episodic memories found for opinion synthesis")
-            return
-        
-        log.info(f"Analyzing {len(episodic_items)} episodic memories for patterns")
-        
-        # 2. Detect patterns
-        patterns = self._detect_patterns(episodic_items, cfg)
-        if not patterns:
-            log.info("No significant patterns detected")
-            return
-        
-        log.info(f"Detected {len(patterns)} patterns")
-        
-        # 3. Form opinions from patterns
-        opinions_created = 0
-        for pattern in patterns:
-            # Check if opinion already exists
-            existing = self._find_existing_opinion(memory, pattern['subject'])
-            if existing:
-                log.debug(f"Opinion already exists for {pattern['subject']}, skipping")
-                continue
-            
-            # Calculate confidence based on pattern strength and disposition
-            confidence = self._calculate_confidence(pattern, disposition)
-            if confidence < cfg.min_confidence:
-                log.debug(f"Confidence {confidence:.2f} below threshold for {pattern['subject']}")
-                continue
-            
-            # Create opinion
-            opinion = self._create_opinion(pattern, confidence, disposition)
-            self._store_opinion(memory, opinion)
-            opinions_created += 1
-            log.info(f"Created opinion: {opinion.content[:50]}... (confidence: {confidence:.2f})")
-        
-        log.info(f"Opinion synthesis complete: {opinions_created} opinions created")
+        memory_id = getattr(memory, 'item_id', None)
+        with trace_span("pipeline.evolve.opinion_synthesis", {"memory_id": memory_id, "lookback_days": cfg.lookback_days}):
+            disposition = Disposition(
+                skepticism=cfg.skepticism,
+                literalism=cfg.literalism,
+                empathy=cfg.empathy,
+            )
+
+            # 1. Get recent episodic memories
+            episodic_items = self._get_recent_episodic(memory, cfg.lookback_days)
+            if not episodic_items:
+                log.info("No episodic memories found for opinion synthesis")
+                return
+
+            log.info(f"Analyzing {len(episodic_items)} episodic memories for patterns")
+
+            # 2. Detect patterns
+            patterns = self._detect_patterns(episodic_items, cfg)
+            if not patterns:
+                log.info("No significant patterns detected")
+                return
+
+            log.info(f"Detected {len(patterns)} patterns")
+
+            # 3. Form opinions from patterns
+            opinions_created = 0
+            for pattern in patterns:
+                # Check if opinion already exists
+                existing = self._find_existing_opinion(memory, pattern['subject'])
+                if existing:
+                    log.debug(f"Opinion already exists for {pattern['subject']}, skipping")
+                    continue
+
+                # Calculate confidence based on pattern strength and disposition
+                confidence = self._calculate_confidence(pattern, disposition)
+                if confidence < cfg.min_confidence:
+                    log.debug(f"Confidence {confidence:.2f} below threshold for {pattern['subject']}")
+                    continue
+
+                # Create opinion
+                opinion = self._create_opinion(pattern, confidence, disposition)
+                self._store_opinion(memory, opinion)
+                opinions_created += 1
+                log.info(f"Created opinion: {opinion.content[:50]}... (confidence: {confidence:.2f})")
+
+            log.info(f"Opinion synthesis complete: {opinions_created} opinions created")
 
     def _get_recent_episodic(self, memory, days: int) -> List[MemoryItem]:
         """Get recent episodic memories."""

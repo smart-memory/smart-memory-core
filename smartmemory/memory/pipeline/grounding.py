@@ -7,6 +7,7 @@ from typing import Dict, Any
 from smartmemory.memory.pipeline.components import PipelineComponent, ComponentResult
 from smartmemory.memory.pipeline.config import GroundingConfig
 from smartmemory.memory.pipeline.state import EnrichmentState
+from smartmemory.observability.tracing import trace_span
 from smartmemory.utils.pipeline_utils import create_error_result
 
 logger = logging.getLogger(__name__)
@@ -149,7 +150,8 @@ class GroundingEngine(PipelineComponent[GroundingConfig]):
                 try:
                     # Add provenance candidates to context for grounding
                     context['provenance_candidates'] = provenance_candidates
-                    self.grounding.ground(context)
+                    with trace_span("pipeline.ground", {"memory_id": context.get('item_id'), "strategy": strategy, "provenance_candidate_count": len(provenance_candidates)}):
+                        self.grounding.ground(context)
                     grounding_metadata['provenance_grounding_success'] = True
                 except Exception as e:
                     grounding_success = False

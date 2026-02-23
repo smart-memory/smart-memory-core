@@ -141,19 +141,6 @@ def test_apply_lite_pipeline_profile_disables_wikidata(tmp_path):
         VectorStore.set_default_backend(None)
 
 
-def test_apply_lite_pipeline_profile_nulls_metrics(tmp_path):
-    """The patched _create_pipeline_runner returns a runner with _metrics=None."""
-    from smartmemory.stores.vector.vector_store import VectorStore
-    try:
-        memory = create_lite_memory(str(tmp_path))
-        runner = memory._create_pipeline_runner()
-        assert runner._metrics is None, (
-            "pipeline runner._metrics must be None in lite mode to suppress Redis Streams calls"
-        )
-    finally:
-        VectorStore.set_default_backend(None)
-
-
 # ── cache override set by create_lite_memory ─────────────────────────────────
 
 def test_create_lite_memory_uses_noop_cache(tmp_path):

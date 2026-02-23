@@ -24,6 +24,35 @@ class SpanContext:
     start_time: float = 0.0
     attributes: Dict[str, Any] = field(default_factory=dict)
 
+    def emit_event(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+        """Emit a point-in-time span event attached to this span.
+
+        Unlike trace_span(), records an instantaneous occurrence with no duration.
+        Inherits trace_id from this span; uses this span's span_id as parent reference.
+
+        Args:
+            name: Event name in dot notation (e.g., "graph.add_node").
+            attributes: Key-value payload for the event.
+        """
+        if not self.trace_id:  # no-op when observability is disabled (empty SpanContext)
+            return
+        resolved_component = name.split(".")[0] if name else "unknown"
+        operation = name.split(".", 1)[1] if "." in name else name
+        event_data = {
+            **(attributes or {}),
+            "event_type": "span_event",
+            "component": resolved_component,
+            "operation": operation,
+            "name": name,
+            "trace_id": self.trace_id,
+            "span_id": self.span_id,
+            "parent_span_id": self.parent_span_id,
+        }
+        try:
+            _emit_span(event_data)
+        except Exception:
+            pass
+
 
 _current_span: ContextVar[Optional[SpanContext]] = ContextVar("_current_span", default=None)
 
@@ -177,4 +206,38 @@ def current_span() -> Optional[SpanContext]:
     return _current_span.get()
 
 
-__all__ = ["trace_span", "current_trace_id", "current_span", "SpanContext"]
+def trace_log(name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+    """Emit a standalone log record with current span trace context.
+
+    Unlike trace_span(), records an instantaneous occurrence with no duration
+    and does not require a parent span.  Inherits trace_id / span_id from the
+    active span when one exists, so log records are correlatable to the
+    pipeline stage that emitted them.
+
+    Args:
+        name: Log name in dot notation (e.g., "pipeline.log").
+              First segment used as component.
+        attributes: Key-value payload for the log record.
+    """
+    if not _is_enabled():
+        return
+    span = _current_span.get()
+    resolved_component = name.split(".")[0] if name else "unknown"
+    operation = name.split(".", 1)[1] if "." in name else name
+    event_data = {
+        **(attributes or {}),
+        "event_type": "log",
+        "component": resolved_component,
+        "operation": operation,
+        "name": name,
+        "trace_id": span.trace_id if span else "",
+        "span_id": span.span_id if span else "",
+        "parent_span_id": span.parent_span_id if span else None,
+    }
+    try:
+        _emit_span(event_data)
+    except Exception:
+        pass
+
+
+__all__ = ["trace_span", "trace_log", "current_trace_id", "current_span", "SpanContext"]

@@ -68,7 +68,7 @@ Each stage implements the `StageCommand` protocol (`execute(state, config) → s
 ### Plugin System
 
 Plugins in `smartmemory/plugins/`:
-- **Extractors** (7): HybridExtractor, LLMExtractor, GLiNER2Extractor, ReasoningExtractor, DecisionExtractor + deprecated: SpacyExtractor, RelikExtractor
+- **Extractors** (4): LLMExtractor (+ LLMSingleExtractor/GroqExtractor variants), ReasoningExtractor, ConversationAwareLLMExtractor, SpacyExtractor (fallback)
 - **Enrichers** (7): BasicEnricher, LinkExpansionEnricher, SentimentEnricher, TemporalEnricher, TopicEnricher, ExtractSkillsToolsEnricher, WikipediaEnricher
 - **Grounders** (1): WikipediaGrounder
 - **Evolvers** (9): WorkingToEpisodicEvolver, EpisodicToSemanticEvolver, WorkingToProceduralEvolver, EpisodicToZettelEvolver, EpisodicDecayEvolver, OpinionSynthesisEvolver, ObservationSynthesisEvolver, OpinionReinforcementEvolver, DecisionConfidenceEvolver

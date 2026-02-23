@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from smartmemory.models.base import MemoryBaseModel, StageRequest
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EvolverPlugin, PluginMetadata
 
 
@@ -43,9 +44,11 @@ class EpisodicToZettelEvolver(EvolverPlugin):
                 "Provide EpisodicToZettelConfig or a compatible typed config."
             )
         period = int(getattr(cfg, "period"))
-        events = memory.episodic.get_events_since(days=period)
-        for event in events:
-            zettel = memory.zettel.create_note_from_event(event)
-            memory.zettel.add(zettel)
-            if logger:
-                logger.info(f"Rolled up episodic event into zettel: {event}")
+        memory_id = getattr(memory, 'item_id', None)
+        with trace_span("pipeline.evolve.episodic_to_zettel", {"memory_id": memory_id, "period_days": period}):
+            events = memory.episodic.get_events_since(days=period)
+            for event in events:
+                zettel = memory.zettel.create_note_from_event(event)
+                memory.zettel.add(zettel)
+                if logger:
+                    logger.info(f"Rolled up episodic event into zettel: {event}")

@@ -16,6 +16,7 @@ from smartmemory.memory.pipeline.components import PipelineComponent, ComponentR
 from smartmemory.memory.pipeline.config import ExtractionConfig
 from smartmemory.memory.pipeline.state import ClassificationState
 from smartmemory.models.memory_item import MemoryItem
+from smartmemory.observability.tracing import trace_span
 from smartmemory.utils import get_config
 from smartmemory.utils.pipeline_utils import create_error_result
 
@@ -465,15 +466,17 @@ class ExtractorPipeline(PipelineComponent[ExtractionConfig]):
             fallback_order = [n for n in self._get_fallback_order(primary=extractor_name) if n in self.extractor_registry]
 
             # Handle extraction based on extractor type
-            if extractor_name == 'ontology':
-                extraction_result = self._extract_with_ontology(memory_item, fallback_order)
-            else:
-                # Try primary extractor first, then fallback
-                all_extractors = [n for n in ([extractor_name] + fallback_order) if n in self.extractor_registry]
-                if not all_extractors:
-                    available = ", ".join(sorted(self.extractor_registry.keys()))
-                    return create_error_result('extractor_pipeline', ValueError(f"Requested extractor '{extractor_name}' is not registered; available: [{available}]"))
-                extraction_result = self._extract_with_fallback(memory_item, all_extractors)
+            memory_id = getattr(memory_item, "item_id", None)
+            with trace_span("pipeline.extract", {"memory_id": memory_id, "extractor": extractor_name}):
+                if extractor_name == 'ontology':
+                    extraction_result = self._extract_with_ontology(memory_item, fallback_order)
+                else:
+                    # Try primary extractor first, then fallback
+                    all_extractors = [n for n in ([extractor_name] + fallback_order) if n in self.extractor_registry]
+                    if not all_extractors:
+                        available = ", ".join(sorted(self.extractor_registry.keys()))
+                        return create_error_result('extractor_pipeline', ValueError(f"Requested extractor '{extractor_name}' is not registered; available: [{available}]"))
+                    extraction_result = self._extract_with_fallback(memory_item, all_extractors)
 
             # Build extraction metadata
             extraction_metadata = {

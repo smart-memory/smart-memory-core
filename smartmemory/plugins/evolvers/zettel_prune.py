@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from smartmemory.models.base import MemoryBaseModel, StageRequest
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EvolverPlugin, PluginMetadata
 
 
@@ -56,56 +57,57 @@ class ZettelPruneEvolver(EvolverPlugin):
         cfg = getattr(self, "config")
         if not isinstance(cfg, ZettelPruneConfig):
             raise TypeError("ZettelPruneEvolver requires ZettelPruneConfig.")
-        
-        # Get candidates for pruning with config parameters
-        candidates = memory.zettel.get_low_quality_or_duplicates(
-            min_content_length=cfg.min_content_length,
-            min_connections=cfg.min_connections,
-            similarity_threshold=cfg.similarity_threshold
-        )
-        
-        if not candidates:
-            if logger:
-                logger.info("No low-quality or duplicate zettels found")
-            return
-        
-        pruned_count = 0
-        skipped_count = 0
-        
-        for zettel in candidates:
-            try:
-                # Determine prune reason
-                content_len = len(zettel.content) if zettel.content else 0
-                connections = memory.zettel.get_bidirectional_connections(zettel.item_id)
-                total_connections = sum(len(conn_list) for conn_list in connections.values())
-                
-                reasons = []
-                if content_len < cfg.min_content_length:
-                    reasons.append(f"short_content_{content_len}_chars")
-                if total_connections < cfg.min_connections:
-                    reasons.append(f"orphaned_{total_connections}_connections")
-                
-                reason = "_and_".join(reasons) if reasons else "duplicate"
-                
-                if cfg.dry_run:
-                    if logger:
-                        logger.info(f"[DRY RUN] Would prune zettel {zettel.item_id}: {reason}")
-                    skipped_count += 1
-                else:
-                    # Soft delete via archival
-                    memory.zettel.prune_or_merge(zettel)
-                    pruned_count += 1
-                    
-                    if logger:
-                        logger.info(f"Archived zettel {zettel.item_id}: {reason}")
-                        
-            except Exception as e:
+        memory_id = getattr(memory, 'item_id', None)
+        with trace_span("pipeline.evolve.zettel_prune", {"memory_id": memory_id, "dry_run": cfg.dry_run}):
+            # Get candidates for pruning with config parameters
+            candidates = memory.zettel.get_low_quality_or_duplicates(
+                min_content_length=cfg.min_content_length,
+                min_connections=cfg.min_connections,
+                similarity_threshold=cfg.similarity_threshold
+            )
+
+            if not candidates:
                 if logger:
-                    logger.error(f"Failed to prune zettel {zettel.item_id}: {e}")
-                skipped_count += 1
-        
-        if logger:
-            if cfg.dry_run:
-                logger.info(f"[DRY RUN] Would prune {skipped_count} zettels")
-            else:
-                logger.info(f"Archived {pruned_count} zettels, skipped {skipped_count}")
+                    logger.info("No low-quality or duplicate zettels found")
+                return
+
+            pruned_count = 0
+            skipped_count = 0
+
+            for zettel in candidates:
+                try:
+                    # Determine prune reason
+                    content_len = len(zettel.content) if zettel.content else 0
+                    connections = memory.zettel.get_bidirectional_connections(zettel.item_id)
+                    total_connections = sum(len(conn_list) for conn_list in connections.values())
+
+                    reasons = []
+                    if content_len < cfg.min_content_length:
+                        reasons.append(f"short_content_{content_len}_chars")
+                    if total_connections < cfg.min_connections:
+                        reasons.append(f"orphaned_{total_connections}_connections")
+
+                    reason = "_and_".join(reasons) if reasons else "duplicate"
+
+                    if cfg.dry_run:
+                        if logger:
+                            logger.info(f"[DRY RUN] Would prune zettel {zettel.item_id}: {reason}")
+                        skipped_count += 1
+                    else:
+                        # Soft delete via archival
+                        memory.zettel.prune_or_merge(zettel)
+                        pruned_count += 1
+
+                        if logger:
+                            logger.info(f"Archived zettel {zettel.item_id}: {reason}")
+
+                except Exception as e:
+                    if logger:
+                        logger.error(f"Failed to prune zettel {zettel.item_id}: {e}")
+                    skipped_count += 1
+
+            if logger:
+                if cfg.dry_run:
+                    logger.info(f"[DRY RUN] Would prune {skipped_count} zettels")
+                else:
+                    logger.info(f"Archived {pruned_count} zettels, skipped {skipped_count}")

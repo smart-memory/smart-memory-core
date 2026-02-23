@@ -9,7 +9,6 @@ from smartmemory.graph.core.nodes import SmartGraphNodes
 from smartmemory.graph.core.search import SmartGraphSearch
 from smartmemory.models.memory_item import MemoryItem
 from smartmemory.observability.tracing import trace_span
-from smartmemory.observability.events import emit_event
 from smartmemory.utils import get_config
 from smartmemory.interfaces import ScopeProvider
 
@@ -125,16 +124,6 @@ class SmartGraph:
         except Exception:
             pass
 
-        # Emit graph_cleared event for real-time UI consumers (viewer WebSocket)
-        try:
-            emit_event("graph_mutation", "graph", "clear_all", {
-                "nuclear": True,
-                "pre_node_count": pre_nodes,
-                "pre_edge_count": pre_edges,
-            })
-        except Exception:
-            pass
-
         return result
 
     def add_node(
@@ -154,15 +143,6 @@ class SmartGraph:
             "content": properties.get("content", "")[:200] if properties else "",
         }):
             result = self.nodes.add_node(item_id, properties, valid_time, transaction_time, memory_type, is_global)
-        try:
-            emit_event("graph_mutation", "graph", "add_node", {
-                "memory_id": result.get("item_id") if isinstance(result, dict) else item_id,
-                "memory_type": memory_type or (properties.get("memory_type", "") if properties else ""),
-                "label": (properties.get("title", properties.get("content", ""))[:40] if properties else ""),
-                "content": (properties.get("content", "")[:200] if properties else ""),
-            })
-        except Exception:
-            pass
         return result
 
     def add_dual_node(
@@ -175,109 +155,83 @@ class SmartGraph:
     ):
         """Add a dual-node structure through the backend.
 
-        Emits individual observability events for each entity node and
+        Emits individual observability spans for each entity node and
         structural edge created atomically in the backend Cypher query,
         so that real-time UI consumers (viewer WebSocket) can display
-        them progressively.
+        them progressively via the WebSocket relay.
         """
-        with trace_span("graph.add_node", {
+        with trace_span("graph.add_dual_node", {
             "memory_id": item_id,
             "memory_type": memory_type or "",
             "label": memory_properties.get("title", memory_properties.get("content", ""))[:40]
             if memory_properties else "",
             "content": memory_properties.get("content", "")[:200] if memory_properties else "",
             "entity_count": len(entity_nodes) if entity_nodes else 0,
-        }):
+        }) as span:
             result = self.nodes.add_dual_node(item_id, memory_properties, memory_type, entity_nodes, is_global)
 
-        # Emit per-entity and per-edge notification events for streaming consumers.
-        # These are created atomically in Cypher and bypass SmartGraph's individual
-        # add_node/add_edge methods, so we emit notification events here.
-        self._emit_dual_node_events(item_id, memory_properties, memory_type, entity_nodes, result)
-
-        return result
-
-    def _emit_dual_node_events(
-        self,
-        memory_id: str,
-        memory_properties: Dict[str, Any],
-        memory_type: str,
-        entity_nodes: Optional[List[Dict[str, Any]]],
-        result: Dict[str, Any],
-    ) -> None:
-        """Emit streaming events for the memory node, entities, and edges created by add_dual_node.
-
-        trace_id is auto-attached by emit_event() from the active pipeline span context.
-        """
-        # Always emit the memory node itself so the viewer can show it during streaming
-        try:
+            # Emit memory node event so the viewer shows it during streaming
             memory_label = (
-                memory_properties.get("title")
-                or (memory_properties.get("content", "")[:40])
-                or memory_id[:12]
+                (memory_properties.get("title") or memory_properties.get("content", "")[:40] or item_id[:12])
+                if memory_properties else item_id[:12]
             )
-            emit_event("graph_mutation", "graph", "add_node", {
-                "memory_id": memory_id,
+            span.emit_event("graph.add_node", {
+                "memory_id": item_id,
                 "memory_type": memory_type or "semantic",
                 "label": memory_label,
-                "content": memory_properties.get("content", "")[:200],
+                "content": memory_properties.get("content", "")[:200] if memory_properties else "",
             })
-        except Exception:
-            pass
 
-        if not entity_nodes:
-            return
-        try:
-            resolved = result.get("resolved_entities", [])
-            entity_ids = result.get("entity_node_ids", [])
-            resolved_map = {r["index"]: r for r in resolved}
+            # Emit per-entity and per-edge events attached to this span so they
+            # carry trace_id/span_id and can be correlated to the pipeline stage.
+            if entity_nodes:
+                try:
+                    resolved = result.get("resolved_entities", [])
+                    entity_ids = result.get("entity_node_ids", [])
+                    resolved_map = {r["index"]: r for r in resolved}
 
-            for i, entity_node in enumerate(entity_nodes):
-                entity_id = entity_ids[i] if i < len(entity_ids) else None
-                if not entity_id:
-                    continue
-                entity_type = entity_node.get("entity_type", "Entity")
-                props = entity_node.get("properties") or {}
-                label = props.get("name") or props.get("content", entity_id)[:40]
+                    for i, entity_node in enumerate(entity_nodes):
+                        entity_id = entity_ids[i] if i < len(entity_ids) else None
+                        if not entity_id:
+                            continue
+                        entity_type = entity_node.get("entity_type", "Entity")
+                        props = entity_node.get("properties") or {}
+                        label = props.get("name") or props.get("content", entity_id)[:40]
 
-                # Entity node event
-                emit_event("graph_mutation", "graph", "add_node", {
-                    "memory_id": entity_id,
-                    "memory_type": entity_type.lower(),
-                    "label": label[:40],
-                    "content": props.get("content", label)[:200],
-                    "parent_memory_id": memory_id,
-                    "resolved": resolved_map.get(i, {}).get("resolved", False),
-                })
-
-                # CONTAINS_ENTITY edge
-                emit_event("graph_mutation", "graph", "add_edge", {
-                    "source_id": memory_id,
-                    "target_id": entity_id,
-                    "edge_type": "CONTAINS_ENTITY",
-                })
-
-                # MENTIONED_IN edge
-                emit_event("graph_mutation", "graph", "add_edge", {
-                    "source_id": entity_id,
-                    "target_id": memory_id,
-                    "edge_type": "MENTIONED_IN",
-                })
-
-            # Semantic edges between entities (created via MERGE in the Cypher batch)
-            for entity_node in entity_nodes:
-                idx = entity_node.get("_index", entity_nodes.index(entity_node))
-                source_id = entity_ids[idx] if idx < len(entity_ids) else None
-                for rel in entity_node.get("relations", []):
-                    target_idx = rel.get("target_index")
-                    if target_idx is not None and target_idx < len(entity_ids) and source_id:
-                        emit_event("graph_mutation", "graph", "add_edge", {
-                            "source_id": source_id,
-                            "target_id": entity_ids[target_idx],
-                            "edge_type": rel.get("relation_type", "RELATED"),
+                        span.emit_event("graph.add_node", {
+                            "memory_id": entity_id,
+                            "memory_type": entity_type.lower(),
+                            "label": label[:40],
+                            "content": props.get("content", label)[:200],
+                            "parent_memory_id": item_id,
+                            "resolved": resolved_map.get(i, {}).get("resolved", False),
                         })
-        except Exception as e:
-            logger.warning("_emit_dual_node_events failed: %s", e, exc_info=True)
+                        span.emit_event("graph.add_edge", {
+                            "source_id": item_id,
+                            "target_id": entity_id,
+                            "edge_type": "CONTAINS_ENTITY",
+                        })
+                        span.emit_event("graph.add_edge", {
+                            "source_id": entity_id,
+                            "target_id": item_id,
+                            "edge_type": "MENTIONED_IN",
+                        })
+
+                    for i, entity_node in enumerate(entity_nodes):
+                        idx = entity_node.get("_index", i)
+                        source_id = entity_ids[idx] if idx < len(entity_ids) else None
+                        for rel in entity_node.get("relations", []):
+                            target_idx = rel.get("target_index")
+                            if target_idx is not None and target_idx < len(entity_ids) and source_id:
+                                span.emit_event("graph.add_edge", {
+                                    "source_id": source_id,
+                                    "target_id": entity_ids[target_idx],
+                                    "edge_type": rel.get("relation_type", "RELATED"),
+                                })
+                except Exception as e:
+                    logger.warning("add_dual_node entity event emission failed: %s", e, exc_info=True)
+
+        return result
 
     @staticmethod
     def _to_node_dict(obj):
@@ -322,14 +276,6 @@ class SmartGraph:
                 memory_type,
                 is_global=is_global,
             )
-        try:
-            emit_event("graph_mutation", "graph", "add_edge", {
-                "source_id": source_id,
-                "target_id": target_id,
-                "edge_type": edge_type,
-            })
-        except Exception:
-            pass
         return result
 
     def add_nodes_bulk(self, nodes: List[Dict[str, Any]], batch_size: int = 500, is_global: bool = False) -> int:
@@ -348,10 +294,6 @@ class SmartGraph:
         with trace_span("graph.add_nodes_bulk", {"node_count": len(nodes)}):
             count = self.backend.add_nodes_bulk(nodes, batch_size=batch_size, is_global=is_global)
         self.nodes.clear_cache()
-        try:
-            emit_event("graph_mutation", "graph", "add_nodes_bulk", {"count": count})
-        except Exception:
-            pass
         return count
 
     def add_edges_bulk(
@@ -375,10 +317,6 @@ class SmartGraph:
         with trace_span("graph.add_edges_bulk", {"edge_count": len(edges)}):
             count = self.backend.add_edges_bulk(edges, batch_size=batch_size, is_global=is_global)
         self.edges.clear_cache()
-        try:
-            emit_event("graph_mutation", "graph", "add_edges_bulk", {"count": count})
-        except Exception:
-            pass
         return count
 
     def get_scope_filters(self) -> Dict[str, Any]:
@@ -482,10 +420,6 @@ class SmartGraph:
         """Remove a node from the graph."""
         with trace_span("graph.delete_node", {"memory_id": item_id}):
             result = self.nodes.remove_node(item_id)
-        try:
-            emit_event("graph_mutation", "graph", "delete_node", {"memory_id": item_id})
-        except Exception:
-            pass
         return result
 
     def remove_edge(self, source_id: str, target_id: str, edge_type: Optional[str] = None):

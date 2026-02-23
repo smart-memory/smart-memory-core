@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 from smartmemory.models.base import MemoryBaseModel, StageRequest
 from smartmemory.models.memory_item import MemoryItem
 from smartmemory.models.opinion import OpinionMetadata
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EvolverPlugin, PluginMetadata
 
 logger = logging.getLogger(__name__)
@@ -77,76 +78,77 @@ class OpinionReinforcementEvolver(EvolverPlugin):
     def evolve(self, memory, log=None):
         """
         Main evolution method - reinforces/contradicts opinions based on evidence.
-        
+
         Args:
             memory: SmartMemory instance
             log: Optional logger
         """
         log = log or logger
         cfg = self.config
-        
-        # 1. Get all existing opinions
-        opinions = self._get_all_opinions(memory)
-        if not opinions:
-            log.info("No opinions found for reinforcement")
-            return
-        
-        log.info(f"Processing {len(opinions)} opinions for reinforcement")
-        
-        # 2. Get recent evidence (episodic memories)
-        recent_evidence = self._get_recent_evidence(memory, cfg.lookback_days)
-        log.info(f"Found {len(recent_evidence)} recent evidence items")
-        
-        # 3. Process each opinion
-        reinforced = 0
-        contradicted = 0
-        archived = 0
-        decayed = 0
-        
-        for opinion in opinions:
-            opinion_meta = self._get_opinion_metadata(opinion)
-            if not opinion_meta:
-                continue
-            
-            # Find matching evidence
-            supporting, contradicting = self._find_matching_evidence(
-                opinion, recent_evidence, cfg.similarity_threshold
+        memory_id = getattr(memory, 'item_id', None)
+        with trace_span("pipeline.evolve.opinion_reinforcement", {"memory_id": memory_id, "lookback_days": cfg.lookback_days}):
+            # 1. Get all existing opinions
+            opinions = self._get_all_opinions(memory)
+            if not opinions:
+                log.info("No opinions found for reinforcement")
+                return
+
+            log.info(f"Processing {len(opinions)} opinions for reinforcement")
+
+            # 2. Get recent evidence (episodic memories)
+            recent_evidence = self._get_recent_evidence(memory, cfg.lookback_days)
+            log.info(f"Found {len(recent_evidence)} recent evidence items")
+
+            # 3. Process each opinion
+            reinforced = 0
+            contradicted = 0
+            archived = 0
+            decayed = 0
+
+            for opinion in opinions:
+                opinion_meta = self._get_opinion_metadata(opinion)
+                if not opinion_meta:
+                    continue
+
+                # Find matching evidence
+                supporting, contradicting = self._find_matching_evidence(
+                    opinion, recent_evidence, cfg.similarity_threshold
+                )
+
+                # Apply reinforcement
+                if supporting:
+                    for evidence in supporting:
+                        opinion_meta.reinforce(evidence.item_id)
+                    reinforced += 1
+                    log.debug(f"Reinforced opinion {opinion.item_id} with {len(supporting)} evidence")
+
+                # Apply contradiction
+                if contradicting:
+                    for evidence in contradicting:
+                        opinion_meta.contradict(evidence.item_id)
+                    contradicted += 1
+                    log.debug(f"Contradicted opinion {opinion.item_id} with {len(contradicting)} evidence")
+
+                # Apply decay if no recent activity
+                if cfg.enable_decay and not supporting and not contradicting:
+                    if self._should_decay(opinion_meta, cfg.decay_after_days):
+                        opinion_meta.confidence = max(0.0, opinion_meta.confidence - cfg.decay_rate)
+                        decayed += 1
+
+                # Check if should archive
+                if opinion_meta.confidence < cfg.min_confidence_threshold:
+                    self._archive_opinion(memory, opinion)
+                    archived += 1
+                    log.info(f"Archived opinion {opinion.item_id} (confidence: {opinion_meta.confidence:.2f})")
+                else:
+                    # Update the opinion
+                    self._update_opinion(memory, opinion, opinion_meta)
+
+            log.info(
+                f"Opinion reinforcement complete: "
+                f"{reinforced} reinforced, {contradicted} contradicted, "
+                f"{decayed} decayed, {archived} archived"
             )
-            
-            # Apply reinforcement
-            if supporting:
-                for evidence in supporting:
-                    opinion_meta.reinforce(evidence.item_id)
-                reinforced += 1
-                log.debug(f"Reinforced opinion {opinion.item_id} with {len(supporting)} evidence")
-            
-            # Apply contradiction
-            if contradicting:
-                for evidence in contradicting:
-                    opinion_meta.contradict(evidence.item_id)
-                contradicted += 1
-                log.debug(f"Contradicted opinion {opinion.item_id} with {len(contradicting)} evidence")
-            
-            # Apply decay if no recent activity
-            if cfg.enable_decay and not supporting and not contradicting:
-                if self._should_decay(opinion_meta, cfg.decay_after_days):
-                    opinion_meta.confidence = max(0.0, opinion_meta.confidence - cfg.decay_rate)
-                    decayed += 1
-            
-            # Check if should archive
-            if opinion_meta.confidence < cfg.min_confidence_threshold:
-                self._archive_opinion(memory, opinion)
-                archived += 1
-                log.info(f"Archived opinion {opinion.item_id} (confidence: {opinion_meta.confidence:.2f})")
-            else:
-                # Update the opinion
-                self._update_opinion(memory, opinion, opinion_meta)
-        
-        log.info(
-            f"Opinion reinforcement complete: "
-            f"{reinforced} reinforced, {contradicted} contradicted, "
-            f"{decayed} decayed, {archived} archived"
-        )
 
     def _get_all_opinions(self, memory) -> List[MemoryItem]:
         """Get all opinion memories."""

@@ -5,6 +5,7 @@ from typing import Dict, Optional, List
 
 from smartmemory.models.base import MemoryBaseModel, StageRequest
 from smartmemory.models.memory_item import MemoryItem
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EvolverPlugin
 
 
@@ -32,6 +33,11 @@ class EnhancedWorkingToEpisodicEvolver(EvolverPlugin):
     """
 
     def evolve(self, memory, logger=None):
+        memory_id = getattr(memory, "item_id", None)
+        with trace_span("pipeline.evolve.enhanced_working_to_episodic", {"memory_id": memory_id}):
+            self._evolve_impl(memory, logger)
+
+    def _evolve_impl(self, memory, logger=None):
         cfg = getattr(self, "config")
         if not hasattr(cfg, "base_threshold"):
             raise TypeError(

@@ -8,7 +8,6 @@ provides fallback mechanisms for extractor selection.
 import logging
 from typing import Dict, List, Optional, Callable
 
-from smartmemory.observability.instrumentation import emit_after
 from smartmemory.utils import get_config
 
 logger = logging.getLogger(__name__)
@@ -89,42 +88,8 @@ class IngestionRegistry:
         logger.debug(f"Registered extractor class: {name}")
     
     def register_extractor(self, name: str, extractor_fn: Callable):
-        """Register a new entity/relation extractor by name with performance instrumentation."""
-        # Wrap extractor to emit performance metrics on each call without changing behavior
-        try:
-            def _payload_extractor(result):
-                try:
-                    if isinstance(result, dict):
-                        ents = result.get('entities', []) or []
-                        rels = result.get('relations', []) or []
-                        return {
-                            'entities_count': len(ents),
-                            'relations_count': len(rels),
-                            'extractor_name': name
-                        }
-                    # Legacy tuple format: (item, entities, relations)
-                    elif isinstance(result, tuple) and len(result) >= 3:
-                        _, entities, relations = result[:3]
-                        return {
-                            'entities_count': len(entities) if entities else 0,
-                            'relations_count': len(relations) if relations else 0,
-                            'extractor_name': name
-                        }
-                    return {'extractor_name': name}
-                except Exception:
-                    return {}
-
-            wrapped = emit_after(
-                "performance_metrics",
-                component="extractor",
-                operation=f"extractor:{name}",
-                payload_fn=lambda self, args, kwargs, result: _payload_extractor(result),
-                measure_time=True,
-            )(extractor_fn)
-            self.extractor_instances[name] = wrapped
-        except Exception:
-            # Fallback: register as-is
-            self.extractor_instances[name] = extractor_fn
+        """Register a new entity/relation extractor by name."""
+        self.extractor_instances[name] = extractor_fn
 
     def register_enricher(self, name: str, enricher_fn: Callable):
         """Register a new enrichment routine by name."""

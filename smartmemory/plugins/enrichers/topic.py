@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from smartmemory.models.base import MemoryBaseModel, StageRequest
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EnricherPlugin, PluginMetadata
 
 # Minimal English stopword list to avoid external deps
@@ -88,41 +89,42 @@ class TopicEnricher(EnricherPlugin):
         if not self.config.enabled:
             return {}
         max_topics = int(self.config.max_topics)
+        memory_id = getattr(item, 'item_id', None)
+        with trace_span("pipeline.enrich.topic_enricher", {"memory_id": memory_id, "max_topics": max_topics}):
+            try:
+                content = getattr(item, 'content', str(item))
+            except Exception:
+                logging.exception("Error getting content from item")
+                content = str(item)
 
-        try:
-            content = getattr(item, 'content', str(item))
-        except Exception:
-            logging.exception("Error getting content from item")
-            content = str(item)
-
-        keywords = self._extract_keywords(content, max_topics)
-        if not keywords:
-            return {
-                'properties': {
-                    'topics': [],
-                    'dominant_topic': None,
-                    'keywords': [],
-                    'topic_method': 'heuristic',
-                    'topic_version': '0.1'
+            keywords = self._extract_keywords(content, max_topics)
+            if not keywords:
+                return {
+                    'properties': {
+                        'topics': [],
+                        'dominant_topic': None,
+                        'keywords': [],
+                        'topic_method': 'heuristic',
+                        'topic_version': '0.1'
+                    }
                 }
-            }
 
-        # Build scores normalized by rank or frequency
-        # Use frequency normalization
-        tokens = [t.lower() for t in _TOKEN_RE.findall(content)]
-        terms = [t for t in tokens if t not in _STOPWORDS and len(t) > 2]
-        counts = Counter(terms)
-        total = sum(counts[w] for w in keywords) or 1
-        topics = [
-            {
-                'label': w,
-                'score': float(counts[w] / total)
-            }
-            for w in keywords
-        ]
-        # Sort by score desc
-        topics.sort(key=lambda x: x['score'], reverse=True)
-        dominant = topics[0]['label'] if topics else None
+            # Build scores normalized by rank or frequency
+            # Use frequency normalization
+            tokens = [t.lower() for t in _TOKEN_RE.findall(content)]
+            terms = [t for t in tokens if t not in _STOPWORDS and len(t) > 2]
+            counts = Counter(terms)
+            total = sum(counts[w] for w in keywords) or 1
+            topics = [
+                {
+                    'label': w,
+                    'score': float(counts[w] / total)
+                }
+                for w in keywords
+            ]
+            # Sort by score desc
+            topics.sort(key=lambda x: x['score'], reverse=True)
+            dominant = topics[0]['label'] if topics else None
 
         return {
             'properties': {

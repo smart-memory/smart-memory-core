@@ -38,6 +38,7 @@ from smartmemory.integration.llm.prompts.prompts_loader import (
     get_prompt_value,
 )
 from smartmemory.models.base import MemoryBaseModel, StageRequest
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EnricherPlugin, PluginMetadata
 
 logger = logging.getLogger(__name__)
@@ -434,101 +435,103 @@ class LinkExpansionEnricher(EnricherPlugin):
             dict: Enrichment results with web_resources, provenance_candidates, tags.
         """
         urls = self._extract_urls(item, node_ids)
-        if not urls:
-            return {
-                "web_resources": [],
-                "provenance_candidates": [],
-                "tags": [],
-            }
+        memory_id = getattr(item, 'item_id', None)
+        with trace_span("pipeline.enrich.link_expansion_enricher", {"memory_id": memory_id, "url_count": len(urls)}):
+            if not urls:
+                return {
+                    "web_resources": [],
+                    "provenance_candidates": [],
+                    "tags": [],
+                }
 
-        results = []
-        all_entities: list[dict] = []
-        provenance_candidates = []
+            results = []
+            all_entities: list[dict] = []
+            provenance_candidates = []
 
-        for url in urls:
-            # Generate node ID
-            url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
-            node_id = f"webresource:{url_hash}"
+            for url in urls:
+                # Generate node ID
+                url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
+                node_id = f"webresource:{url_hash}"
 
-            # Fetch URL
-            fetch_result = self._fetch_url(url)
+                # Fetch URL
+                fetch_result = self._fetch_url(url)
 
-            if fetch_result["status"] == "failed":
-                results.append(
-                    {
-                        "url": url,
-                        "node_id": node_id,
-                        "status": "failed",
-                        "error": fetch_result.get("error"),
-                        "error_type": fetch_result.get("error_type"),
-                    }
-                )
+                if fetch_result["status"] == "failed":
+                    results.append(
+                        {
+                            "url": url,
+                            "node_id": node_id,
+                            "status": "failed",
+                            "error": fetch_result.get("error"),
+                            "error_type": fetch_result.get("error_type"),
+                        }
+                    )
+                    provenance_candidates.append(node_id)
+                    continue
+
+                # Extract metadata (heuristic - always runs)
+                metadata = self._extract_metadata(fetch_result["html"], url)
+                metadata["fetched_at"] = datetime.now(timezone.utc).isoformat()
+
+                # Extract entities (heuristic - always runs)
+                entities = self._extract_entities_heuristic(fetch_result["html"], metadata)
+
+                # Build result
+                resource = {
+                    "url": url,
+                    "node_id": node_id,
+                    "status": "success",
+                    "metadata": metadata,
+                    "extracted_entities": entities,
+                    "summary": None,  # LLM only
+                }
+
+                # LLM analysis (optional)
+                if self.config.enable_llm:
+                    llm_result = self._analyze_with_llm(fetch_result["html"], metadata)
+                    if llm_result:
+                        resource["summary"] = llm_result.get("summary")
+                        # Add LLM entities
+                        for entity in llm_result.get("entities", []):
+                            if isinstance(entity, dict) and entity.get("name"):
+                                entities.append(
+                                    {
+                                        "name": entity["name"],
+                                        "type": entity.get("type", "TOPIC"),
+                                        "source": "llm",
+                                    }
+                                )
+
+                results.append(resource)
+                all_entities.extend(entities)
                 provenance_candidates.append(node_id)
-                continue
 
-            # Extract metadata (heuristic - always runs)
-            metadata = self._extract_metadata(fetch_result["html"], url)
-            metadata["fetched_at"] = datetime.now(timezone.utc).isoformat()
-
-            # Extract entities (heuristic - always runs)
-            entities = self._extract_entities_heuristic(fetch_result["html"], metadata)
-
-            # Build result
-            resource = {
-                "url": url,
-                "node_id": node_id,
-                "status": "success",
-                "metadata": metadata,
-                "extracted_entities": entities,
-                "summary": None,  # LLM only
-            }
-
-            # LLM analysis (optional)
-            if self.config.enable_llm:
-                llm_result = self._analyze_with_llm(fetch_result["html"], metadata)
-                if llm_result:
-                    resource["summary"] = llm_result.get("summary")
-                    # Add LLM entities
-                    for entity in llm_result.get("entities", []):
-                        if isinstance(entity, dict) and entity.get("name"):
-                            entities.append(
-                                {
-                                    "name": entity["name"],
-                                    "type": entity.get("type", "TOPIC"),
-                                    "source": "llm",
-                                }
-                            )
-
-            results.append(resource)
-            all_entities.extend(entities)
-            provenance_candidates.append(node_id)
-
-            # Create graph nodes if graph available
-            if hasattr(self, "graph") and self.graph is not None:
-                # Create WebResource node
-                self.graph.add_node(
-                    item_id=node_id,
-                    properties={
-                        **metadata,
-                        "url": url,
-                        "type": "web_resource",
-                    },
-                )
-
-                # Create Entity nodes and MENTIONS edges
-                for entity in entities:
-                    entity_id = f"entity:{entity['name'].lower().replace(' ', '_')}"
+                # Create graph nodes if graph available
+                if hasattr(self, "graph") and self.graph is not None:
+                    # Create WebResource node
                     self.graph.add_node(
-                        item_id=entity_id,
+                        item_id=node_id,
                         properties={
-                            **entity,
-                            "type": "extracted_entity",
+                            **metadata,
+                            "url": url,
+                            "type": "web_resource",
                         },
                     )
-                    self.graph.add_edge(node_id, entity_id, "MENTIONS")
 
-        # Deduplicate entity names for tags
-        tags = list(set(e["name"] for e in all_entities))
+                    # Create Entity nodes and MENTIONS edges
+                    for entity in entities:
+                        entity_id = f"entity:{entity['name'].lower().replace(' ', '_')}"
+                        self.graph.add_node(
+                            item_id=entity_id,
+                            properties={
+                                **entity,
+                                "type": "extracted_entity",
+                            },
+                        )
+                        self.graph.add_edge(node_id, entity_id, "MENTIONS")
+
+            # Deduplicate entity names for tags
+            tags = list(set(e["name"] for e in all_entities))
 
         return {
             "web_resources": results,

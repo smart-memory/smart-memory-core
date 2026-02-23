@@ -461,11 +461,6 @@ class RedisStreamQueue:
         return cls(stream_name=stream, group=group or "enrich-workers", consumer=consumer, db=db)
 
     @classmethod
-    def for_ground(cls, group: Optional[str] = None, consumer: Optional[str] = None) -> "RedisStreamQueue":
-        stream, db = cls._compute_stream("ground")
-        return cls(stream_name=stream, group=group or "ground-workers", consumer=consumer, db=db)
-
-    @classmethod
     def for_promote(cls, group: Optional[str] = None, consumer: Optional[str] = None) -> "RedisStreamQueue":
         stream, db = cls._compute_stream("promote")
         return cls(stream_name=stream, group=group or "promote-workers", consumer=consumer, db=db)

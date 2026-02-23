@@ -10,6 +10,7 @@ from smartmemory.memory.pipeline.state import LinkingState
 from smartmemory.memory.pipeline.transactions.change_set import ChangeOp, ChangeSet
 from smartmemory.memory.ingestion.utils import sanitize_relation_type
 from smartmemory.models.memory_item import MemoryItem
+from smartmemory.observability.tracing import trace_span
 from smartmemory.utils.pipeline_utils import create_error_result
 
 logger = logging.getLogger(__name__)
@@ -148,23 +149,26 @@ class EnrichmentPipeline(PipelineComponent[EnrichmentConfig]):
             try:
                 # Get per-enricher configs if provided
                 enricher_configs = getattr(config, 'enricher_configs', None) or {}
+                memory_id = context.get('item_id')
+                _enricher_names = enricher_names or ['all']
 
-                if enricher_names:
-                    # Run specific enrichers with their configs
-                    enrichment_result = {}
-                    for enricher_name in enricher_names:
-                        partial_result = self.enrichment.enrich(
+                with trace_span("pipeline.enrich", {"memory_id": memory_id, "enricher_names": _enricher_names}):
+                    if enricher_names:
+                        # Run specific enrichers with their configs
+                        enrichment_result = {}
+                        for enricher_name in enricher_names:
+                            partial_result = self.enrichment.enrich(
+                                context,
+                                enricher_names=[enricher_name],
+                                enricher_configs=enricher_configs
+                            )
+                            enrichment_result.update(partial_result)
+                    else:
+                        # Run all enrichers by default
+                        enrichment_result = self.enrichment.enrich(
                             context,
-                            enricher_names=[enricher_name],
                             enricher_configs=enricher_configs
                         )
-                        enrichment_result.update(partial_result)
-                else:
-                    # Run all enrichers by default
-                    enrichment_result = self.enrichment.enrich(
-                        context,
-                        enricher_configs=enricher_configs
-                    )
 
                 enrichment_success = True
                 enrichment_error = None

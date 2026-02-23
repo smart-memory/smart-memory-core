@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from smartmemory.models.base import MemoryBaseModel, StageRequest
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EnricherPlugin, PluginMetadata
 
 try:
@@ -134,19 +135,20 @@ class SentimentEnricher(EnricherPlugin):
         if not self.config.enabled:
             return {}
         backend = (self.config.backend or 'auto').lower()
+        memory_id = getattr(item, 'item_id', None)
+        with trace_span("pipeline.enrich.sentiment_enricher", {"memory_id": memory_id, "backend": backend}):
+            try:
+                content = getattr(item, 'content', str(item))
+            except Exception:
+                logging.exception("SentimentEnricher: failed to extract content from item")
+                content = str(item)
 
-        try:
-            content = getattr(item, 'content', str(item))
-        except Exception:
-            logging.exception("SentimentEnricher: failed to extract content from item")
-            content = str(item)
-
-        sentiment: Optional[Dict[str, Any]] = None
-        if backend in ('auto', 'vader') and self._vader:
-            sentiment = self._vader_sentiment(content)
-        if sentiment is None:
-            # Fallback or when backend=='heuristic'
-            sentiment = self._heuristic_sentiment(content)
+            sentiment: Optional[Dict[str, Any]] = None
+            if backend in ('auto', 'vader') and self._vader:
+                sentiment = self._vader_sentiment(content)
+            if sentiment is None:
+                # Fallback or when backend=='heuristic'
+                sentiment = self._heuristic_sentiment(content)
 
         return {
             'properties': {

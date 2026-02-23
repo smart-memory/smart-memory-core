@@ -77,7 +77,7 @@ class StoreStage:
 
         # Process external relations via StoragePipeline
         if relations:
-            self._process_relations(state, item_id, entities, relations)
+            self._process_relations(state, item_id, entities, relations, entity_ids)
 
         # Save to vector and graph with token tracking (CFS-1a)
         context = {
@@ -112,15 +112,19 @@ class StoreStage:
             entity_ids[name] = real_id
         return entity_ids
 
-    def _process_relations(self, state, item_id, entities, relations):
+    def _process_relations(self, state, item_id, entities, relations, entity_ids: dict | None = None):
         """Resolve extraction-time entity IDs and create semantic edges.
 
         Builds a map from extraction-time SHA256 entity hashes to actual graph
         node IDs, then passes resolved relations to StoragePipeline. MERGE
         semantics in the graph layer prevent duplicates if add_dual_node already
         created some of these edges.
+
+        Args:
+            entity_ids: The freshly-created entity_id map from this store run.
+                        Falls back to state.entity_ids for re-processing scenarios.
         """
-        entity_ids = state.entity_ids or {}
+        entity_ids = entity_ids or state.entity_ids or {}
 
         # Build extraction hash → graph ID map
         extraction_id_to_graph_id = {}

@@ -22,6 +22,7 @@ from typing import Any
 from smartmemory.models.base import MemoryBaseModel
 from smartmemory.models.decision import Decision
 from smartmemory.models.memory_item import MemoryItem
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EvolverPlugin, PluginMetadata
 
 _logger = logging.getLogger(__name__)
@@ -78,76 +79,77 @@ class DecisionConfidenceEvolver(EvolverPlugin):
         """
         log = logger or _logger
         cfg = self.config
+        memory_id = getattr(memory, 'item_id', None)
+        with trace_span("pipeline.evolve.decision_confidence", {"memory_id": memory_id, "lookback_days": cfg.lookback_days}):
+            decisions = self._get_active_decisions(memory)
+            if not decisions:
+                log.info("No active decisions found for evolution")
+                return
 
-        decisions = self._get_active_decisions(memory)
-        if not decisions:
-            log.info("No active decisions found for evolution")
-            return
+            log.info(f"Processing {len(decisions)} active decisions")
 
-        log.info(f"Processing {len(decisions)} active decisions")
+            # Fetch evidence once for the whole batch
+            evidence: list[MemoryItem] = []
+            if cfg.enable_reinforcement:
+                evidence = self._get_recent_evidence(memory, cfg.lookback_days)
+                log.info(f"Found {len(evidence)} recent evidence items")
 
-        # Fetch evidence once for the whole batch
-        evidence: list[MemoryItem] = []
-        if cfg.enable_reinforcement:
-            evidence = self._get_recent_evidence(memory, cfg.lookback_days)
-            log.info(f"Found {len(evidence)} recent evidence items")
+            reinforced = 0
+            contradicted = 0
+            decayed = 0
+            retracted = 0
 
-        reinforced = 0
-        contradicted = 0
-        decayed = 0
-        retracted = 0
+            for item in decisions:
+                meta = item.metadata
+                if meta.get("status") != "active":
+                    continue
 
-        for item in decisions:
-            meta = item.metadata
-            if meta.get("status") != "active":
-                continue
+                decision = Decision.from_dict(meta)
+                changed = False
 
-            decision = Decision.from_dict(meta)
-            changed = False
+                # Evidence matching
+                if cfg.enable_reinforcement and evidence:
+                    supporting, contradicting = self._find_matching_evidence(
+                        decision, item, evidence, cfg.similarity_threshold
+                    )
 
-            # Evidence matching
-            if cfg.enable_reinforcement and evidence:
-                supporting, contradicting = self._find_matching_evidence(
-                    decision, item, evidence, cfg.similarity_threshold
-                )
+                    if supporting:
+                        for ev in supporting:
+                            decision.reinforce(ev.item_id)
+                        reinforced += 1
+                        changed = True
+                        log.debug(f"Reinforced decision {decision.decision_id} with {len(supporting)} evidence")
 
-                if supporting:
-                    for ev in supporting:
-                        decision.reinforce(ev.item_id)
-                    reinforced += 1
-                    changed = True
-                    log.debug(f"Reinforced decision {decision.decision_id} with {len(supporting)} evidence")
+                    if contradicting:
+                        for ev in contradicting:
+                            decision.contradict(ev.item_id)
+                        contradicted += 1
+                        changed = True
+                        log.debug(f"Contradicted decision {decision.decision_id} with {len(contradicting)} evidence")
 
-                if contradicting:
-                    for ev in contradicting:
-                        decision.contradict(ev.item_id)
-                    contradicted += 1
-                    changed = True
-                    log.debug(f"Contradicted decision {decision.decision_id} with {len(contradicting)} evidence")
+                # Decay if no evidence matched and decision is stale
+                if cfg.enable_decay and not changed:
+                    last_activity = self._get_last_activity(meta)
+                    if self._should_decay(last_activity, cfg.decay_after_days):
+                        decision.confidence = max(0.0, decision.confidence - cfg.decay_rate)
+                        decision.updated_at = datetime.now(timezone.utc)
+                        changed = True
+                        decayed += 1
 
-            # Decay if no evidence matched and decision is stale
-            if cfg.enable_decay and not changed:
-                last_activity = self._get_last_activity(meta)
-                if self._should_decay(last_activity, cfg.decay_after_days):
-                    decision.confidence = max(0.0, decision.confidence - cfg.decay_rate)
-                    decision.updated_at = datetime.now(timezone.utc)
-                    changed = True
-                    decayed += 1
+                # Retract if below threshold
+                if decision.confidence < cfg.min_confidence_threshold:
+                    self._retract_decision(memory, decision)
+                    retracted += 1
+                    continue
 
-            # Retract if below threshold
-            if decision.confidence < cfg.min_confidence_threshold:
-                self._retract_decision(memory, decision)
-                retracted += 1
-                continue
+                # Persist changes
+                if changed:
+                    self._persist_decision(memory, decision)
 
-            # Persist changes
-            if changed:
-                self._persist_decision(memory, decision)
-
-        log.info(
-            f"Decision evolution complete: {reinforced} reinforced, "
-            f"{contradicted} contradicted, {decayed} decayed, {retracted} retracted"
-        )
+            log.info(
+                f"Decision evolution complete: {reinforced} reinforced, "
+                f"{contradicted} contradicted, {decayed} decayed, {retracted} retracted"
+            )
 
     # ------------------------------------------------------------------
     # Data fetching

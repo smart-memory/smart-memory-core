@@ -6,11 +6,6 @@ from .skills_tools import ExtractSkillsToolsEnricher
 from .temporal import TemporalEnricher
 from .topic import TopicEnricher
 
-try:
-    from .wikipedia import WikipediaEnricher
-except ImportError:
-    WikipediaEnricher = None  # type: ignore[assignment,misc]
-
 __all__ = [
     'BasicEnricher',
     'LinkExpansionEnricher',
@@ -18,5 +13,4 @@ __all__ = [
     'TemporalEnricher',
     'ExtractSkillsToolsEnricher',
     'TopicEnricher',
-    'WikipediaEnricher',
 ]

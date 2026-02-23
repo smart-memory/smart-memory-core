@@ -303,79 +303,6 @@ def emit_system_health(operation: str, *, data: Optional[Dict[str, Any]] = None,
     emit_ctx("system_health", component=component, operation=operation, data=data or {}, key=key)
 
 
-def emit_after(
-    event_type: str,
-    *,
-    component: str,
-    operation: Optional[str] = None,
-    payload_fn: Optional[Callable[[Any, tuple, dict, Any], Optional[Dict[str, Any]]]] = None,
-    measure_time: bool = False,
-    duration_key: str = "duration_ms",
-    operation_fn: Optional[Callable[[Any, tuple, dict, Any], Optional[str]]] = None,
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    """Decorator to emit an event after a function completes successfully.
-
-    Parameters:
-    - event_type/component/operation: event metadata
-    - payload_fn: optional callable (self_or_none, args, kwargs, result) -> dict to extend payload
-
-    Works with sync/async functions and includes global context automatically.
-
-    .. deprecated::
-        Use ``trace_span`` from ``smartmemory.observability.tracing`` instead.
-    """
-    warnings.warn(
-        "emit_after is deprecated, use trace_span from smartmemory.observability.tracing instead",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
-    def _decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
-        # Since we're now fully synchronous, we only need the sync wrapper
-        @functools.wraps(fn)
-        def _wrap(*args: Any, **kwargs: Any) -> Any:
-            _start = None
-            if measure_time:
-                try:
-                    from time import perf_counter as _pc
-
-                    _start = _pc()
-                except Exception:
-                    _start = None
-            result = fn(*args, **kwargs)
-            try:
-                extra: Dict[str, Any] = {}
-                if callable(payload_fn):
-                    try:
-                        extra = dict(payload_fn(args[0] if args else None, args, kwargs, result) or {})
-                    except Exception:
-                        extra = {}
-                if measure_time and duration_key:
-                    try:
-                        from time import perf_counter as _pc
-
-                        if _start is not None:
-                            extra[duration_key] = (_pc() - _start) * 1000.0
-                    except Exception:
-                        pass
-                op_final = operation
-                if callable(operation_fn):
-                    try:
-                        op_dyn = operation_fn(args[0] if args else None, args, kwargs, result)
-                        if isinstance(op_dyn, str) and op_dyn:
-                            op_final = op_dyn
-                    except Exception:
-                        pass
-                emit_ctx(event_type, component=component, operation=op_final, data=extra)
-            except Exception:
-                pass
-            return result
-
-        return _wrap
-
-    return _decorator
-
-
 # ---- Graph stats decorator ------------------------------------------------
 
 
@@ -510,6 +437,5 @@ __all__ = [
     "make_emitter",
     "emit_http_perf",
     "emit_system_health",
-    "emit_after",
     "emit_graph_stats",
 ]

@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from smartmemory.models.base import MemoryBaseModel, StageRequest
+from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EvolverPlugin, PluginMetadata
 
 
@@ -46,9 +47,11 @@ class EpisodicToSemanticEvolver(EvolverPlugin):
             )
         confidence = float(getattr(cfg, "confidence"))
         min_days = int(getattr(cfg, "days"))
-        stable_events = memory.episodic.get_stable_events(confidence=confidence, min_days=min_days)
-        for event in stable_events:
-            memory.semantic.add(event)
-            memory.episodic.archive(event)
-            if logger:
-                logger.info(f"Promoted episodic event to semantic: {event}")
+        memory_id = getattr(memory, 'item_id', None)
+        with trace_span("pipeline.evolve.episodic_to_semantic", {"memory_id": memory_id, "confidence": confidence, "min_days": min_days}):
+            stable_events = memory.episodic.get_stable_events(confidence=confidence, min_days=min_days)
+            for event in stable_events:
+                memory.semantic.add(event)
+                memory.episodic.archive(event)
+                if logger:
+                    logger.info(f"Promoted episodic event to semantic: {event}")
