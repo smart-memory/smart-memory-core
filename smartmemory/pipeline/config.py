@@ -252,14 +252,23 @@ class PipelineConfig(MemoryBaseModel):
 
     @classmethod
     def lite(cls, workspace_id: Optional[str] = None) -> "PipelineConfig":
-        """Lite mode — disable all network-dependent pipeline stages.
+        """Lite mode — maximum quality with zero external dependencies.
 
-        Suitable for zero-infra environments (SmartMemory Lite / SQLite backend).
-        Disabled stages:
-        - coreference: neural resolver may download models or call external services
-        - llm_extract: makes LLM API calls
-        - enrichers: only basic_enricher runs; others make HTTP calls
-        - wikidata: Wikipedia grounding makes HTTP calls to Wikidata API
+        Disables only stages that require network access or LLM API calls.
+        All local processing (spaCy NER, EntityRuler, sentiment, temporal,
+        topic enrichment) runs at full quality.
+
+        Disabled (external dependencies):
+        - coreference: fastcoref downloads models on first use
+        - llm_extract: requires LLM API key (OpenAI, Groq, etc.)
+        - wikipedia_enricher / link_expansion_enricher: HTTP calls
+        - wikidata grounding: HTTP calls to Wikidata REST + SPARQL
+
+        Enabled (fully local):
+        - simplify: clause splitting, passive→active (pure spaCy)
+        - entity_ruler: pattern-matched NER at ~4ms (no network)
+        - basic_enricher, sentiment_enricher, temporal_enricher, topic_enricher
+        - store, link, evolve stages
         """
         return cls(
             workspace_id=workspace_id,
@@ -268,7 +277,7 @@ class PipelineConfig(MemoryBaseModel):
                 llm_extract=LLMExtractConfig(enabled=False),
             ),
             enrich=EnrichConfig(
-                enricher_names=["basic_enricher"],
+                enricher_names=["basic_enricher", "sentiment_enricher", "temporal_enricher", "topic_enricher"],
                 wikidata=WikidataConfig(enabled=False),
             ),
         )
