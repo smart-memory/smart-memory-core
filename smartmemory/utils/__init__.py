@@ -1,9 +1,6 @@
 import threading
 from datetime import datetime, timezone
 
-from smartmemory.configuration import MemoryConfig
-from smartmemory.configuration.models import ConfigDict
-
 
 def flatten_dict(d, parent_key='', sep='__'):
     """
@@ -79,6 +76,11 @@ def get_config(section: str = None, config_path: str = None):
         section: Optional section name to return (e.g., 'cache', 'graph_db')
         config_path: Optional path to config directory (defaults to current working directory)
     """
+    # Lazy import to break circular dependency:
+    # utils -> configuration -> models -> memory_item -> utils
+    from smartmemory.configuration import MemoryConfig
+    from smartmemory.configuration.models import ConfigDict
+
     global _config_cache
 
     with _config_lock:
