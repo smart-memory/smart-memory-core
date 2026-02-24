@@ -9,15 +9,30 @@ def _default_data_dir() -> Path:
     return Path.home() / ".smartmemory"
 
 
-def create_lite_memory(data_dir: Optional[str] = None, entity_ruler_patterns=None):
+def create_lite_memory(
+    data_dir: Optional[str] = None,
+    entity_ruler_patterns=None,
+    pipeline_profile=None,
+):
     """Create a SmartMemory instance backed by SQLite + usearch. No Docker required.
 
-    Passes vector_backend, cache, observability, and pipeline_profile directly to the
-    SmartMemory constructor — no monkey-patching required.
+    Lite mode refers to the storage layer only: SQLite replaces FalkorDB, usearch
+    replaces the FalkorDB vector index, Redis cache is a no-op, and observability
+    events are disabled. The pipeline runs at full quality by default — LLM extraction
+    and enrichers are active if API keys are available.
+
+    To opt into a restricted pipeline (no LLM calls, no network enrichers), pass
+    ``pipeline_profile=PipelineConfig.lite()`` explicitly.
+
+    Args:
+        data_dir: Directory for SQLite and usearch persistence. Defaults to ~/.smartmemory.
+        entity_ruler_patterns: Optional pattern manager injected into EntityRulerStage.
+        pipeline_profile: PipelineConfig to use. Defaults to PipelineConfig.default()
+            (full pipeline). Pass PipelineConfig.lite() to disable LLM extraction and
+            network enrichers.
     """
     from smartmemory.graph.backends.sqlite import SQLiteBackend
     from smartmemory.graph.smartgraph import SmartGraph
-    from smartmemory.pipeline.config import PipelineConfig
     from smartmemory.smart_memory import SmartMemory
     from smartmemory.stores.vector.backends.usearch import UsearchVectorBackend
     from smartmemory.utils.cache import NoOpCache
@@ -38,19 +53,25 @@ def create_lite_memory(data_dir: Optional[str] = None, entity_ruler_patterns=Non
         vector_backend=usearch_backend,
         cache=NoOpCache(),
         observability=False,
-        pipeline_profile=PipelineConfig.lite(),
+        pipeline_profile=pipeline_profile,
         entity_ruler_patterns=entity_ruler_patterns,
     )
 
 
 @contextmanager
-def lite_context(data_dir: Optional[str] = None):
+def lite_context(data_dir: Optional[str] = None, pipeline_profile=None):
     """Context manager that creates a Lite SmartMemory and resets all globals on exit.
 
     Restores observability env, vector backend, cache override, and closes the SQLite
     connection deterministically. Always use this in tests and scripts:
         with lite_context() as memory:
             memory.ingest("hello")
+
+    Args:
+        data_dir: Directory for SQLite and usearch persistence. Defaults to ~/.smartmemory.
+        pipeline_profile: PipelineConfig to use. Defaults to PipelineConfig.default()
+            (full pipeline). Pass PipelineConfig.lite() to disable LLM extraction and
+            network enrichers.
     """
     from smartmemory.stores.vector.vector_store import VectorStore
     from smartmemory.utils.cache import set_cache_override
@@ -61,7 +82,7 @@ def lite_context(data_dir: Optional[str] = None):
 
     memory = None
     try:
-        memory = create_lite_memory(data_dir)
+        memory = create_lite_memory(data_dir, pipeline_profile=pipeline_profile)
         yield memory
     finally:
         # Restore globals regardless of whether construction, yield, or body raised.

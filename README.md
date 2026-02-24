@@ -22,7 +22,7 @@ pip install smartmemory[lite,watch] # + vault watcher for auto-ingesting markdow
 ```python
 from smartmemory.tools.factory import create_lite_memory, lite_context
 
-# Simple usage (defaults to ~/.smartmemory/)
+# Simple usage — full LLM extraction runs if OPENAI_API_KEY is set
 memory = create_lite_memory()
 item_id = memory.ingest("Alice leads Project Atlas")
 results = memory.search("who leads Atlas", top_k=5)
@@ -31,6 +31,10 @@ results = memory.search("who leads Atlas", top_k=5)
 with lite_context() as memory:
     item_id = memory.ingest("Alice leads Project Atlas")
     results = memory.search("who leads Atlas")
+
+# Offline / no-API-key mode: opt into restricted pipeline explicitly
+from smartmemory.pipeline.config import PipelineConfig
+memory = create_lite_memory(pipeline_profile=PipelineConfig.lite())
 ```
 
 Or via CLI:
@@ -629,7 +633,7 @@ Explore the [examples](examples/) directory for complete demonstrations and use 
 - ✅ **`smartmemory[lite]`**: SQLite + usearch backend — no Docker, no FalkorDB, no Redis required
 - ✅ **`create_lite_memory()`**: Factory function from `smartmemory.tools.factory` for zero-config setup
 - ✅ **`lite_context()`**: Context manager that cleans up globals and closes SQLite on exit
-- ✅ **`PipelineConfig.lite()`**: Pre-built profile disabling coreference, LLM extraction, enrichers, and Wikidata grounding
+- ✅ **`PipelineConfig.lite()`**: Named preset disabling coreference, LLM extraction, enrichers, and Wikidata grounding — opt-in, not bundled with Lite storage
 - ✅ **`smartmemory[watch]`**: Vault watcher for auto-ingesting new/changed Markdown files
 - ✅ **Constructor injection**: `vector_backend`, `cache`, `observability`, `pipeline_profile`, `entity_ruler_patterns` params added to `SmartMemory.__init__` — no monkey-patching required
 
