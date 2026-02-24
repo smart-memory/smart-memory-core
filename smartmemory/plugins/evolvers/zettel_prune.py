@@ -54,7 +54,7 @@ class ZettelPruneEvolver(EvolverPlugin):
     def evolve(self, memory, logger=None):
         """Execute zettel pruning with soft delete."""
         # Require typed config
-        cfg = getattr(self, "config")
+        cfg = self.config
         if not isinstance(cfg, ZettelPruneConfig):
             raise TypeError("ZettelPruneEvolver requires ZettelPruneConfig.")
         memory_id = getattr(memory, 'item_id', None)

@@ -15,12 +15,10 @@ import hashlib
 import logging
 import os
 import re
-import uuid
-from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, List, Tuple
+from dataclasses import dataclass
+from typing import Optional, List, Tuple
 
 from smartmemory.models.base import MemoryBaseModel
-from smartmemory.models.memory_item import MemoryItem
 from smartmemory.models.reasoning import (
     ReasoningStep, ReasoningTrace, ReasoningEvaluation, TaskContext
 )
@@ -201,7 +199,7 @@ class ReasoningExtractor(ExtractorPlugin):
         try:
             api_key = os.getenv(self.cfg.api_key_env)
             if not api_key:
-                logger.warning(f"No API key found for implicit reasoning extraction")
+                logger.warning("No API key found for implicit reasoning extraction")
                 return None
             
             prompt = self._build_extraction_prompt(text)

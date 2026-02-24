@@ -107,7 +107,7 @@ class FalkorVectorBackend(VectorBackend):
         dot = 0.0
         na = 0.0
         nb = 0.0
-        for x, y in zip(a, b):
+        for x, y in zip(a, b, strict=False):
             dot += x * y
             na += x * x
             nb += y * y

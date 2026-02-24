@@ -14,7 +14,6 @@ import logging
 import time
 
 from smartmemory.memory.context_types import IngestionContext
-from smartmemory.memory.ingestion import utils as ingestion_utils
 from smartmemory.memory.ingestion.enrichment import EnrichmentPipeline
 from smartmemory.memory.ingestion.extraction import ExtractionPipeline
 from smartmemory.memory.ingestion.observer import IngestionObserver

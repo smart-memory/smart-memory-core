@@ -58,7 +58,7 @@ class OperationApplier:
             except Exception as e:
                 errors.append(f"{op.op_type}: {e}")
         # Save inverses for rollback
-        for op, inv in zip(change_set.ops, inverses):
+        for op, inv in zip(change_set.ops, inverses, strict=False):
             op.inverse = inv
         # Attach diffs to metadata for audit
         if diffs:

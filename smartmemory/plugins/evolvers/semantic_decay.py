@@ -37,13 +37,13 @@ class SemanticDecayEvolver(EvolverPlugin):
         )
 
     def evolve(self, memory, logger=None):
-        cfg = getattr(self, "config")
+        cfg = self.config
         if not hasattr(cfg, "threshold"):
             raise TypeError(
                 "SemanticDecayEvolver requires a typed config with 'threshold'. "
                 "Provide SemanticDecayConfig or a compatible typed config."
             )
-        threshold = float(getattr(cfg, "threshold"))
+        threshold = float(cfg.threshold)
         memory_id = getattr(memory, 'item_id', None)
         with trace_span("pipeline.evolve.semantic_decay", {"memory_id": memory_id, "threshold": threshold}):
             old_facts = memory.semantic.get_low_relevance(threshold=threshold)

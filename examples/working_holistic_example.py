@@ -410,7 +410,7 @@ def main():
     results = demo.run_complete_demonstration()
 
     if results:
-        print(f"\n✅ Demonstration completed successfully!")
+        print("\n✅ Demonstration completed successfully!")
         print(f"System Readiness: {results['system_readiness']}")
         print(f"Overall Accuracy: {results['overall_accuracy']:.1%}")
     else:

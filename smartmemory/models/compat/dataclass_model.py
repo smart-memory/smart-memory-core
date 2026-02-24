@@ -62,10 +62,10 @@ def get_field_names(cls: Type[Any]) -> set[str]:
     if dataclasses.is_dataclass(cls):
         return {f.name for f in fields(cls)}
     # Pydantic v2
-    if hasattr(cls, "model_fields") and isinstance(getattr(cls, "model_fields"), Mapping):
+    if hasattr(cls, "model_fields") and isinstance(cls.model_fields, Mapping):
         return set(cls.model_fields.keys())
     # Pydantic v1
-    if hasattr(cls, "__fields__") and isinstance(getattr(cls, "__fields__"), Mapping):
+    if hasattr(cls, "__fields__") and isinstance(cls.__fields__, Mapping):
         return set(cls.__fields__.keys())
     return set()
 
@@ -82,9 +82,9 @@ class DataclassModelMixin:
             return _convert_dict(dataclasses.asdict(self))
         # Fallbacks for Pydantic models
         if hasattr(self, "to_dict"):
-            return getattr(self, "to_dict")()
+            return self.to_dict()
         if hasattr(self, "dict"):
-            return getattr(self, "dict")()
+            return self.dict()
         # Last resort: instance __dict__
         return _convert_dict(dict(self.__dict__))
 
@@ -191,14 +191,14 @@ class DataclassModelMixin:
             return _dataclass_schema(cls)
 
         # Pydantic fallback (v2 preferred)
-        if hasattr(cls, "model_json_schema") and callable(getattr(cls, "model_json_schema")):
+        if hasattr(cls, "model_json_schema") and callable(cls.model_json_schema):
             try:
-                return getattr(cls, "model_json_schema")()
+                return cls.model_json_schema()
             except Exception:
                 pass
-        if hasattr(cls, "schema") and callable(getattr(cls, "schema")):
+        if hasattr(cls, "schema") and callable(cls.schema):
             try:
-                return getattr(cls, "schema")()
+                return cls.schema()
             except Exception:
                 pass
 

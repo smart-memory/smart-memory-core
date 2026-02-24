@@ -12,9 +12,8 @@ conversation-aware knowledge graph extraction.
 
 import logging
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timezone
 
-from smartmemory.plugins.extractors.llm import LLMExtractor, LLMExtractorConfig, EntityOut, TripleOut
+from smartmemory.plugins.extractors.llm import LLMExtractor, LLMExtractorConfig
 from smartmemory.plugins.base import PluginMetadata
 from smartmemory.conversation.context import ConversationContext
 from smartmemory.observability.tracing import trace_span

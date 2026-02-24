@@ -409,7 +409,7 @@ and ontology are in excellent shape. Keep up the good work! ✨
                 if d.decided_at.date() == datetime.now().date()
             ])
 
-            summary += f"\n**Recent Activity:**\n"
+            summary += "\n**Recent Activity:**\n"
             summary += f"• {len(decisions)} total decisions made\n"
             if today_decisions > 0:
                 summary += f"• {today_decisions} decisions made today\n"

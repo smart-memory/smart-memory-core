@@ -184,7 +184,7 @@ class SmartGraphSearch:
 
             # If we got vector results but couldn't retrieve any items, trigger fallback
             if not memory_items:
-                logger.debug(f"Vector results found but items not retrievable, triggering fallback")
+                logger.debug("Vector results found but items not retrievable, triggering fallback")
                 return None
 
             logger.info(f"Vector search found {len(memory_items)} results for query: {query_str}")
@@ -226,11 +226,11 @@ class SmartGraphSearch:
             params[param_name] = term
 
             # Add condition for this term across multiple fields
-            term_condition = f"("
+            term_condition = "("
             term_condition += f"toLower(n.content) CONTAINS toLower(${param_name}) OR "
             term_condition += f"toLower(n.title) CONTAINS toLower(${param_name}) OR "
             term_condition += f"toLower(n.description) CONTAINS toLower(${param_name})"
-            term_condition += f")"
+            term_condition += ")"
 
             where_conditions.append(term_condition)
 

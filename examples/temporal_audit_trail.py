@@ -74,7 +74,7 @@ def main():
     )
     record_v2_id = memory.add(item_v2)
     
-    print(f"✓ Record updated")
+    print("✓ Record updated")
     print(f"  By: {item_v2.metadata['updated_by']}")
     print(f"  Reason: {item_v2.metadata['update_reason']}")
     
@@ -83,9 +83,9 @@ def main():
     # Nurse views the record
     print("\n3. Nurse Johnson accesses record...")
     viewed_item = memory.get(record_id)
-    print(f"✓ Record accessed")
-    print(f"  By: nurse_johnson (nurse)")
-    print(f"  Action: View")
+    print("✓ Record accessed")
+    print("  By: nurse_johnson (nurse)")
+    print("  Action: View")
     
     time.sleep(0.1)
     
@@ -112,7 +112,7 @@ def main():
     )
     record_v3_id = memory.add(item_v3)
     
-    print(f"✓ Record updated")
+    print("✓ Record updated")
     print(f"  By: {item_v3.metadata['updated_by']} (cardiologist)")
     print(f"  Reason: {item_v3.metadata['update_reason']}")
     item = item_v3  # Use latest version for exports
@@ -126,7 +126,7 @@ def main():
     print(f"\n{'='*70}")
     print("HIPAA COMPLIANCE AUDIT REPORT")
     print(f"{'='*70}")
-    print(f"\nRecord Information:")
+    print("\nRecord Information:")
     print(f"  Record ID: {record_id}")
     print(f"  Patient ID: {item.metadata['patient_id']}")
     print(f"  Record Type: {item.metadata['record_type']}")
@@ -134,7 +134,7 @@ def main():
     print(f"  Facility: {item.metadata['facility']}")
     print(f"  Department: {item.metadata['department']}")
     
-    print(f"\nAudit Trail:")
+    print("\nAudit Trail:")
     print(f"  Total Events: {len(trail)}")
     print(f"  Report Generated: {datetime.now().isoformat()}")
     
@@ -190,7 +190,7 @@ def main():
         json.dump(audit_export, f, indent=2)
     
     print(f"✓ Audit trail exported to: {filename}")
-    print(f"  Format: JSON")
+    print("  Format: JSON")
     print(f"  Size: {len(json.dumps(audit_export))} bytes")
     print(f"  Events: {len(trail)}")
     
@@ -208,7 +208,7 @@ def main():
             print(f"  Fields modified: {', '.join(change.changed_fields)}")
             
             if change.old_value and change.new_value:
-                print(f"  Changes:")
+                print("  Changes:")
                 for field in change.changed_fields:
                     if field == 'content':
                         old = change.old_value.get('content', '')[:50]
@@ -226,7 +226,7 @@ def main():
     history = memory.temporal.get_history(record_id)
     if len(history) >= 2:
         rollback_to = history[1].transaction_time_start.isoformat() if history[1].transaction_time_start else "2024-01-01"
-        print(f"Scenario: Need to recover previous version")
+        print("Scenario: Need to recover previous version")
         print(f"Rollback target: {rollback_to}")
         
         preview = memory.temporal.rollback(
@@ -236,11 +236,11 @@ def main():
         )
         
         if 'error' not in preview:
-            print(f"\n✓ Rollback Preview (DRY RUN):")
+            print("\n✓ Rollback Preview (DRY RUN):")
             print(f"  Would restore to: {rollback_to}")
             print(f"  Fields that would change: {preview.get('would_change', [])}")
-            print(f"  ⚠️  This is a preview only - no changes made")
-            print(f"  ✓ Actual rollback would create new version (preserving history)")
+            print("  ⚠️  This is a preview only - no changes made")
+            print("  ✓ Actual rollback would create new version (preserving history)")
         else:
             print(f"  Error: {preview['error']}")
     

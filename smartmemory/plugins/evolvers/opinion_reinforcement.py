@@ -11,7 +11,7 @@ Similar to EpisodicDecayEvolver but for opinions.
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from smartmemory.models.base import MemoryBaseModel, StageRequest

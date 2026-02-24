@@ -552,7 +552,7 @@ def main():
     logger.info(results['human_evaluation_instructions']['instructions'])
     logger.info(f"Rating Scale: {results['human_evaluation_instructions']['rating_scale']}")
 
-    print(f"\n✅ Conversational Quality Demo completed!")
+    print("\n✅ Conversational Quality Demo completed!")
     print(f"Overall Quality: {results['quality_rating']} ({results['overall_quality_score']:.1%})")
     print(f"Memory-Enhanced Interactions: {assistant.quality_metrics['total_interactions']}")
     print(f"Successful Memory Retrievals: {assistant.quality_metrics['memory_retrievals']}")

@@ -10,7 +10,6 @@ pytestmark = pytest.mark.unit
 
 from smartmemory.pipeline.config import PipelineConfig, RetryConfig, StageRetryPolicy
 from smartmemory.pipeline.runner import PipelineRunner
-from smartmemory.pipeline.state import PipelineState
 
 
 # ------------------------------------------------------------------ #

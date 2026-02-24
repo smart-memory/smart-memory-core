@@ -8,7 +8,6 @@ to extract entities and relations from a conversation with context awareness.
 from smartmemory.smart_memory import SmartMemory
 from smartmemory.conversation.context import ConversationContext
 from smartmemory.conversation.manager import ConversationManager
-from smartmemory.models.memory_item import MemoryItem
 from datetime import datetime, timezone
 
 

@@ -73,14 +73,14 @@ Tags: #ai #computer-science
     print("Checking bidirectional connections...\n")
     
     connections1 = zettel.get_bidirectional_connections('machine_learning')
-    print(f"Machine Learning:")
+    print("Machine Learning:")
     print(f"  Forward links: {len(connections1['forward_links'])}")
     print(f"  Backlinks: {len(connections1['backlinks'])}")
     print(f"  Tags: {connections1['forward_links'][0].metadata.get('tags') if connections1['forward_links'] else []}")
     print(f"  Concepts: {connections1['forward_links'][0].metadata.get('concepts') if connections1['forward_links'] else []}")
     
     connections2 = zettel.get_bidirectional_connections('artificial_intelligence')
-    print(f"\nArtificial Intelligence:")
+    print("\nArtificial Intelligence:")
     print(f"  Forward links: {len(connections2['forward_links'])}")
     print(f"  Backlinks: {len(connections2['backlinks'])}")
     

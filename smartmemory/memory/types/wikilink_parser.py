@@ -11,7 +11,7 @@ Supported syntax:
 
 import re
 from dataclasses import dataclass
-from typing import List, Set, Dict, Any
+from typing import List, Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)

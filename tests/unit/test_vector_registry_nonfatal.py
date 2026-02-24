@@ -60,7 +60,7 @@ def test_registry_propagates_non_import_errors():
             base_mod._BACKENDS = {}
             try:
                 raise AttributeError("broken backend attribute (simulates module bug)")
-            except ImportError as e:  # narrowed — only catches ImportError
+            except ImportError:  # narrowed — only catches ImportError
                 pass  # should NOT reach here for AttributeError
             # AttributeError must propagate, not be swallowed
 

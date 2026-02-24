@@ -37,13 +37,13 @@ class EpisodicToZettelEvolver(EvolverPlugin):
         )
 
     def evolve(self, memory, logger=None):
-        cfg = getattr(self, "config")
+        cfg = self.config
         if not hasattr(cfg, "period"):
             raise TypeError(
                 "EpisodicToZettelEvolver requires a typed config with 'period'. "
                 "Provide EpisodicToZettelConfig or a compatible typed config."
             )
-        period = int(getattr(cfg, "period"))
+        period = int(cfg.period)
         memory_id = getattr(memory, 'item_id', None)
         with trace_span("pipeline.evolve.episodic_to_zettel", {"memory_id": memory_id, "period_days": period}):
             events = memory.episodic.get_events_since(days=period)

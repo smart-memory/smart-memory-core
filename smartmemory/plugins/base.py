@@ -7,7 +7,7 @@ dynamically discovered and loaded into SmartMemory.
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Type, Optional, List, Any, Dict
+from typing import Type, Optional, List, Any
 
 logger = logging.getLogger(__name__)
 

@@ -7,9 +7,7 @@ import pytest
 
 
 pytestmark = pytest.mark.integration
-import os
 from datetime import datetime, timezone
-import tempfile
 import time
 import threading
 

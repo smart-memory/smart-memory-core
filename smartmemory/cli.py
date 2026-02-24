@@ -1,7 +1,6 @@
 """smartmemory.cli — command-line interface for SmartMemory Lite."""
 import json
 from pathlib import Path
-from typing import Optional
 
 import click
 from rich.console import Console

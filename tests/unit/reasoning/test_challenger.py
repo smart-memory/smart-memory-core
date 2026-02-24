@@ -6,7 +6,7 @@ import pytest
 
 
 pytestmark = pytest.mark.unit
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from smartmemory.reasoning.challenger import (
     AssertionChallenger,

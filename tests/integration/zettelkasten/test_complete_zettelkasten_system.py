@@ -13,14 +13,9 @@ import pytest
 
 
 pytestmark = pytest.mark.integration
-import os
-from typing import List, Dict, Any
 
 from smartmemory.memory.types.zettel_memory import ZettelMemory
 from smartmemory.models.memory_item import MemoryItem
-from smartmemory.memory.types.zettel_extensions import (
-    KnowledgeCluster, DiscoveryPath, ConnectionStrength
-)
 
 
 @pytest.fixture

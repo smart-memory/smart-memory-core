@@ -1,5 +1,4 @@
 from typing import Any, List, Optional
-from smartmemory.stores.persistence.base import PersistenceBackend
 
 class EntityHandler:
     """

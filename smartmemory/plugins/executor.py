@@ -8,7 +8,7 @@ import logging
 from typing import Any, Callable, Optional, Dict
 
 from smartmemory.plugins.security import (
-    PluginPermissions, ResourceLimits, PluginSandbox,
+    ResourceLimits, PluginSandbox,
     get_security_profile, validate_plugin_security,
     SecurityException, PermissionLevel
 )

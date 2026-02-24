@@ -5,8 +5,7 @@ All async graph I/O is mocked at the AsyncGraph level.
 """
 
 import inspect
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 

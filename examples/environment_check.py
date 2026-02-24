@@ -11,7 +11,6 @@ Performs non-destructive checks:
 All checks are best-effort and print clear diagnostics.
 """
 
-import json
 import sys
 
 

@@ -6,8 +6,8 @@ Shows how to use MemoryFactory and StoreFactory for consistent initialization.
 
 import logging
 from smartmemory.configuration import MemoryConfig
-from smartmemory.memory.memory_factory import MemoryFactory, MemoryType
-from smartmemory.stores.factory import StoreFactory, StoreType
+from smartmemory.memory.memory_factory import MemoryFactory
+from smartmemory.stores.factory import StoreFactory
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ def demonstrate_memory_factory():
     # Get configuration
     try:
         config = MemoryConfig()
-        print(f"✅ Loaded configuration successfully")
+        print("✅ Loaded configuration successfully")
     except Exception as e:
         print(f"⚠️ Could not load config: {e}")
         config = None
@@ -65,7 +65,7 @@ def demonstrate_store_factory():
     # Get configuration
     try:
         config = MemoryConfig()
-        print(f"✅ Loaded configuration successfully")
+        print("✅ Loaded configuration successfully")
     except Exception as e:
         print(f"⚠️ Could not load config: {e}")
         config = None

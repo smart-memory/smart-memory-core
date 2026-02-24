@@ -7,13 +7,12 @@ import pytest
 
 
 pytestmark = pytest.mark.unit
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from smartmemory.pipeline.config import PipelineConfig
 from smartmemory.pipeline.state import PipelineState
 from smartmemory.pipeline.transport.event_bus import (
     EventBusTransport,
-    StageConsumer,
     STATUS_QUEUED,
     STATUS_COMPLETED,
     STATUS_FAILED,

@@ -5,7 +5,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 from dataclasses import replace
 
 from smartmemory.pipeline.config import PipelineConfig

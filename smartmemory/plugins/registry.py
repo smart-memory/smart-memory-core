@@ -5,7 +5,7 @@ This module provides a central registry for all plugin types, enabling
 dynamic plugin registration and retrieval.
 """
 
-from typing import Dict, Type, Callable, List, Optional, Any
+from typing import Dict, Type, Callable, List, Optional
 import logging
 import threading
 

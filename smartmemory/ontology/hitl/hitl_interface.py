@@ -30,7 +30,7 @@ class HITLInterface:
             print("🎉 No violations found! Your ontology governance is working well.")
             return
 
-        print(f"\n📋 ONTOLOGY GOVERNANCE REVIEW")
+        print("\n📋 ONTOLOGY GOVERNANCE REVIEW")
         print("=" * 60)
         print(f"Found {len(violations)} violations requiring human review")
         print(f"Showing top {min(max_violations, len(violations))} by priority\n")
@@ -54,13 +54,13 @@ class HITLInterface:
         print(f"Severity: {violation.severity.value.upper()}")
         print(f"Confidence: {violation.confidence:.1%}")
         print(f"Auto-fixable: {'✅ Yes' if violation.auto_fixable else '❌ No'}")
-        print(f"\nDescription:")
+        print("\nDescription:")
         print(f"  {violation.description}")
-        print(f"\nSuggested Fix:")
+        print("\nSuggested Fix:")
         print(f"  {violation.suggested_fix}")
 
         if violation.data_context:
-            print(f"\nContext:")
+            print("\nContext:")
             for key, value in violation.data_context.items():
                 if isinstance(value, str) and len(value) > 100:
                     value = value[:100] + "..."
@@ -126,7 +126,7 @@ class HITLInterface:
 
             # Ask if user wants to make a decision
             while True:
-                proceed = input(f"\nMake a decision on this violation? (y/n/q to quit): ").strip().lower()
+                proceed = input("\nMake a decision on this violation? (y/n/q to quit): ").strip().lower()
                 if proceed in ['y', 'yes']:
                     try:
                         action, rationale = self.prompt_for_decision(violation.id)
@@ -138,7 +138,7 @@ class HITLInterface:
                             print(f"✅ Decision applied successfully: {action.value}")
                             decisions_made += 1
                         else:
-                            print(f"❌ Failed to apply decision")
+                            print("❌ Failed to apply decision")
 
                     except Exception as e:
                         print(f"❌ Error applying decision: {e}")
@@ -158,7 +158,7 @@ class HITLInterface:
                 else:
                     print("❌ Please enter 'y' for yes, 'n' for no, or 'q' to quit")
 
-        print(f"\n🎉 Review session complete!")
+        print("\n🎉 Review session complete!")
         print(f"Violations reviewed: {len(violations)}")
         print(f"Decisions made: {decisions_made}")
 
@@ -180,7 +180,7 @@ class HITLInterface:
             print("No matching violations found for batch processing.")
             return {"violations_processed": 0}
 
-        print(f"\n📦 BATCH DECISION INTERFACE")
+        print("\n📦 BATCH DECISION INTERFACE")
         print("=" * 60)
         print(f"Found {len(violations)} violations matching criteria")
 
@@ -190,7 +190,7 @@ class HITLInterface:
             print(f"Severity filter: {severity.value}")
 
         # Show summary of violations
-        print(f"\nViolation summary:")
+        print("\nViolation summary:")
         for i, violation in enumerate(violations[:5], 1):
             print(f"  {i}. {violation.description[:80]}...")
 
@@ -250,7 +250,7 @@ class HITLInterface:
                 self.logger.error(f"Failed to process violation {violation.id}: {e}")
                 failed += 1
 
-        print(f"✅ Batch processing complete!")
+        print("✅ Batch processing complete!")
         print(f"Successfully processed: {processed}")
         print(f"Failed: {failed}")
 
@@ -266,7 +266,7 @@ class HITLInterface:
         violations = list(self.governor.violations.values())
         decisions = list(self.governor.decisions.values())
 
-        print(f"\n📊 ONTOLOGY GOVERNANCE DASHBOARD")
+        print("\n📊 ONTOLOGY GOVERNANCE DASHBOARD")
         print("=" * 60)
 
         # Violation summary

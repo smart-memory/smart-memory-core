@@ -5,7 +5,7 @@ and graceful handling of items without embeddings. No FalkorDB required.
 """
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import pytest
 

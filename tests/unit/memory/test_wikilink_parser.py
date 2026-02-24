@@ -9,7 +9,7 @@ import pytest
 
 pytestmark = pytest.mark.unit
 from smartmemory.memory.types.wikilink_parser import (
-    WikilinkParser, WikilinkResolver, ParsedLinks, 
+    WikilinkParser, ParsedLinks, 
     parse_wikilinks, extract_all_links
 )
 

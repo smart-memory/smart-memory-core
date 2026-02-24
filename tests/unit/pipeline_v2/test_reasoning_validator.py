@@ -6,7 +6,7 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-from smartmemory.ontology.reasoning_validator import ReasoningValidator, ReasoningValidationResult
+from smartmemory.ontology.reasoning_validator import ReasoningValidator
 from smartmemory.ontology.promotion import PromotionCandidate
 
 

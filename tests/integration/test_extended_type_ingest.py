@@ -9,7 +9,7 @@ Run:
 """
 import pytest
 from smartmemory import SmartMemory
-from smartmemory.models.memory_item import MemoryItem, MEMORY_TYPES
+from smartmemory.models.memory_item import MEMORY_TYPES
 
 
 @pytest.fixture

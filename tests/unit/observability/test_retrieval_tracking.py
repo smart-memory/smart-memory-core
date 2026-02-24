@@ -10,8 +10,7 @@ Verifies:
 """
 
 import json
-from contextvars import copy_context
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 

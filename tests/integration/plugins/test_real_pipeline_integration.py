@@ -7,7 +7,6 @@ import pytest
 
 
 pytestmark = pytest.mark.integration
-import time
 from smartmemory.memory.pipeline.stages.enrichment import Enrichment
 from smartmemory.evolution.cycle import run_evolution_cycle
 from smartmemory.models.memory_item import MemoryItem

@@ -14,6 +14,7 @@ from smartmemory.plugins.evolvers.enhanced.interference_based_consolidation impo
 from smartmemory.plugins.evolvers.enhanced.working_to_episodic import EnhancedWorkingToEpisodicEvolver
 
 from smartmemory.plugins.evolvers.enhanced.retrieval_based_strengthening import RetrievalBasedStrengtheningEvolver
+from smartmemory.plugins.evolvers.enhanced.hebbian_co_retrieval import HebbianCoRetrievalEvolver
 
 # Enhanced evolver list including new algorithms
 ENHANCED_EVOLVERS = [
@@ -21,7 +22,7 @@ ENHANCED_EVOLVERS = [
     ExponentialDecayEvolver,
     InterferenceBasedConsolidationEvolver,
     RetrievalBasedStrengtheningEvolver,
-
+    HebbianCoRetrievalEvolver,
     # Keep the good existing ones
     # EpisodicToSemanticEvolver,  # This one is already optimal
 ]
@@ -34,15 +35,11 @@ def _build_typed_config(evolver_cls: Type, config_snapshot: Optional[Dict[str, A
     module = importlib.import_module(evolver_cls.__module__)
     evolver_name = evolver_cls.__name__
     if not evolver_name.endswith("Evolver"):
-        raise TypeError(
-            f"Evolver class {evolver_name} does not follow naming convention with 'Evolver' suffix"
-        )
+        raise TypeError(f"Evolver class {evolver_name} does not follow naming convention with 'Evolver' suffix")
     config_name = evolver_name.replace("Evolver", "Config")
     ConfigType: Optional[Type] = getattr(module, config_name, None)
     if ConfigType is None:
-        raise TypeError(
-            f"Missing companion Config class '{config_name}' for evolver {evolver_name}"
-        )
+        raise TypeError(f"Missing companion Config class '{config_name}' for evolver {evolver_name}")
     if config_snapshot is None:
         return ConfigType()
     if not isinstance(config_snapshot, dict):

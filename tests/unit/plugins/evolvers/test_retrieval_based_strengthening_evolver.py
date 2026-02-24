@@ -6,7 +6,7 @@ call shape. No FalkorDB or external services required.
 
 import json
 import math
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import pytest
 

@@ -1,6 +1,5 @@
 """Tests verifying call-time env reads in events.py and instrumentation.py."""
 import os
-import pytest
 
 
 def test_is_observability_enabled_reads_env_at_call_time():

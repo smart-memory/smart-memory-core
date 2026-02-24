@@ -12,7 +12,7 @@ import pytest
 
 
 pytestmark = pytest.mark.unit
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 
 from smartmemory.plugins.extractors.spacy import SpacyExtractor
 from smartmemory.plugins.extractors.llm import LLMExtractor

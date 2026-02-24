@@ -203,7 +203,7 @@ class PromptManager:
             schema: Optional schema to inject
             template_key: Prompt template key (default: LLM extractor template)
         """
-        from .prompt_provider import get_prompt_value, apply_placeholders
+        from .prompt_provider import get_prompt_value
         
         # Get base template from provider (prompts.json or DB)
         base_template = get_prompt_value(template_key)

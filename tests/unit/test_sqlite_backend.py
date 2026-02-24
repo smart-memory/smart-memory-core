@@ -12,7 +12,6 @@ Covers:
 - serialize/deserialize: full round-trip including edges
 - Foreign key enforcement
 """
-import json
 import threading
 import pytest
 

@@ -1,6 +1,5 @@
 """Tests for SmartGraph backend injection (P0-1 prerequisite for DIST-LITE-1)."""
 from unittest.mock import MagicMock
-import pytest
 
 from smartmemory.graph.smartgraph import SmartGraph
 

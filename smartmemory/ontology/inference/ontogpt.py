@@ -322,7 +322,7 @@ class OntoGPTInferenceEngine:
                 ontology.add_entity_type(
                     entity_type=self._make_entity_type(
                         name=etype,
-                        description=f"OntoGPT-inferred entity type from corpus",
+                        description="OntoGPT-inferred entity type from corpus",
                         properties={p: "string" for p in props_counts.keys()},
                         required=required,
                         examples=type_examples.get(etype, [])[:5],

@@ -157,7 +157,7 @@ def demo_bidirectional_navigation(zettel: ZettelMemory):
     
     # Get backlinks for a note
     note_id = 'deep_learning'
-    print(f"Exploring connections for: Deep Learning\n")
+    print("Exploring connections for: Deep Learning\n")
     
     backlinks = zettel.get_backlinks(note_id)
     print(f"📥 Backlinks (notes linking TO Deep Learning): {len(backlinks)}")
@@ -200,7 +200,7 @@ def demo_knowledge_clusters(zettel: ZettelMemory):
         print(f"   Emergence score: {cluster.emergence_score:.2f}")
         
         # Show notes in cluster
-        print(f"   Members:")
+        print("   Members:")
         for note_id in cluster.note_ids[:5]:
             note = zettel.get(note_id)
             if note:
@@ -221,7 +221,7 @@ def demo_knowledge_bridges(zettel: ZettelMemory):
             note = zettel.get(note_id)
             print(f"🌉 Bridge: {note.metadata.get('title')}")
             print(f"   Connects domains: {', '.join(connected_domains[:5])}")
-            print(f"   This note is crucial for knowledge integration!\n")
+            print("   This note is crucial for knowledge integration!\n")
     else:
         print("No knowledge bridges detected (need more interconnected notes)")
 
@@ -360,7 +360,7 @@ def demo_system_overview(zettel: ZettelMemory):
     # Top clusters
     top_clusters = overview.get('top_clusters', [])
     if top_clusters:
-        print(f"\n🏆 Top Knowledge Clusters:\n")
+        print("\n🏆 Top Knowledge Clusters:\n")
         for cluster in top_clusters[:3]:
             print(f"   {cluster.get('id')}:")
             print(f"     Size: {cluster.get('size')} notes")

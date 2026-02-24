@@ -2,7 +2,6 @@
 InputAdapter component for componentized memory ingestion pipeline.
 Handles conversion of raw input to MemoryItem with metadata normalization.
 """
-from dataclasses import asdict
 from datetime import datetime
 from typing import Dict, Any, Optional
 

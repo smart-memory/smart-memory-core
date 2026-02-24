@@ -20,7 +20,6 @@ Environment overrides (optional):
   ONTOGPT_TEMPLATE, ONTOGPT_TEMPLATE_DIR, ONTOGPT_PROVIDER, ONTOGPT_MODEL, ONTOGPT_API_BASE
 """
 import argparse
-import json
 import os
 import shutil
 import sys

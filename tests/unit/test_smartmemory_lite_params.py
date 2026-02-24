@@ -3,7 +3,6 @@
 All tests use heavy mocking to avoid requiring live infrastructure.
 """
 import os
-import pytest
 from contextlib import ExitStack
 from unittest.mock import MagicMock, patch
 

@@ -11,9 +11,8 @@ This module provides security controls for plugin execution including:
 import logging
 import time
 import threading
-import signal
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional, Dict, List
+from typing import Any, Callable, Optional, List
 from enum import Enum
 
 logger = logging.getLogger(__name__)

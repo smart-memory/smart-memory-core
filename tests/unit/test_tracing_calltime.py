@@ -1,6 +1,5 @@
 """Tests verifying that tracing._is_enabled() reads the env var at call time."""
 import os
-import pytest
 
 
 def test_is_enabled_reads_env_at_call_time():

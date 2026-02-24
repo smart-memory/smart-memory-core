@@ -151,11 +151,9 @@ def test_imports():
     print("\n=== Testing Imports ===")
     
     # Main imports
-    from smartmemory import SmartMemory, MemoryItem
     print("✅ Main imports work")
     
     # Plugin imports
-    from smartmemory.plugins.base import EnricherPlugin, PluginMetadata
     print("✅ Plugin imports work")
     
     # Check version

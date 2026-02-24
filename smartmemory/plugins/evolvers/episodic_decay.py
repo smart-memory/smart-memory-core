@@ -37,13 +37,13 @@ class EpisodicDecayEvolver(EvolverPlugin):
         )
 
     def evolve(self, memory, logger=None):
-        cfg = getattr(self, "config")
+        cfg = self.config
         if not hasattr(cfg, "half_life"):
             raise TypeError(
                 "EpisodicDecayEvolver requires a typed config with 'half_life'. "
                 "Provide EpisodicDecayConfig or a compatible typed config."
             )
-        half_life = int(getattr(cfg, "half_life"))
+        half_life = int(cfg.half_life)
         memory_id = getattr(memory, 'item_id', None)
         with trace_span("pipeline.evolve.episodic_decay", {"memory_id": memory_id, "half_life": half_life}):
             stale_events = memory.episodic.get_stale_events(half_life=half_life)

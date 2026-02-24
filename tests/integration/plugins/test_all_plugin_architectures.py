@@ -37,7 +37,7 @@ class TestExtractorPluginArchitectures:
             # Test instantiation
             extractor = LLMExtractor()
             
-            print(f"✅ LLMExtractor Architecture:")
+            print("✅ LLMExtractor Architecture:")
             print(f"   Class: {extractor.__class__.__name__}")
             print(f"   Module: {extractor.__class__.__module__}")
             
@@ -47,7 +47,7 @@ class TestExtractorPluginArchitectures:
             
             # Test if it has extract method
             if hasattr(extractor, 'extract'):
-                print(f"   Has extract method: True")
+                print("   Has extract method: True")
                 # Try to understand method signature
                 import inspect
                 sig = inspect.signature(extractor.extract)
@@ -71,7 +71,7 @@ class TestExtractorPluginArchitectures:
             
             extractor = SpacyExtractor()
             
-            print(f"✅ SpacyExtractor Architecture:")
+            print("✅ SpacyExtractor Architecture:")
             print(f"   Class: {extractor.__class__.__name__}")
             
             # Check available methods
@@ -107,7 +107,7 @@ class TestExtractorPluginArchitectures:
             
             extractor = GLiNERExtractor()
             
-            print(f"✅ GLiNERExtractor Architecture:")
+            print("✅ GLiNERExtractor Architecture:")
             print(f"   Class: {extractor.__class__.__name__}")
             
             methods = [method for method in dir(extractor) if not method.startswith('_')]
@@ -150,7 +150,7 @@ class TestEvolverPluginArchitectures:
             
             evolver = WorkingToEpisodicEvolver()
             
-            print(f"✅ WorkingToEpisodicEvolver Architecture:")
+            print("✅ WorkingToEpisodicEvolver Architecture:")
             print(f"   Class: {evolver.__class__.__name__}")
             
             methods = [method for method in dir(evolver) if not method.startswith('_')]
@@ -182,7 +182,7 @@ class TestEvolverPluginArchitectures:
             
             evolver = EpisodicToSemanticEvolver()
             
-            print(f"✅ EpisodicToSemanticEvolver Architecture:")
+            print("✅ EpisodicToSemanticEvolver Architecture:")
             print(f"   Class: {evolver.__class__.__name__}")
             
             methods = [method for method in dir(evolver) if not method.startswith('_')]
@@ -203,7 +203,7 @@ class TestEvolverPluginArchitectures:
             
             evolver = EpisodicDecayEvolver()
             
-            print(f"✅ EpisodicDecayEvolver Architecture:")
+            print("✅ EpisodicDecayEvolver Architecture:")
             print(f"   Class: {evolver.__class__.__name__}")
             
             methods = [method for method in dir(evolver) if not method.startswith('_')]
@@ -223,7 +223,7 @@ class TestResolverPluginArchitectures:
             
             resolver = ExternalResolver()
             
-            print(f"✅ ExternalResolver Architecture:")
+            print("✅ ExternalResolver Architecture:")
             print(f"   Class: {resolver.__class__.__name__}")
             
             methods = [method for method in dir(resolver) if not method.startswith('_')]
@@ -249,7 +249,7 @@ class TestEmbeddingPluginArchitecture:
             
             plugin = EmbeddingPlugin()
             
-            print(f"✅ EmbeddingPlugin Architecture:")
+            print("✅ EmbeddingPlugin Architecture:")
             print(f"   Class: {plugin.__class__.__name__}")
             
             methods = [method for method in dir(plugin) if not method.startswith('_')]
@@ -272,7 +272,6 @@ class TestZettelkastenArchitecture:
         """Test ZettelMemory pattern."""
         try:
             # Check if zettelkasten module exists
-            import smartmemory.plugins
             
             # Look for zettelkasten in various locations
             possible_locations = [
@@ -294,13 +293,13 @@ class TestZettelkastenArchitecture:
             
             if zettel_class:
                 zettel = zettel_class()
-                print(f"✅ ZettelMemory Architecture:")
+                print("✅ ZettelMemory Architecture:")
                 print(f"   Class: {zettel.__class__.__name__}")
                 
                 methods = [method for method in dir(zettel) if not method.startswith('_')]
                 print(f"   Public methods: {methods}")
             else:
-                print(f"❌ ZettelMemory not found in expected locations")
+                print("❌ ZettelMemory not found in expected locations")
                 
         except Exception as e:
             print(f"❌ ZettelMemory investigation failed: {e}")

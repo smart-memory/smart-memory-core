@@ -1,6 +1,5 @@
 """Tests for SmartMemory enable_ontology flag (P0-2 prerequisite for DIST-LITE-1)."""
 from unittest.mock import MagicMock, patch
-import pytest
 
 
 def test_enable_ontology_false_skips_ontology_graph():

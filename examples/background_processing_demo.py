@@ -144,7 +144,7 @@ def demo_background_processing():
     # In this local demo, we simply show the queued flag and proceed.
 
     # Final stats
-    print(f"\n📈 Final Background Processing Stats:")
+    print("\n📈 Final Background Processing Stats:")
     print("  (Background stats not available in local demo)")
 
     # Show memory contents
@@ -160,37 +160,37 @@ def demo_background_processing():
 
     # Show some example nodes
     if memory_nodes:
-        print(f"\n📝 Sample Memory Node:")
+        print("\n📝 Sample Memory Node:")
         sample_node = memory_nodes[0]
         for key, value in sample_node.items():
             if key in ['item_id', 'content', 'memory_type', 'node_category']:
                 print(f"    {key}: {value}")
 
     if entity_nodes:
-        print(f"\n👤 Sample Entity Node:")
+        print("\n👤 Sample Entity Node:")
         sample_entity = entity_nodes[0]
         for key, value in sample_entity.items():
             if key in ['item_id', 'name', 'entity_type', 'node_category']:
                 print(f"    {key}: {value}")
 
     # Performance comparison
-    print(f"\n⚡ Performance Comparison:")
+    print("\n⚡ Performance Comparison:")
     print(f"  Fast Ingestion:     {avg_fast_time * 1000:.1f}ms per item")
-    print(f"  Traditional (est):  5000-10000ms per item")
+    print("  Traditional (est):  5000-10000ms per item")
     print(f"  Speed Improvement:  {(5000 / (avg_fast_time * 1000)):.1f}x faster")
 
     # In production, background workers run as separate processes/services.
 
-    print(f"\n🎉 Demo completed successfully!")
-    print(f"   - Fast ingestion achieved <500ms target")
-    print(f"   - Background processing handled enrichment/grounding")
-    print(f"   - Dual-node architecture preserved semantic structure")
+    print("\n🎉 Demo completed successfully!")
+    print("   - Fast ingestion achieved <500ms target")
+    print("   - Background processing handled enrichment/grounding")
+    print("   - Dual-node architecture preserved semantic structure")
 
 
 def demo_comparison():
     """Compare fast vs traditional ingestion."""
 
-    print(f"\n🔄 COMPARISON: Fast vs Traditional Ingestion")
+    print("\n🔄 COMPARISON: Fast vs Traditional Ingestion")
     print("=" * 50)
 
     memory = SmartMemory()
@@ -212,7 +212,7 @@ def demo_comparison():
     fast_context = memory.ingest(test_item, sync=False)
     fast_time = time.time() - start_time
 
-    print(f"\n📊 Results:")
+    print("\n📊 Results:")
     print(f"  Traditional: {traditional_time * 1000:.1f}ms")
     print(f"  Fast:        {fast_time * 1000:.1f}ms")
     print(f"  Speedup:     {traditional_time / fast_time:.1f}x faster")

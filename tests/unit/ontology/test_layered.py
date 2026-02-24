@@ -9,7 +9,6 @@ from datetime import datetime
 from smartmemory.ontology.layered import LayeredOntology
 from smartmemory.ontology.models import (
     EntityTypeDefinition,
-    LayerDiff,
     Ontology,
     OntologyRule,
     OntologySubscription,

@@ -468,6 +468,20 @@ class GraphSchemaValidator:
             property_types={"strength": float, "type": str, "description": str}
         ))
 
+        self.register_edge_schema(EdgeSchema(
+            edge_type="CO_RETRIEVED",
+            source_node_types={"semantic", "episodic", "procedural", "zettel"},
+            target_node_types={"semantic", "episodic", "procedural", "zettel"},
+            required_properties=set(),
+            optional_properties={"co_retrieval_count", "weight", "first_co_retrieved_at", "last_co_retrieved_at"},
+            property_types={
+                "co_retrieval_count": int,
+                "weight": float,
+                "first_co_retrieved_at": str,
+                "last_co_retrieved_at": str,
+            }
+        ))
+
         # ZETTELKASTEN EDGE SCHEMAS - CRITICAL MISSING SCHEMAS
 
         # Links between notes (wikilinks)

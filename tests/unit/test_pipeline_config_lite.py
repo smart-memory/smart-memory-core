@@ -1,5 +1,4 @@
 """Tests for PipelineConfig.lite() classmethod."""
-import pytest
 from smartmemory.pipeline.config import PipelineConfig
 
 

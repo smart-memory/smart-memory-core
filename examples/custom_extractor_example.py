@@ -5,7 +5,7 @@ This example demonstrates how to create a custom extractor plugin that
 extracts entities and relationships from text.
 """
 
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any
 from smartmemory.plugins.base import ExtractorPlugin, PluginMetadata
 
 

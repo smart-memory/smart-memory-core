@@ -13,9 +13,7 @@ creates opinion: "User prefers functional programming" (confidence: 0.85)
 
 import hashlib
 import logging
-import os
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from smartmemory.models.base import MemoryBaseModel, StageRequest

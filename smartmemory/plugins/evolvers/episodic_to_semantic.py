@@ -39,14 +39,14 @@ class EpisodicToSemanticEvolver(EvolverPlugin):
         )
 
     def evolve(self, memory, logger=None):
-        cfg = getattr(self, "config")
+        cfg = self.config
         if not (hasattr(cfg, "confidence") and hasattr(cfg, "days")):
             raise TypeError(
                 "EpisodicToSemanticEvolver requires a typed config with 'confidence' and 'days' attributes. "
                 "Provide EpisodicToSemanticConfig or a compatible typed config."
             )
-        confidence = float(getattr(cfg, "confidence"))
-        min_days = int(getattr(cfg, "days"))
+        confidence = float(cfg.confidence)
+        min_days = int(cfg.days)
         memory_id = getattr(memory, 'item_id', None)
         with trace_span("pipeline.evolve.episodic_to_semantic", {"memory_id": memory_id, "confidence": confidence, "min_days": min_days}):
             stable_events = memory.episodic.get_stable_events(confidence=confidence, min_days=min_days)

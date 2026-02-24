@@ -26,7 +26,6 @@ Run this example:
 
 import logging
 import uuid
-from datetime import datetime, timezone
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -130,7 +129,7 @@ def demo_reasoning_trace(steps, context):
     print(f"   Artifact IDs: {trace.artifact_ids}")
     
     # Generate content for vector embedding
-    print(f"\n📄 Generated content for embedding:")
+    print("\n📄 Generated content for embedding:")
     content = trace.content
     print(f"   {content[:200]}...")
     
@@ -175,7 +174,7 @@ def demo_quality_evaluation():
     print(f"   Quality Score: {bad_eval.quality_score:.2f}")
     print(f"   Has Loops: {bad_eval.has_loops}")
     print(f"   Should Store: {bad_eval.should_store}")
-    print(f"   Issues:")
+    print("   Issues:")
     for issue in bad_eval.issues:
         print(f"      [{issue['severity'].upper()}] {issue['description']}")
     
@@ -222,7 +221,7 @@ def demo_storing_traces():
     item_id = memory.add(item)
     
     print(f"✅ Stored reasoning trace: {item_id}")
-    print(f"   Memory type: reasoning")
+    print("   Memory type: reasoning")
     print(f"   Content preview: {trace.content[:100]}...")
     
     return memory, trace

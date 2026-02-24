@@ -126,7 +126,7 @@ def demonstrate_old_vs_new():
         semantic_count = sum(len(rels) for rel_type, rels in relationship_types.items()
                              if rel_type not in ['unknown', 'RELATED'])
 
-        print(f"📊 RELATIONSHIP QUALITY:")
+        print("📊 RELATIONSHIP QUALITY:")
         print(f"   Semantic relationships: {semantic_count}")
         print(f"   Generic 'RELATED': {related_count}")
         if semantic_count + related_count > 0:

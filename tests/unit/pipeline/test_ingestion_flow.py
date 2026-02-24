@@ -6,8 +6,7 @@ import pytest
 
 
 pytestmark = pytest.mark.unit
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime, timezone
+from unittest.mock import Mock, patch
 
 from smartmemory.memory.ingestion.flow import MemoryIngestionFlow
 from smartmemory.models.memory_item import MemoryItem

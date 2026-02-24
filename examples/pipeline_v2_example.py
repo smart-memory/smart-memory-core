@@ -26,7 +26,6 @@ Run this example:
 """
 
 import logging
-from pprint import pprint
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -66,7 +65,7 @@ def demo_pipeline_config():
     
     # Preview mode (no storage side-effects)
     preview_config = PipelineConfig.preview()
-    print(f"\n🔍 Preview Mode:")
+    print("\n🔍 Preview Mode:")
     print(f"   Mode: {preview_config.mode}")
     print(f"   Evolution: {preview_config.evolve.run_evolution}")
     print(f"   Clustering: {preview_config.evolve.run_clustering}")
@@ -92,7 +91,7 @@ def demo_pipeline_config():
         ),
     )
     
-    print(f"\n⚙️ Custom Configuration:")
+    print("\n⚙️ Custom Configuration:")
     print(f"   Mode: {custom_config.mode}")
     print(f"   Global retry: max_retries={custom_config.retry.max_retries}")
     print(f"   LLM extract retry: max_retries={custom_config.stage_retry_policies['llm_extract'].max_retries}")
@@ -119,12 +118,12 @@ def demo_pipeline_runner():
     text = "John Smith is a software engineer at Google. He works on machine learning projects."
     config = PipelineConfig.preview()  # Use preview mode for demo
     
-    print(f"\n📝 Running full pipeline on:")
+    print("\n📝 Running full pipeline on:")
     print(f"   '{text}'")
     
     try:
         state = runner.run(text, config)
-        print(f"\n✅ Pipeline completed!")
+        print("\n✅ Pipeline completed!")
         print(f"   Stages completed: {state.stage_history}")
         print(f"   Total time: {sum(state.stage_timings.values()):.2f}ms")
     except Exception as e:
@@ -149,7 +148,7 @@ def demo_breakpoints():
         # Run only up to the simplify stage
         state = runner.run_to(text, config, stop_after="simplify")
         
-        print(f"\n✅ Stopped at breakpoint!")
+        print("\n✅ Stopped at breakpoint!")
         print(f"   Stages completed: {state.stage_history}")
         print(f"   Current text: {state.text[:50]}...")
         
@@ -172,7 +171,7 @@ def demo_resume(state, runner, config):
         return
     
     print(f"📍 Current state: {state.stage_history}")
-    print(f"🔄 Resuming from next stage...")
+    print("🔄 Resuming from next stage...")
     
     try:
         # Resume and run to the next breakpoint
@@ -183,7 +182,7 @@ def demo_resume(state, runner, config):
             stop_after="llm_extract",
         )
         
-        print(f"\n✅ Resumed and stopped at next breakpoint!")
+        print("\n✅ Resumed and stopped at next breakpoint!")
         print(f"   Stages completed: {resumed_state.stage_history}")
         
         return resumed_state

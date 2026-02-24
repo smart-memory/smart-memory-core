@@ -13,9 +13,9 @@ import json
 import logging
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List, Literal, Tuple
+from typing import Optional, Dict, Any, List, Literal
 
 from smartmemory.integration.llm.prompts.prompt_provider import get_prompt_value, apply_placeholders
 from smartmemory.models.base import MemoryBaseModel

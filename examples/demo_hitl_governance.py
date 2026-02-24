@@ -163,7 +163,7 @@ def create_demo_environment():
     for violation in violations:
         governor.violations[violation.id] = violation
 
-    print(f"✅ Demo environment ready!")
+    print("✅ Demo environment ready!")
     print(f"   - Created ontology: {ontology.name}")
     print(f"   - Added {len(violations)} sample violations")
 
@@ -253,7 +253,7 @@ def demo_programmatic_decisions():
             print(f"✅ Decision 4: {'Success' if success else 'Failed'} - Schedule critical issue for later review")
 
         # Show final state
-        print(f"\n📊 Final state after decisions:")
+        print("\n📊 Final state after decisions:")
         hitl.show_governance_dashboard()
 
         print("\n💡 This shows how human decisions are applied and tracked.")
@@ -295,7 +295,7 @@ def demo_batch_processing():
         print(f"📊 Added {len(batch_violations)} similar violations for batch processing")
 
         # Show how batch processing would work (simulated)
-        print(f"\n📦 Simulating batch processing for 'unknown_entity_type' violations...")
+        print("\n📦 Simulating batch processing for 'unknown_entity_type' violations...")
 
         unknown_entity_violations = [
             v for v in governor.violations.values()
@@ -321,7 +321,7 @@ def demo_batch_processing():
         print(f"✅ Batch processed {processed} violations with action: EVOLVE_ONTOLOGY")
 
         # Show final state
-        print(f"\n📊 State after batch processing:")
+        print("\n📊 State after batch processing:")
         hitl.show_governance_dashboard()
 
         print("\n💡 This shows how humans can efficiently handle similar violations in batches.")
@@ -353,7 +353,7 @@ def demo_notification_system():
             notification_system.alert_critical_violation(critical_violations[0])
 
         # Send daily summary
-        print(f"\n📊 Sending daily governance summary...")
+        print("\n📊 Sending daily governance summary...")
         notification_system.send_daily_summary()
 
         print("\n💡 This shows how humans are notified about governance events.")
@@ -390,8 +390,8 @@ def demo_governance_reporting():
         # Export governance report
         report_file = hitl.export_governance_report("demo_governance_report.json")
 
-        print(f"\n💡 This shows how governance activity is tracked and reported.")
-        print(f"   Reports include violations, decisions, and complete history.")
+        print("\n💡 This shows how governance activity is tracked and reported.")
+        print("   Reports include violations, decisions, and complete history.")
         print(f"   Exported to: {report_file}")
 
         # Clean up report file

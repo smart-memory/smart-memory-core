@@ -11,7 +11,6 @@ Focuses on:
 """
 import os
 import pytest
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 
@@ -163,7 +162,6 @@ def test_create_lite_memory_uses_noop_cache(tmp_path):
 
 def test_lite_context_restores_observability_env_on_exit(tmp_path):
     """lite_context() restores SMARTMEMORY_OBSERVABILITY to its pre-context value on exit."""
-    import os
     # Set a known value before entering the context
     os.environ["SMARTMEMORY_OBSERVABILITY"] = "true"
     try:
@@ -178,7 +176,6 @@ def test_lite_context_restores_observability_env_on_exit(tmp_path):
 
 def test_lite_context_restores_observability_env_even_on_exception(tmp_path):
     """lite_context() restores observability env even when the body raises."""
-    import os
     os.environ["SMARTMEMORY_OBSERVABILITY"] = "true"
     try:
         with pytest.raises(RuntimeError, match="intentional"):
@@ -193,7 +190,6 @@ def test_lite_context_restores_observability_env_even_on_exception(tmp_path):
 
 def test_lite_context_removes_observability_env_if_unset_before(tmp_path):
     """lite_context() removes SMARTMEMORY_OBSERVABILITY if it wasn't set before entering."""
-    import os
     os.environ.pop("SMARTMEMORY_OBSERVABILITY", None)
     try:
         with lite_context(str(tmp_path)):
@@ -209,14 +205,12 @@ def test_lite_context_removes_observability_env_if_unset_before(tmp_path):
 
 def test_lite_context_closes_sqlite_backend_on_exit(tmp_path):
     """lite_context() calls close() on the SQLite backend in the finally block."""
-    from unittest.mock import patch
 
     with lite_context(str(tmp_path)) as memory:
         backend = memory._graph.backend
 
     # After the context, close() should have been called (SQLiteBackend tracks this).
     # We verify by checking the connection is closed (execute raises after close).
-    import sqlite3
     with pytest.raises(Exception):
         backend._conn.execute("SELECT 1")
 
@@ -224,7 +218,6 @@ def test_lite_context_closes_sqlite_backend_on_exit(tmp_path):
 def test_create_lite_memory_passes_entity_ruler_patterns(tmp_path):
     """create_lite_memory() forwards entity_ruler_patterns to SmartMemory._entity_ruler_patterns."""
     from smartmemory.stores.vector.vector_store import VectorStore
-    from unittest.mock import MagicMock
 
     mock_pm = MagicMock()
     mock_pm.get_patterns.return_value = {}
@@ -245,7 +238,6 @@ def test_lite_context_closes_sqlite_backend_on_exception(tmp_path):
             backend = memory._graph.backend
             raise RuntimeError("intentional test error")
 
-    import sqlite3
     with pytest.raises(Exception):
         backend._conn.execute("SELECT 1")
 
@@ -254,10 +246,8 @@ def test_lite_context_closes_sqlite_backend_on_exception(tmp_path):
 
 def test_lite_context_restores_globals_if_create_lite_memory_raises(tmp_path):
     """lite_context() restores env, vector backend, and cache even when create_lite_memory() raises."""
-    import os
-    from unittest.mock import patch
     from smartmemory.stores.vector.vector_store import VectorStore
-    from smartmemory.utils.cache import set_cache_override, get_cache, NoOpCache
+    from smartmemory.utils.cache import set_cache_override
 
     os.environ["SMARTMEMORY_OBSERVABILITY"] = "sentinel-value"
     try:

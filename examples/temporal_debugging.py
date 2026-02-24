@@ -121,18 +121,18 @@ def main():
     print(f"Querying knowledge as of: {day2_time}")
     
     with memory.time_travel(day2_time):
-        print(f"\n✓ Time-traveled to Day 2")
+        print("\n✓ Time-traveled to Day 2")
         print("  In a full implementation, search would return Day 2 state")
         print("  For now, we can query specific items:")
         
         # Get the state of item1 on Day 2
         day2_state = memory.graph.get_node(item1_id, as_of_time=day2_time)
         if day2_state:
-            print(f"\n  Knowledge about Python creator on Day 2:")
+            print("\n  Knowledge about Python creator on Day 2:")
             print(f"    Content: {getattr(day2_state, 'content', 'N/A')}")
             print(f"    Confidence: {getattr(day2_state, 'metadata', {}).get('confidence', 'N/A')}")
         else:
-            print(f"  (Temporal query returned no result - feature in development)")
+            print("  (Temporal query returned no result - feature in development)")
     
     print("\n✓ Back to current time")
     
@@ -150,14 +150,14 @@ def main():
             print(f"    Fields changed: {', '.join(change.changed_fields)}")
             
             if 'content' in change.changed_fields and change.old_value and change.new_value:
-                print(f"\n    Content Evolution:")
+                print("\n    Content Evolution:")
                 print(f"      Before: {change.old_value.get('content', 'N/A')[:60]}...")
                 print(f"      After:  {change.new_value.get('content', 'N/A')[:60]}...")
             
             if 'metadata.confidence' in change.changed_fields:
                 old_conf = change.old_value.get('metadata', {}).get('confidence')
                 new_conf = change.new_value.get('metadata', {}).get('confidence')
-                print(f"\n    Confidence Change:")
+                print("\n    Confidence Change:")
                 print(f"      Before: {old_conf}")
                 print(f"      After:  {new_conf}")
     else:
@@ -175,11 +175,11 @@ def main():
     )
     
     if 'error' not in diff:
-        print(f"✓ Comparison complete:")
+        print("✓ Comparison complete:")
         print(f"  Changed fields: {diff.get('changed_fields', [])}")
         
         if diff.get('modifications'):
-            print(f"\n  Detailed modifications:")
+            print("\n  Detailed modifications:")
             for field, change in diff['modifications'].items():
                 print(f"\n    {field}:")
                 if isinstance(change, dict) and 'old' in change and 'new' in change:
@@ -196,7 +196,7 @@ def main():
     
     timeline = memory.temporal.get_timeline(item1_id, granularity='day')
     if timeline:
-        print(f"✓ Timeline of changes:")
+        print("✓ Timeline of changes:")
         for date, events in sorted(timeline.items()):
             print(f"\n  📅 {date}:")
             for event in events:

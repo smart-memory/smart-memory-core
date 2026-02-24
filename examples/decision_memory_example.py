@@ -21,7 +21,6 @@ Run this example:
 """
 
 import logging
-from datetime import datetime
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -228,7 +227,7 @@ def demo_conflict_detection():
         tags=["frontend", "language"],
     )
     
-    print(f"Existing decisions:")
+    print("Existing decisions:")
     print(f"   1. {decision1.content}")
     print(f"   2. {decision2.content}")
     
@@ -285,7 +284,7 @@ def demo_pending_decisions():
     print(f"   Is Pending: {decision.is_pending}")
     print(f"   Confidence: {decision.confidence:.2f} (low due to pending requirements)")
     
-    print(f"\n📋 Pending Requirements:")
+    print("\n📋 Pending Requirements:")
     for req in decision.pending_requirements:
         status = "✅" if req.resolved else "⏳"
         print(f"   {status} [{req.requirement_type}] {req.description}")

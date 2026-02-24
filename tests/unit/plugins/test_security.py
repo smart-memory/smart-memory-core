@@ -9,7 +9,7 @@ pytestmark = pytest.mark.unit
 import time
 from smartmemory.plugins.security import (
     PluginPermissions, ResourceLimits, PluginSandbox,
-    PermissionLevel, SecurityException, ResourceLimitException,
+    PermissionLevel, ResourceLimitException,
     PermissionDeniedException, get_security_profile, validate_plugin_security
 )
 from smartmemory.plugins.base import EnricherPlugin, PluginMetadata
@@ -209,7 +209,6 @@ class TestSecurityValidation:
                 )
             
             def enrich(self, item, node_ids=None):
-                import requests
                 return {"data": "from network"}
         
         perms = get_security_profile('restricted')  # No network access

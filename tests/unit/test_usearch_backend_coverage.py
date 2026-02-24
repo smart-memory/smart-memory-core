@@ -11,7 +11,6 @@ Focuses on:
 - _load_or_create with corrupted JSON map falls back gracefully
 - _next_key is monotonically increasing across upserts of same id
 """
-import json
 import numpy as np
 import pytest
 

@@ -1,6 +1,5 @@
 """Tests for the set_cache_override() mechanism in smartmemory.utils.cache."""
 import os
-import pytest
 
 
 def test_set_cache_override_returns_override():

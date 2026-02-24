@@ -9,8 +9,7 @@ Focuses on:
 - write_markdown creates intermediate directories
 - _render output is valid YAML parseable frontmatter
 """
-from pathlib import Path
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import MagicMock
 import pytest
 
 

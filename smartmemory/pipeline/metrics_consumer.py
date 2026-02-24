@@ -212,7 +212,7 @@ class MetricsConsumer:
         if not ts_str:
             return time.time()
         try:
-            from datetime import datetime, timezone
+            from datetime import datetime
 
             dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
             return dt.timestamp()

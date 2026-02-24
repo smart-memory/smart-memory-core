@@ -1,6 +1,5 @@
 """smartmemory.tools.markdown_writer — write MemoryItems to markdown files."""
 from pathlib import Path
-from typing import Optional
 
 
 def _render(item) -> str:

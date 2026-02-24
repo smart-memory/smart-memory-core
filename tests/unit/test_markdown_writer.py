@@ -1,7 +1,5 @@
 """Tests for smartmemory.tools.markdown_writer. No infra required."""
-from pathlib import Path
 from unittest.mock import MagicMock
-import pytest
 
 
 def _make_item(item_id="test-id", content="Alice leads Project Atlas", memory_type="semantic"):

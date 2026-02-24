@@ -11,7 +11,6 @@ pytestmark = pytest.mark.unit
 
 from smartmemory.pipeline.metrics_consumer import (
     AGG_KEY_PREFIX,
-    BUCKET_SIZE_SECONDS,
     MetricsConsumer,
 )
 

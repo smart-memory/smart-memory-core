@@ -83,7 +83,7 @@ def example_smartmemory_with_huggingface():
     # Search using semantic similarity (powered by HuggingFace embeddings)
     results = memory.search("programming languages", top_k=2)
 
-    print(f"\nSearch results for 'programming languages':")
+    print("\nSearch results for 'programming languages':")
     for i, result in enumerate(results, 1):
         print(f"{i}. {result.content}")
 

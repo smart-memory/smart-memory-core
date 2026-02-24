@@ -7,7 +7,6 @@ import pytest
 
 pytestmark = pytest.mark.unit
 from unittest.mock import MagicMock, patch
-from datetime import datetime, timezone
 
 from smartmemory.plugins.extractors.conversation_aware_llm import ConversationAwareLLMExtractor
 from smartmemory.conversation.context import ConversationContext

@@ -1,5 +1,21 @@
 {
   "mcpServers": {
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
+      "description": "Dynamic problem-solving through thought sequences"
+    },
+    "charlotte": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@ticktockbent/charlotte"
+      ],
+      "env": {}
+    },
     "playwright": {
       "command": "npx",
       "args": [
@@ -34,6 +50,20 @@
       "command": "uv",
       "env": {
         "HETZNER_PROJECT": "smartmemory"
+      }
+    },
+    "smartmemory-memory": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/Users/ruze/reg/my/SmartMemory/smart-memory-mcp",
+        "run",
+        "smartmemory-mcp"
+      ],
+      "env": {
+        "SMARTMEMORY_API_URL": "http://localhost:9001",
+        "SMARTMEMORY_API_KEY": "sk_dGpGCoG0gn1JA2oVruAdXthwl5qX_StqxgbeU3i1MFQ",
+        "SMARTMEMORY_TEAM_ID": "team_bacbae29b59e"
       }
     }
   }

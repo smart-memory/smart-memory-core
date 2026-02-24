@@ -59,7 +59,7 @@ class StorageEngine(PipelineComponent[StorageConfig]):
                 resolved_target = entity_ids.get(target_id, target_id)
 
                 if not all([resolved_source, resolved_target]):
-                    logger.debug(f"Skipping relation: missing source or target after resolution")
+                    logger.debug("Skipping relation: missing source or target after resolution")
                     continue
 
                 # Create relationship in graph

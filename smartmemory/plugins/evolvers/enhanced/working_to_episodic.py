@@ -38,13 +38,13 @@ class EnhancedWorkingToEpisodicEvolver(EvolverPlugin):
             self._evolve_impl(memory, logger)
 
     def _evolve_impl(self, memory, logger=None):
-        cfg = getattr(self, "config")
+        cfg = self.config
         if not hasattr(cfg, "base_threshold"):
             raise TypeError(
                 "EnhancedWorkingToEpisodicEvolver requires a typed config with 'base_threshold'. "
                 "Provide EnhancedWorkingToEpisodicConfig or a compatible typed config."
             )
-        base_threshold = int(getattr(cfg, "base_threshold"))
+        base_threshold = int(cfg.base_threshold)
 
         # Get working memory items with temporal weights
         working_items = memory.working.get_buffer()

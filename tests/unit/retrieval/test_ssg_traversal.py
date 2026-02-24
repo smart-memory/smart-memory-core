@@ -6,7 +6,7 @@ import pytest
 
 
 pytestmark = pytest.mark.unit
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 import numpy as np
 
 from smartmemory.retrieval.ssg_traversal import SimilarityGraphTraversal

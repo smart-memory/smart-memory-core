@@ -1,6 +1,6 @@
 """Unit tests for stores.factory — StoreFactory and StoreType."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

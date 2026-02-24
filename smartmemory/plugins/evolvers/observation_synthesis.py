@@ -12,7 +12,6 @@ import hashlib
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
 
 from smartmemory.models.base import MemoryBaseModel, StageRequest

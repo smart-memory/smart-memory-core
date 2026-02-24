@@ -506,12 +506,12 @@ class ZettelEmergentStructure:
                     mem_type = nd.get('memory_type') or nd.get('label')
                 # Support MemoryItem-like
                 elif hasattr(nd, 'item_id'):
-                    item_id = getattr(nd, 'item_id')
+                    item_id = nd.item_id
                     md = getattr(nd, 'metadata', {}) or {}
                     mem_type = md.get('memory_type') or md.get('label')
                 # Support backend Node objects
                 elif hasattr(nd, 'properties'):
-                    props = dict(getattr(nd, 'properties'))
+                    props = dict(nd.properties)
                     item_id = props.get('item_id')
                     mem_type = props.get('memory_type') or props.get('label')
 
@@ -544,9 +544,9 @@ class ZettelEmergentStructure:
                     if nid:
                         norm.append(nid)
                 elif hasattr(n, 'item_id'):
-                    norm.append(getattr(n, 'item_id'))
+                    norm.append(n.item_id)
                 elif hasattr(n, 'properties'):
-                    props = dict(getattr(n, 'properties'))
+                    props = dict(n.properties)
                     nid = props.get('item_id')
                     if nid:
                         norm.append(nid)
@@ -571,10 +571,10 @@ class ZettelEmergentStructure:
                     if isinstance(tnd, dict):
                         tag_note_id = tnd.get('item_id')
                     elif hasattr(tnd, 'properties'):
-                        props = dict(getattr(tnd, 'properties'))
+                        props = dict(tnd.properties)
                         tag_note_id = props.get('item_id')
                     elif hasattr(tnd, 'item_id'):
-                        tag_note_id = getattr(tnd, 'item_id')
+                        tag_note_id = tnd.item_id
                     else:
                         tag_note_id = None
                     if tag_note_id and tag_note_id != note_id:

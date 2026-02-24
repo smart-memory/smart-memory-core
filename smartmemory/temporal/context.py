@@ -5,8 +5,6 @@ Provides a convenient way to execute queries in a temporal context.
 """
 
 from contextlib import contextmanager
-from typing import Optional
-from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)

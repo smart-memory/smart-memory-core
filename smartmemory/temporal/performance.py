@@ -5,7 +5,7 @@ Provides indexing, caching, and query optimization for bi-temporal operations.
 """
 
 from typing import Dict, List, Any, Optional, Set
-from datetime import datetime, timezone
+from datetime import datetime
 from collections import defaultdict
 import logging
 

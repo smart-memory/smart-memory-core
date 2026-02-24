@@ -2,7 +2,7 @@
 ClassificationEngine component for componentized memory ingestion pipeline.
 Handles memory type classification with configurable rules and indicators.
 """
-from typing import Dict, Any, Set
+from typing import Dict, Set
 
 from smartmemory.memory.pipeline.components import PipelineComponent, ComponentResult
 from smartmemory.memory.pipeline.config import ClassificationConfig

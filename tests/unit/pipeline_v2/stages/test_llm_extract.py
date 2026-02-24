@@ -7,7 +7,7 @@ pytestmark = pytest.mark.unit
 
 from unittest.mock import MagicMock
 
-from smartmemory.pipeline.config import PipelineConfig, LLMExtractConfig, ExtractionConfig
+from smartmemory.pipeline.config import PipelineConfig, LLMExtractConfig
 from smartmemory.pipeline.state import PipelineState
 from smartmemory.pipeline.stages.llm_extract import LLMExtractStage
 

@@ -403,13 +403,13 @@ class AdvancedProgrammingTutor:
                 strategy_content = best_strategy.content.lower() if hasattr(best_strategy, 'content') else ''
 
                 if 'concrete examples' in strategy_content or 'examples' in strategy_content:
-                    adapted_explanation += f"\n\nLet me give you a concrete example (this approach worked well for you before)..."
+                    adapted_explanation += "\n\nLet me give you a concrete example (this approach worked well for you before)..."
                 elif 'hands-on' in strategy_content or 'practice' in strategy_content:
-                    adapted_explanation += f"\n\nLet's try this with some hands-on practice (you learn best this way)..."
+                    adapted_explanation += "\n\nLet's try this with some hands-on practice (you learn best this way)..."
                 elif 'visual' in strategy_content or 'analogies' in strategy_content:
-                    adapted_explanation += f"\n\nLet me use a visual analogy to explain this..."
+                    adapted_explanation += "\n\nLet me use a visual analogy to explain this..."
                 else:
-                    adapted_explanation += f"\n\nBased on your learning style, let me explain this step by step..."
+                    adapted_explanation += "\n\nBased on your learning style, let me explain this step by step..."
 
                 self.learning_metrics['teaching_adaptations'] += 1
 
@@ -846,7 +846,7 @@ def main():
     print(f"\n🏆 CAPABILITY ASSESSMENT: {rating}")
     print(f"📊 Capability Score: {results['capability_score']:.1%}")
     print(f"🎯 Capabilities Demonstrated: {sum(results['capabilities_demonstrated'].values())}/5")
-    print(f"\nNote: This is an illustrative comparison to demonstrate multi-memory capabilities.")
+    print("\nNote: This is an illustrative comparison to demonstrate multi-memory capabilities.")
 
     return results
 

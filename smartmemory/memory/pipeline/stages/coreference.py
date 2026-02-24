@@ -287,7 +287,7 @@ class CoreferenceStage:
         # Penalize pronouns heavily
         pronouns = {
             "he", "she", "it", "they", "him", "her", "them",
-            "his", "her", "its", "their", "who", "whom", "whose",
+            "his", "its", "their", "who", "whom", "whose",
         }
         if mention.lower() in pronouns:
             score -= 20

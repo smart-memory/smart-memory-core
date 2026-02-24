@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, fields, is_dataclass, replace
-from typing import Optional, List, Any, TypeVar, Type, Dict
+from typing import Optional, Any, TypeVar, Type, Dict
 
 from smartmemory.models.compat.dataclass_model import DataclassModelMixin
 

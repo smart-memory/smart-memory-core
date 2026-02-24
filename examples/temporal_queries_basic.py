@@ -44,7 +44,7 @@ def main():
         metadata={"category": "programming", "version": 2, "updated_by": "user_alice", "original_id": item_id}
     )
     item2_id = memory.add(item2)
-    print(f"\n✓ Added updated version (version 2)")
+    print("\n✓ Added updated version (version 2)")
     print(f"  Content: {item2.content}")
     
     time.sleep(0.1)
@@ -55,7 +55,7 @@ def main():
         metadata={"category": "programming", "version": 3, "updated_by": "user_bob", "original_id": item_id}
     )
     item3_id = memory.add(item3)
-    print(f"\n✓ Added updated version (version 3)")
+    print("\n✓ Added updated version (version 3)")
     print(f"  Content: {item3.content}")
     
     # Example 2: Get history
@@ -71,8 +71,8 @@ def main():
         if version.transaction_time_start:
             print(f"    Timestamp: {version.transaction_time_start.isoformat()}")
     
-    print(f"\n  Note: Currently showing history for single item.")
-    print(f"  Full version tracking across updates coming in next iteration.")
+    print("\n  Note: Currently showing history for single item.")
+    print("  Full version tracking across updates coming in next iteration.")
     
     # Example 3: Time travel
     print("\n\n⏰ Example 3: Time travel to past state...")
@@ -85,7 +85,7 @@ def main():
     past_state = memory.graph.get_node(item_id, as_of_time=five_sec_ago)
     
     if past_state:
-        print(f"✓ Memory 5 seconds ago:")
+        print("✓ Memory 5 seconds ago:")
         print(f"  Content: {getattr(past_state, 'content', 'N/A')}")
     else:
         print("  (Memory didn't exist 5 seconds ago or time-travel not fully implemented)")
@@ -116,7 +116,7 @@ def main():
             history[-1].transaction_time_start.isoformat() if history[-1].transaction_time_start else "2024-01-01",
             history[0].transaction_time_start.isoformat() if history[0].transaction_time_start else datetime.now().isoformat()
         )
-        print(f"✓ Differences found:")
+        print("✓ Differences found:")
         print(f"  Changed fields: {diff.get('changed_fields', [])}")
         if diff.get('modifications'):
             print(f"  Modifications: {len(diff['modifications'])} field(s)")
@@ -130,7 +130,7 @@ def main():
     trail = memory.temporal.get_audit_trail(item_id, include_metadata=True)
     print(f"✓ Audit trail ({len(trail)} event(s)):")
     for event in trail:
-        print(f"\n  Event:")
+        print("\n  Event:")
         print(f"    Timestamp: {event['timestamp']}")
         print(f"    Action: {event['action']}")
         print(f"    Valid from: {event['valid_from']}")
@@ -165,10 +165,10 @@ def main():
         )
         
         if 'error' not in preview:
-            print(f"✓ Rollback preview:")
+            print("✓ Rollback preview:")
             print(f"  Would rollback to: {rollback_to}")
             print(f"  Would change: {preview.get('would_change', [])}")
-            print(f"  This is a DRY RUN - no actual changes made")
+            print("  This is a DRY RUN - no actual changes made")
         else:
             print(f"  Error: {preview['error']}")
     else:
@@ -180,7 +180,7 @@ def main():
     
     timeline = memory.temporal.get_timeline(item_id, granularity='day')
     if timeline:
-        print(f"✓ Timeline by day:")
+        print("✓ Timeline by day:")
         for date, events in sorted(timeline.items()):
             print(f"\n  {date}:")
             for event in events:

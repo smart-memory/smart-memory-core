@@ -6,8 +6,6 @@ import pytest
 
 
 pytestmark = pytest.mark.integration
-import os
-from datetime import datetime, timezone
 
 from smartmemory.smart_memory import SmartMemory
 from smartmemory.memory.models.memory_item import MemoryItem

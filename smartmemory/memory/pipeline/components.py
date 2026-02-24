@@ -5,7 +5,6 @@ Provides stage-by-stage execution with automatic state management.
 import time
 import uuid
 from abc import ABC, abstractmethod
-from dataclasses import asdict
 from typing import Dict, Any, Optional, Generic, TypeVar
 
 from smartmemory.memory.pipeline.state import (

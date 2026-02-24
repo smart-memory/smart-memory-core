@@ -7,7 +7,6 @@ data loss. Catches field renames, type changes, and missing defaults.
 No external services needed — pure logic tests.
 """
 
-import uuid
 from datetime import datetime, timezone
 
 import pytest

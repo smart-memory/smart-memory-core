@@ -8,14 +8,10 @@ import logging
 import sys
 import importlib.metadata
 from pathlib import Path
-from typing import Optional, List, Set, Dict, Any
+from typing import Optional, List, Set
 
 from smartmemory.plugins.registry import PluginRegistry, get_plugin_registry
 from smartmemory.plugins.base import PluginBase, PluginMetadata, validate_plugin_class, check_version_compatibility
-from smartmemory.plugins.security import (
-    PluginPermissions, ResourceLimits, PluginSandbox,
-    get_security_profile, validate_plugin_security
-)
 
 logger = logging.getLogger(__name__)
 

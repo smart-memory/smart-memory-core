@@ -5,9 +5,9 @@ import pytest
 pytestmark = pytest.mark.unit
 
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-from smartmemory.pipeline.config import PipelineConfig, EntityRulerConfig, ExtractionConfig
+from smartmemory.pipeline.config import PipelineConfig, EntityRulerConfig
 from smartmemory.pipeline.state import PipelineState
 from smartmemory.pipeline.stages.entity_ruler import EntityRulerStage, _map_label
 

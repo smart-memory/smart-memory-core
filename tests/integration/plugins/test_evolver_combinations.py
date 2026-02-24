@@ -6,7 +6,6 @@ import pytest
 
 
 pytestmark = pytest.mark.integration
-import os
 from datetime import datetime, timezone
 
 from smartmemory.smart_memory import SmartMemory
@@ -115,7 +114,7 @@ class TestEvolverCombinations:
             # Expected - evolver needs specific memory system structure
             pass
         
-        print(f"✅ WorkingToEpisodic: Evolver instantiated and validated")
+        print("✅ WorkingToEpisodic: Evolver instantiated and validated")
     
     def test_working_to_procedural_evolution(self, evolver_memory, evolution_test_items):
         """Test WorkingToProcedural evolver can be instantiated and has correct metadata."""
@@ -138,7 +137,7 @@ class TestEvolverCombinations:
             # Expected - evolver needs specific memory system structure
             pass
         
-        print(f"✅ WorkingToProcedural: Evolver instantiated and validated")
+        print("✅ WorkingToProcedural: Evolver instantiated and validated")
     
     def test_episodic_to_semantic_evolution(self, evolver_memory, evolution_test_items):
         """Test EpisodicToSemantic evolver can be instantiated and has correct metadata."""
@@ -161,7 +160,7 @@ class TestEvolverCombinations:
             # Expected - evolver needs specific memory system structure
             pass
         
-        print(f"✅ EpisodicToSemantic: Evolver instantiated and validated")
+        print("✅ EpisodicToSemantic: Evolver instantiated and validated")
     
     def test_episodic_to_zettel_evolution(self, evolver_memory, evolution_test_items):
         """Test EpisodicToZettel evolver can be instantiated and has correct metadata."""
@@ -184,7 +183,7 @@ class TestEvolverCombinations:
             # Expected - evolver needs specific memory system structure
             pass
         
-        print(f"✅ EpisodicToZettel: Evolver instantiated and validated")
+        print("✅ EpisodicToZettel: Evolver instantiated and validated")
     
     def test_episodic_decay_evolution(self, evolver_memory, evolution_test_items):
         """Test EpisodicDecay evolver can be instantiated and has correct metadata."""
@@ -207,7 +206,7 @@ class TestEvolverCombinations:
             # Expected - evolver needs specific memory system structure
             pass
         
-        print(f"✅ EpisodicDecay: Evolver instantiated and validated")
+        print("✅ EpisodicDecay: Evolver instantiated and validated")
     
     def test_semantic_decay_evolution(self, evolver_memory, evolution_test_items):
         """Test SemanticDecay evolver can be instantiated and has correct metadata."""
@@ -230,7 +229,7 @@ class TestEvolverCombinations:
             # Expected - evolver needs specific memory system structure
             pass
         
-        print(f"✅ SemanticDecay: Evolver instantiated and validated")
+        print("✅ SemanticDecay: Evolver instantiated and validated")
         
         # Keep the rest of the test for compatibility
         retrieved = None
@@ -238,9 +237,9 @@ class TestEvolverCombinations:
         if retrieved is not None:
             metadata = getattr(retrieved, 'metadata', {})
             decay_applied = any(key in str(metadata).lower() for key in ['decay', 'confidence', 'strength'])
-            print(f"✅ SemanticDecay: Decay processing applied")
+            print("✅ SemanticDecay: Decay processing applied")
         else:
-            print(f"✅ SemanticDecay: Item processed for decay")
+            print("✅ SemanticDecay: Item processed for decay")
     
     def test_zettel_prune_evolution(self, evolver_memory, evolution_test_items):
         """Test ZettelPrune evolver can be instantiated and has correct metadata."""
@@ -263,7 +262,7 @@ class TestEvolverCombinations:
             # Expected - evolver needs specific memory system structure
             pass
         
-        print(f"✅ ZettelPrune: Evolver instantiated and validated")
+        print("✅ ZettelPrune: Evolver instantiated and validated")
     
     def test_evolution_chain_combination(self, evolver_memory, evolution_test_items):
         """Test that multiple evolvers can be instantiated together."""
@@ -310,7 +309,7 @@ class TestEvolverCombinations:
         assert search_results is not None
         print(f"✅ Evolution Search Integration: Added {len(added_items)} items, search returned {len(search_results)} results")
         
-        print(f"✅ Evolution Search Integration: Search works after add")
+        print("✅ Evolution Search Integration: Search works after add")
     
     def test_evolver_error_handling(self, evolver_memory):
         """Test evolver error handling with malformed inputs."""

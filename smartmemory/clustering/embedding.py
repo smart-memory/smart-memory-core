@@ -145,4 +145,4 @@ class EmbeddingClusterer:
         """
         model = self._get_model()
         embeddings = model.encode(items, show_progress_bar=False)
-        return {item: emb.tolist() for item, emb in zip(items, embeddings)}
+        return {item: emb.tolist() for item, emb in zip(items, embeddings, strict=False)}

@@ -6,7 +6,7 @@ with mocked memory. No FalkorDB or external services required.
 
 import math
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock
 
 import pytest
 

@@ -198,7 +198,7 @@ def demo_validation():
     
     # Unknown entity type
     errors = ontology.validate_entity("Robot", {"name": "R2D2"})
-    print(f"\n❓ Unknown type: 'Robot'")
+    print("\n❓ Unknown type: 'Robot'")
     print(f"   Errors: {errors}")
 
 
@@ -291,19 +291,19 @@ def demo_layered_ontology():
         hidden_types=overlay.subscription.hidden_types,
     )
     
-    print(f"\n🔗 Layered view (merged):")
+    print("\n🔗 Layered view (merged):")
     print(f"   Total entity types: {len(layered.entity_types)}")
     print(f"   Types: {list(layered.entity_types.keys())}")
     
     # Show provenance
-    print(f"\n📊 Type provenance:")
+    print("\n📊 Type provenance:")
     for type_name, provenance in layered.get_provenance_map().items():
         icon = {"local": "🆕", "base": "📦", "override": "🔄", "hidden": "👁️‍🗨️"}.get(provenance, "❓")
         print(f"   {icon} {type_name}: {provenance}")
     
     # Compute diff
     diff = layered.compute_diff()
-    print(f"\n📋 Layer Diff:")
+    print("\n📋 Layer Diff:")
     print(f"   Base only: {diff.base_only}")
     print(f"   Overlay only: {diff.overlay_only}")
     print(f"   Overridden: {diff.overridden}")
@@ -346,20 +346,20 @@ def demo_promotion_candidates():
         source_memory_id="mem_abc123",
     )
     
-    print(f"📝 Promotion Candidate:")
+    print("📝 Promotion Candidate:")
     print(f"   Entity: {candidate.entity_name}")
     print(f"   Type: {candidate.entity_type}")
     print(f"   Confidence: {candidate.confidence}")
     print(f"   Source: {candidate.source_memory_id}")
     
     # Show gate outcomes (simulated)
-    print(f"\n🚦 Promotion Gates (simulated):")
+    print("\n🚦 Promotion Gates (simulated):")
     print(f"   ✅ Gate 1: Name length ({len(candidate.entity_name)} >= 3)")
-    print(f"   ✅ Gate 2: Not a common word")
+    print("   ✅ Gate 2: Not a common word")
     print(f"   ✅ Gate 3: Confidence ({candidate.confidence:.2f} >= 0.70)")
-    print(f"   ✅ Gate 4: Frequency (5 >= 2)")
-    print(f"   ✅ Gate 5: Type consistency (0.85 >= 0.80)")
-    print(f"   🔄 Gate 6: Reasoning validation (optional)")
+    print("   ✅ Gate 4: Frequency (5 >= 2)")
+    print("   ✅ Gate 5: Type consistency (0.85 >= 0.80)")
+    print("   🔄 Gate 6: Reasoning validation (optional)")
     
     # Simulated result
     result = PromotionResult(
@@ -410,7 +410,7 @@ def demo_ontology_rules():
     )
     ontology.add_rule(inference_rule)
     
-    print(f"📜 Ontology Rules:")
+    print("📜 Ontology Rules:")
     for rule_id, rule in ontology.rules.items():
         print(f"\n   [{rule.rule_type.upper()}] {rule.name}")
         print(f"   Description: {rule.description}")
@@ -441,13 +441,13 @@ def demo_serialization():
     
     # Serialize to dict
     data = original.to_dict()
-    print(f"📦 Serialized ontology:")
+    print("📦 Serialized ontology:")
     print(f"   Keys: {list(data.keys())}")
     print(f"   Entity types: {list(data['entity_types'].keys())}")
     
     # Deserialize from dict
     restored = Ontology.from_dict(data)
-    print(f"\n📥 Restored ontology:")
+    print("\n📥 Restored ontology:")
     print(f"   Name: {restored.name}")
     print(f"   Version: {restored.version}")
     print(f"   Entity types: {list(restored.entity_types.keys())}")

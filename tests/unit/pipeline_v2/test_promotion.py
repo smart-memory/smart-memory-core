@@ -9,7 +9,6 @@ from smartmemory.ontology.promotion import (
     COMMON_WORD_BLOCKLIST,
     PromotionCandidate,
     PromotionEvaluator,
-    PromotionResult,
 )
 from smartmemory.pipeline.config import PromotionConfig
 

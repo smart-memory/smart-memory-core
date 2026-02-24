@@ -42,7 +42,7 @@ class WorkingToEpisodicEvolver(EvolverPlugin):
         # Example logic: summarize working memory if buffer exceeds threshold
         # Support both legacy dict config and typed config
         threshold = 40
-        cfg = getattr(self, "config") or {}
+        cfg = self.config or {}
         # Require typed config (fail-fast). No legacy dict support.
         if hasattr(cfg, "threshold"):
             threshold = int(getattr(cfg, "threshold", 40))

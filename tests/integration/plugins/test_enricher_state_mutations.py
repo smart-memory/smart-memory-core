@@ -56,7 +56,7 @@ class TestEnricherStateMutations:
         new_nodes = final_nodes - initial_nodes
         
         # Validate state changes
-        print(f"✅ WikipediaEnricher State Mutations:")
+        print("✅ WikipediaEnricher State Mutations:")
         print(f"   Initial nodes: {len(initial_nodes)}")
         print(f"   Final nodes: {len(final_nodes)}")
         print(f"   New nodes created: {len(new_nodes)}")
@@ -91,7 +91,7 @@ class TestEnricherStateMutations:
         final_nodes = set(real_smartmemory_for_integration._graph.get_all_node_ids())
         new_nodes = final_nodes - initial_nodes
         
-        print(f"✅ BasicEnricher State Mutations:")
+        print("✅ BasicEnricher State Mutations:")
         print(f"   New nodes created: {len(new_nodes)} (should be 0)")
         print(f"   Enrichment result keys: {list(enrichment_result.keys()) if enrichment_result else 'None'}")
         
@@ -121,7 +121,7 @@ class TestEnricherStateMutations:
         final_nodes = set(real_smartmemory_for_integration._graph.get_all_node_ids())
         new_nodes = final_nodes - initial_nodes
         
-        print(f"✅ SentimentEnricher State Mutations:")
+        print("✅ SentimentEnricher State Mutations:")
         print(f"   New nodes created: {len(new_nodes)}")
         print(f"   Enrichment result keys: {list(enrichment_result.keys()) if enrichment_result else 'None'}")
         
@@ -133,7 +133,7 @@ class TestEnricherStateMutations:
                 for key in enrichment_result.keys()
             )
             if has_sentiment:
-                print(f"   ✅ Sentiment analysis detected in return value")
+                print("   ✅ Sentiment analysis detected in return value")
     
     def test_enricher_pipeline_integration(self, real_smartmemory_for_integration, test_items):
         """Test multiple enrichers in sequence - validate cumulative mutations."""
@@ -169,7 +169,7 @@ class TestEnricherStateMutations:
         final_nodes = set(real_smartmemory_for_integration._graph.get_all_node_ids())
         total_new_nodes = len(final_nodes) - len(initial_nodes)
         
-        print(f"✅ Pipeline Integration:")
+        print("✅ Pipeline Integration:")
         print(f"   Total new nodes created: {total_new_nodes}")
         print(f"   Enrichers run: {len(enrichers)}")
         print(f"   Results collected: {len(cumulative_results)}")

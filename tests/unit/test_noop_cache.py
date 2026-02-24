@@ -1,5 +1,4 @@
 """Tests for NoOpCache and SMARTMEMORY_CACHE_DISABLED guard (P0-5 prerequisite for DIST-LITE-1)."""
-import os
 import importlib
 import pytest
 

@@ -5,7 +5,6 @@ Run this from the project root directory.
 """
 
 import os
-import glob
 from typing import List
 
 LICENSE_HEADER = '''# Copyright (C) 2025 SmartMemory
@@ -113,7 +112,7 @@ def main():
             print(f"ERR:  {relative_path}")
             errors += 1
     
-    print(f"\nSummary:")
+    print("\nSummary:")
     print(f"  Processed: {processed}")
     print(f"  Skipped: {skipped}")
     print(f"  Errors: {errors}")
