@@ -12,25 +12,33 @@ SmartMemory is a comprehensive AI memory system that provides persistent, multi-
 ## 🚀 Quick Install
 
 ```bash
-pip install smartmemory          # Full platform (requires Docker — FalkorDB + Redis)
-pip install smartmemory-lite     # Zero-infra local mode (SQLite + usearch, no Docker)
+pip install smartmemory             # Full platform (requires Docker — FalkorDB + Redis)
+pip install smartmemory[lite]       # Zero-infra local mode (SQLite + usearch, no Docker)
+pip install smartmemory[lite,watch] # + vault watcher for auto-ingesting markdown files
 ```
 
 ### SmartMemory Lite — No Docker Required
 
 ```python
-from smartmemory_lite import create_lite_memory
+from smartmemory.tools.factory import create_lite_memory, lite_context
 
-memory = create_lite_memory()          # defaults to ~/.smartmemory/
+# Simple usage (defaults to ~/.smartmemory/)
+memory = create_lite_memory()
 item_id = memory.ingest("Alice leads Project Atlas")
 results = memory.search("who leads Atlas", top_k=5)
+
+# Preferred in scripts — cleans up globals and closes SQLite on exit
+with lite_context() as memory:
+    item_id = memory.ingest("Alice leads Project Atlas")
+    results = memory.search("who leads Atlas")
 ```
 
 Or via CLI:
 ```bash
-smartmemory-lite add "Alice leads Project Atlas"
-smartmemory-lite search "who leads Atlas"
-smartmemory-lite mcp   # Start MCP stdio server for Claude Desktop / Claude Code
+smartmemory add "Alice leads Project Atlas"
+smartmemory search "who leads Atlas"
+smartmemory rebuild       # Reindex vector store from graph data
+smartmemory watch /path/to/vault  # Auto-ingest new/changed .md files
 ```
 
 ## Architecture Overview
@@ -248,23 +256,18 @@ memory.add(zettel_item)
 # Install CLI tools
 pip install smartmemory[cli]
 
-# Show system info
-smartmemory info
-
-# List all plugins
-smartmemory plugins list
-
-# Get plugin details
-smartmemory plugins info llm
-
 # Add a memory
 smartmemory add "Python is great for AI" --memory-type semantic
 
 # Search memories
 smartmemory search "Python programming" --top-k 5
 
-# Show summary
-smartmemory summary
+# Rebuild the vector index from graph data
+smartmemory rebuild
+
+# Auto-ingest new/changed Markdown files from a vault directory
+pip install smartmemory[watch]
+smartmemory watch /path/to/vault
 ```
 
 ## Use Cases
@@ -467,7 +470,15 @@ Main interface for memory operations:
 
 ```python
 class SmartMemory:
-    def __init__(self, scope_provider: Optional[ScopeProvider] = None)
+    def __init__(
+        self,
+        scope_provider: Optional[ScopeProvider] = None,
+        vector_backend=None,          # Any VectorStoreBackend; None uses default (FalkorDB)
+        cache=None,                   # Any cache-compatible object; e.g. NoOpCache()
+        observability: bool = True,   # False disables Redis Streams emission and metrics
+        pipeline_profile=None,        # PipelineConfig instance; PipelineConfig.lite() for zero-infra
+        entity_ruler_patterns=None,   # Any object with get_patterns() -> dict[str, str]
+    )
 
     # Primary API
     def ingest(self, item, sync=True, **kwargs) -> str  # Full pipeline
@@ -529,6 +540,7 @@ SmartMemory requires the following key dependencies:
 
 - `falkordb`: Graph database and vector storage backend
 - `spacy`: Natural language processing and entity extraction
+- `dspy`: LLM programming framework for extraction and classification
 - `litellm`: LLM integration layer
 - `openai`: OpenAI API client (for embeddings)
 - `redis`: Caching layer
@@ -555,7 +567,9 @@ pip install smartmemory[aws]       # AWS integration
 pip install smartmemory[wikipedia] # Wikipedia enrichment
 
 # Tools
-pip install smartmemory[cli]       # Command-line interface
+pip install smartmemory[cli]       # Command-line interface (add, search, rebuild)
+pip install smartmemory[lite]      # Zero-infra local mode (SQLite + usearch, no Docker)
+pip install smartmemory[watch]     # Vault watcher for auto-ingesting Markdown files
 
 # Everything
 pip install smartmemory[all]       # All optional features
@@ -611,6 +625,14 @@ Explore the [examples](examples/) directory for complete demonstrations and use 
 
 ## ✅ Recently Completed
 
+### Zero-Infra Lite Mode (v0.3.9+)
+- ✅ **`smartmemory[lite]`**: SQLite + usearch backend — no Docker, no FalkorDB, no Redis required
+- ✅ **`create_lite_memory()`**: Factory function from `smartmemory.tools.factory` for zero-config setup
+- ✅ **`lite_context()`**: Context manager that cleans up globals and closes SQLite on exit
+- ✅ **`PipelineConfig.lite()`**: Pre-built profile disabling coreference, LLM extraction, enrichers, and Wikidata grounding
+- ✅ **`smartmemory[watch]`**: Vault watcher for auto-ingesting new/changed Markdown files
+- ✅ **Constructor injection**: `vector_backend`, `cache`, `observability`, `pipeline_profile`, `entity_ruler_patterns` params added to `SmartMemory.__init__` — no monkey-patching required
+
 ### Unified Pipeline v2 (v0.3.5)
 - ✅ **11-stage composable pipeline**: classify → coreference → simplify → entity_ruler → llm_extract → ontology_constrain → store → link → enrich → ground → evolve
 - ✅ **Breakpoint execution**: `run_to()`, `run_from()`, `undo_to()` for debugging and resumption
@@ -644,11 +666,5 @@ Explore the [examples](examples/) directory for complete demonstrations and use 
 - ✅ **Reasoning memory**: Chain-of-thought traces capturing "why" decisions were made
 
 **See `CHANGELOG.md` for complete version history.**
-
-## 🚧 In Progress
-
-### Temporal Queries
-- **Current**: Basic bi-temporal support (valid_time, transaction_time)
-- **In Progress**: Time-travel queries, version history tracking, audit trail generation
 
 Check the [GitHub repository](https://github.com/smart-memory/smart-memory) for the latest updates.
