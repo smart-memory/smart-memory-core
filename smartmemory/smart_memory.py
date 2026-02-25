@@ -462,24 +462,58 @@ class SmartMemory(MemoryBase):
             except Exception:
                 sync = True  # Default to sync
 
-        # Async path: quick persist + queue for background processing
+        # Async path: Tier 1 pipeline (EntityRuler only) + enqueue for Tier 2 LLM enrichment
         if not sync:
+            from smartmemory.pipeline.config import PipelineConfig
+
             normalized_item = self._crud.normalize_item(item)
             # Apply memory_type from context before storing
             if context and "memory_type" in context:
                 current_type = getattr(normalized_item, "memory_type", "semantic")
                 if current_type == "semantic":
                     normalized_item.memory_type = context["memory_type"]
-            add_result = self._crud.add(normalized_item)
-            if isinstance(add_result, dict):
-                item_id = add_result.get("memory_node_id")
-            else:
-                item_id = add_result
+
+            # Build Tier 1 config: spaCy + EntityRuler, no LLM extraction
+            tier1_cfg = PipelineConfig.tier1()
+            try:
+                scope = self.scope_provider.get_scope()
+                tier1_cfg.workspace_id = getattr(scope, "workspace_id", None)
+            except Exception:
+                pass
+
+            if self._pipeline_runner is None:
+                self._pipeline_runner = self._create_pipeline_runner()
+
+            meta = dict(normalized_item.metadata or {})
+            # Carry explicit memory_type from the MemoryItem into pipeline metadata so
+            # it is not lost — metadata is the only channel PipelineRunner reads it from.
+            if normalized_item.memory_type:
+                meta.setdefault("memory_type", normalized_item.memory_type)
+            if context:
+                for k, v in context.items():
+                    meta.setdefault(k, v)
+
+            state = self._pipeline_runner.run(
+                text=normalized_item.content or "",
+                config=tier1_cfg,
+                metadata=meta,
+            )
+            item_id = state.item_id
+            entity_ids: dict = state.entity_ids or {}
+
+            # Enqueue for Tier 2 LLM worker
+            queued = False
             try:
                 from smartmemory.observability.events import RedisStreamQueue
 
-                q = RedisStreamQueue.for_enrich()
-                q.enqueue({"job_type": "enrich", "item_id": item_id})
+                q = RedisStreamQueue.for_extract()
+                q.enqueue({
+                    "job_type": "extract",
+                    "item_id": item_id,
+                    "workspace_id": tier1_cfg.workspace_id or "",
+                    "entity_ids": entity_ids,
+                    "enable_ontology": self._enable_ontology,
+                })
                 queued = True
             except Exception:
                 queued = False

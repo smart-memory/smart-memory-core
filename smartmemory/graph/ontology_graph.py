@@ -263,7 +263,8 @@ class OntologyGraph:
         try:
             result = backend.query(
                 "MATCH (p:EntityPattern) "
-                "WHERE p.is_global = true OR p.workspace_id = $ws "
+                "WHERE (p.is_global = true OR p.workspace_id = $ws) "
+                "AND COALESCE(p.count, 1) >= 2 "
                 "RETURN p.name, p.label, COALESCE(p.confidence, 0.5), p.source",
                 params={"ws": ws},
                 graph_name=self._graph_name,

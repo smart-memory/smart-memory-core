@@ -282,6 +282,22 @@ class PipelineConfig(MemoryBaseModel):
             ),
         )
 
+    @classmethod
+    def tier1(cls, workspace_id: Optional[str] = None) -> "PipelineConfig":
+        """Tier 1 extraction profile: spaCy + EntityRuler only, no LLM call.
+
+        Runs the full pipeline except coreference resolution and LLM extraction.
+        All enrichment, linking, grounding, and evolution stages run normally.
+        The caller enqueues the stored item_id for Tier 2 LLM processing.
+        """
+        return cls(
+            workspace_id=workspace_id,
+            coreference=CoreferenceConfig(enabled=False),
+            extraction=ExtractionConfig(
+                llm_extract=LLMExtractConfig(enabled=False),
+            ),
+        )
+
 
 # ------------------------------------------------------------------ #
 # OntologyConfig (loaded from graph, not part of PipelineConfig)
