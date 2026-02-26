@@ -350,6 +350,47 @@ class SQLiteBackend(SmartGraphBackend):
             ],
         }
 
+    def get_all_edges(self) -> list[dict]:
+        """Return all edges in the same shape serialize() produces for edges."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT source_id, target_id, edge_type, memory_type, "
+                "valid_from, valid_to, created_at, properties FROM edges"
+            ).fetchall()
+        return [
+            {
+                "source_id": r[0], "target_id": r[1], "edge_type": r[2],
+                "memory_type": r[3], "valid_from": r[4], "valid_to": r[5],
+                "created_at": r[6], "properties": json.loads(r[7]),
+            }
+            for r in rows
+        ]
+
+    def get_edges_for_node(self, node_id: str) -> list[dict]:
+        """Return all edges where node_id appears as source or target."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT source_id, target_id, edge_type, memory_type, "
+                "valid_from, valid_to, created_at, properties "
+                "FROM edges WHERE source_id=? OR target_id=?",
+                (node_id, node_id),
+            ).fetchall()
+        return [
+            {
+                "source_id": r[0], "target_id": r[1], "edge_type": r[2],
+                "memory_type": r[3], "valid_from": r[4], "valid_to": r[5],
+                "created_at": r[6], "properties": json.loads(r[7]),
+            }
+            for r in rows
+        ]
+
+    def get_counts(self) -> dict[str, int]:
+        """Return node and edge counts without loading full graph data."""
+        with self._lock:
+            node_count = self._conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
+            edge_count = self._conn.execute("SELECT COUNT(*) FROM edges").fetchone()[0]
+        return {"node_count": node_count, "edge_count": edge_count}
+
     def deserialize(self, data: Any) -> None:
         """Load the graph from a serialized format produced by serialize().
 

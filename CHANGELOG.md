@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### DIST-LITE-4 — Loginless Pip-Bundled Graph Viewer (SQLiteBackend read methods)
+
+- `SQLiteBackend.get_all_edges()` — returns all edges as list of dicts with 8 keys: `source_id`, `target_id`, `edge_type`, `memory_type`, `valid_from`, `valid_to`, `created_at`, `properties` (deserialized). Uses `with self._lock:`.
+- `SQLiteBackend.get_edges_for_node(node_id)` — filters by `source_id=? OR target_id=?`; same return shape as `get_all_edges()`.
+- `SQLiteBackend.get_counts()` — returns `{node_count, edge_count}` from two `COUNT(*)` queries inside a single lock block.
+
 #### DIST-LITE-3 — Lite Mode Graph Viewer Animations (Phase 1 — core)
 
 - `EventSink` — `runtime_checkable` Protocol defining `emit(event_type, payload) -> None`.

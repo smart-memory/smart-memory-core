@@ -1,4 +1,4 @@
-"""Comprehensive tests for SQLiteBackend (DIST-LITE-1). No Docker required.
+"""Comprehensive tests for SQLiteBackend (DIST-LITE-1 + DIST-LITE-4). No Docker required.
 
 Covers:
 - All 10 abstract methods
@@ -506,3 +506,67 @@ def test_deserialize_edge_preserves_existing_memory_type(backend):
         "SELECT memory_type FROM edges WHERE source_id='a' AND target_id='b' AND edge_type='linked'"
     ).fetchone()
     assert row[0] == "semantic", "deserialize wiped memory_type via INSERT OR REPLACE"
+
+
+# ── DIST-LITE-4: new read methods ────────────────────────────────────────────
+
+
+class TestGetAllEdges:
+    def test_returns_all_edges(self, mem_backend):
+        mem_backend.add_node("a", {"memory_type": "semantic"})
+        mem_backend.add_node("b", {"memory_type": "semantic"})
+        mem_backend.add_node("c", {"memory_type": "semantic"})
+        mem_backend.add_edge("a", "b", "relates_to", {})
+        mem_backend.add_edge("b", "c", "links_to", {})
+        edges = mem_backend.get_all_edges()
+        assert len(edges) == 2
+        types = {e["edge_type"] for e in edges}
+        assert types == {"relates_to", "links_to"}
+
+    def test_edge_dict_has_all_eight_keys(self, mem_backend):
+        mem_backend.add_node("x", {"memory_type": "semantic"})
+        mem_backend.add_node("y", {"memory_type": "semantic"})
+        mem_backend.add_edge("x", "y", "rel", {"weight": 0.9})
+        edges = mem_backend.get_all_edges()
+        assert len(edges) == 1
+        e = edges[0]
+        for key in ("source_id", "target_id", "edge_type", "memory_type",
+                    "valid_from", "valid_to", "created_at", "properties"):
+            assert key in e, f"missing key: {key}"
+        assert e["properties"]["weight"] == 0.9
+
+    def test_empty_graph_returns_empty_list(self, mem_backend):
+        assert mem_backend.get_all_edges() == []
+
+
+class TestGetEdgesForNode:
+    def test_returns_edges_for_source_and_target(self, mem_backend):
+        mem_backend.add_node("a", {"memory_type": "semantic"})
+        mem_backend.add_node("b", {"memory_type": "semantic"})
+        mem_backend.add_node("c", {"memory_type": "semantic"})
+        mem_backend.add_edge("a", "b", "rel", {})
+        mem_backend.add_edge("b", "c", "rel", {})
+        # B is source of one edge and target of another
+        edges = mem_backend.get_edges_for_node("b")
+        assert len(edges) == 2
+
+    def test_node_with_no_edges_returns_empty(self, mem_backend):
+        mem_backend.add_node("lone", {"memory_type": "semantic"})
+        assert mem_backend.get_edges_for_node("lone") == []
+
+    def test_nonexistent_node_returns_empty(self, mem_backend):
+        assert mem_backend.get_edges_for_node("does-not-exist") == []
+
+
+class TestGetCounts:
+    def test_empty_graph(self, mem_backend):
+        counts = mem_backend.get_counts()
+        assert counts == {"node_count": 0, "edge_count": 0}
+
+    def test_counts_after_ingest(self, mem_backend):
+        mem_backend.add_node("a", {"memory_type": "semantic"})
+        mem_backend.add_node("b", {"memory_type": "semantic"})
+        mem_backend.add_edge("a", "b", "rel", {})
+        counts = mem_backend.get_counts()
+        assert counts["node_count"] == 2
+        assert counts["edge_count"] == 1
