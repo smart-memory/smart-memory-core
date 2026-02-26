@@ -101,6 +101,8 @@ class LLMExtractConfig(MemoryBaseModel):
     max_entities: int = 10
     max_relations: int = 30
     enable_relations: bool = True
+    extract_decisions: bool = False  # CORE-SYS2-1b: widen LLM schema to auto-extract decisions
+    decision_confidence_threshold: float = 0.75  # CORE-SYS2-1b: min confidence to store a decision
 
 
 @dataclass
@@ -297,6 +299,17 @@ class PipelineConfig(MemoryBaseModel):
                 llm_extract=LLMExtractConfig(enabled=False),
             ),
         )
+
+    @classmethod
+    def with_decisions(cls, workspace_id: Optional[str] = None) -> "PipelineConfig":
+        """Default pipeline with automatic decision extraction enabled (CORE-SYS2-1b).
+
+        Same as default() but with extract_decisions=True on the LLM stage.
+        Decisions above the confidence threshold (0.75) are stored automatically.
+        """
+        config = cls.default(workspace_id=workspace_id)
+        config.extraction.llm_extract.extract_decisions = True
+        return config
 
 
 # ------------------------------------------------------------------ #

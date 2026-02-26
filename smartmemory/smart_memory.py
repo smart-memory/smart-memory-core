@@ -377,6 +377,7 @@ class SmartMemory(MemoryBase):
         enricher_names=None,
         pipeline_config=None,
         sync=True,
+        extract_decisions: bool = False,
     ):
         """Map legacy ingest() parameters to a v2 PipelineConfig."""
         from smartmemory.pipeline.config import PipelineConfig
@@ -396,6 +397,8 @@ class SmartMemory(MemoryBase):
             config.enrich.enricher_names = list(enricher_names)
         if not sync:
             config.mode = "async"
+        if extract_decisions:
+            config.extraction.llm_extract.extract_decisions = True
 
         # Pull workspace from scope provider
         try:
@@ -427,6 +430,7 @@ class SmartMemory(MemoryBase):
         pipeline_config: Optional[PipelineConfigBundle] = None,
         sync: Optional[bool] = None,
         auto_challenge: Optional[bool] = None,
+        extract_decisions: bool = False,
         **kwargs,
     ) -> Union[str, Dict[str, Any]]:
         """
@@ -643,6 +647,7 @@ class SmartMemory(MemoryBase):
             enricher_names=enricher_names if enricher_names is not None else getattr(self, "_enricher_pipeline", []),
             pipeline_config=pipeline_config,
             sync=True,
+            extract_decisions=extract_decisions,
         )
 
         # Build metadata dict for the pipeline — merge context so memory_type flows through
@@ -664,6 +669,40 @@ class SmartMemory(MemoryBase):
             config=pipeline_cfg,
             metadata=meta,
         )
+
+        # CORE-SYS2-1b: dispatch auto-extracted decisions — non-fatal, pipeline work is done
+        if pipeline_cfg.extraction.llm_extract.extract_decisions and state.llm_decisions:
+            try:
+                from smartmemory.decisions.manager import DecisionManager
+
+                _threshold = pipeline_cfg.extraction.llm_extract.decision_confidence_threshold
+                _dm = DecisionManager(memory=self)
+                for _raw in state.llm_decisions:
+                    if not isinstance(_raw, dict):
+                        logger.debug("Skipping non-dict auto-extracted decision: %r", _raw)
+                        continue
+                    try:
+                        _content = str(_raw.get("content", "")).strip()
+                        if not _content:
+                            continue
+                        _confidence = float(_raw.get("confidence", 0))
+                    except (TypeError, ValueError):
+                        logger.debug("Skipping malformed auto-extracted decision: %r", _raw)
+                        continue
+                    if _confidence < _threshold:
+                        continue
+                    try:
+                        _dm.create(
+                            content=_content,
+                            decision_type=_raw.get("decision_type", "inference"),
+                            confidence=_confidence,
+                            source_type="inferred",
+                            tags=["auto_extracted"],
+                        )
+                    except Exception as _e:
+                        logger.warning("Failed to store auto-extracted decision: %s", _e)
+            except Exception as _e:
+                logger.warning("Decision dispatch failed (non-fatal): %s", _e)
 
         # Save token usage summary for retrieval by service layer (CFS-1)
         if state.token_tracker:

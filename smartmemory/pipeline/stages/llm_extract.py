@@ -64,7 +64,16 @@ class LLMExtractStage:
             entities = entities[: llm_cfg.max_entities]
             relations = relations[: llm_cfg.max_relations]
 
-            return replace(state, llm_entities=entities, llm_relations=relations, extraction_status="llm_enriched")
+            # CORE-SYS2-1b: pass raw decision dicts through to SmartMemory.ingest() dispatch
+            llm_decisions = result.get("decisions", []) if llm_cfg.extract_decisions else []
+
+            return replace(
+                state,
+                llm_entities=entities,
+                llm_relations=relations,
+                llm_decisions=llm_decisions,
+                extraction_status="llm_enriched",
+            )
         except Exception as e:
             logger.warning("LLM extraction failed: %s", e)
             return replace(state, extraction_status="llm_failed")
@@ -129,6 +138,10 @@ class LLMExtractStage:
                     extractor.cfg.temperature = llm_cfg.temperature
                 if llm_cfg.max_tokens is not None:
                     extractor.cfg.max_tokens = llm_cfg.max_tokens
+                # CORE-SYS2-1b: GroqExtractor is a zero-arg subclass of LLMSingleExtractor;
+                # inject extract_decisions after construction via replace() (already imported).
+                # Do NOT call dataclasses.replace() — only 'replace' is in scope here.
+                extractor.cfg = replace(extractor.cfg, extract_decisions=llm_cfg.extract_decisions)
                 return extractor
             except Exception:
                 logger.debug("GroqExtractor init failed, falling back to default")
@@ -140,8 +153,10 @@ class LLMExtractStage:
             ext_config.temperature = llm_cfg.temperature
         if llm_cfg.max_tokens is not None:
             ext_config.max_tokens = llm_cfg.max_tokens
+        # CORE-SYS2-1b: forward the flag so non-Groq providers (OpenAI, etc.) also extract decisions
+        ext_config.extract_decisions = llm_cfg.extract_decisions
 
         return LLMSingleExtractor(config=ext_config)
 
     def undo(self, state: PipelineState) -> PipelineState:
-        return replace(state, llm_entities=[], llm_relations=[])
+        return replace(state, llm_entities=[], llm_relations=[], llm_decisions=[])

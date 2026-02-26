@@ -16,6 +16,7 @@ Use LLMExtractor (two-call) when:
 - Using slower models where extra call is negligible
 """
 
+import copy
 import hashlib
 import json
 import logging
@@ -148,6 +149,60 @@ EXTRACTION_JSON_SCHEMA = {
     },
 }
 
+# CORE-SYS2-1b: Increment when SINGLE_CALL_PROMPT or EXTRACTION_JSON_SCHEMA changes shape.
+# This invalidates all cached extraction results without requiring a manual cache clear.
+EXTRACTION_SCHEMA_VERSION = 1
+
+_DECISIONS_PROMPT_SECTION = """
+DECISION EXTRACTION (only if clearly present in the text):
+A "decision" is a firm choice, commitment, or conclusion — not a hypothetical,
+possibility, or plan not yet committed to.
+
+DECISION TYPES: choice | preference | belief | inference | policy
+
+CONFIDENCE GUIDE:
+- 0.9+: explicit verbs ("decided to", "chose", "committed to")
+- 0.75-0.89: strong implicit commitment ("will use", "going with", "sticking with")
+- Below 0.75: omit — confidence gate will suppress it anyway
+
+Add to the JSON response:
+  "decisions": [
+    {"content": "exact statement", "decision_type": "choice", "confidence": 0.85}
+  ]
+If no decisions are present, return "decisions": [].
+"""
+
+
+def _build_extraction_schema(extract_decisions: bool) -> dict:
+    """Build the JSON schema for structured-output local models.
+
+    When extract_decisions is True, adds an optional 'decisions' property.
+    Always deepcopies to avoid mutating the module-level EXTRACTION_JSON_SCHEMA constant.
+    """
+    schema = copy.deepcopy(EXTRACTION_JSON_SCHEMA)
+    if extract_decisions:
+        # EXTRACTION_JSON_SCHEMA nests under ["json_schema"]["schema"] per OpenAI format
+        inner = schema["json_schema"]["schema"]
+        inner["properties"]["decisions"] = {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "content": {"type": "string"},
+                    "decision_type": {
+                        "type": "string",
+                        "enum": ["choice", "preference", "belief", "inference", "policy"],
+                    },
+                    "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                },
+                "required": ["content", "decision_type", "confidence"],
+                "additionalProperties": False,
+            },
+        }
+        # decisions is optional — content without decisions must not fail schema validation.
+        # Do NOT add "decisions" to "required".
+    return schema
+
 
 @dataclass
 class LLMSingleExtractorConfig(MemoryBaseModel):
@@ -160,6 +215,7 @@ class LLMSingleExtractorConfig(MemoryBaseModel):
     temperature: float = 0.0
     max_tokens: int = 2000
     reasoning_effort: Optional[str] = None  # For o-series models
+    extract_decisions: bool = False  # CORE-SYS2-1b: widen LLM schema to extract decisions
 
 
 class LLMSingleExtractor(ExtractorPlugin):
@@ -212,8 +268,16 @@ class LLMSingleExtractor(ExtractorPlugin):
         if not text or not text.strip():
             return {"entities": [], "relations": []}
 
-        # Build cache key upfront
-        cache_key = f"single_{self.cfg.model_name}_{text}"
+        # Build cache key upfront — include extract_decisions and schema version so toggling
+        # the flag does not serve stale cached payloads that lack the decisions key.
+        # Use sha256 for a deterministic digest; Python's hash() is process-randomized.
+        _text_digest = hashlib.sha256(text.encode()).hexdigest()[:16]
+        cache_key = (
+            f"single_{self.cfg.model_name}:"
+            f"{self.cfg.extract_decisions}:"
+            f"v{EXTRACTION_SCHEMA_VERSION}:"
+            f"{_text_digest}"
+        )
 
         # Check cache
         cache = None
@@ -234,11 +298,21 @@ class LLMSingleExtractor(ExtractorPlugin):
         # Get API key
         api_key = self._get_api_key()
 
-        # Build prompt
-        user_prompt = SINGLE_CALL_PROMPT.format(text=text)
+        # Build prompt — conditionally inject decisions section before "Return JSON:" header
+        _base_prompt = SINGLE_CALL_PROMPT.format(text=text)
+        if self.cfg.extract_decisions:
+            _base_prompt = _base_prompt.replace(
+                "Return JSON:\n",
+                _DECISIONS_PROMPT_SECTION + "\nReturn JSON:\n",
+            )
+        user_prompt = _base_prompt
 
         # Choose response format: full JSON schema for local models, basic json_object for cloud
-        resp_fmt: Dict[str, Any] = EXTRACTION_JSON_SCHEMA if self.cfg.use_json_schema else {"type": "json_object"}
+        resp_fmt: Dict[str, Any] = (
+            _build_extraction_schema(self.cfg.extract_decisions)
+            if self.cfg.use_json_schema
+            else {"type": "json_object"}
+        )
 
         # Single LLM call
         parsed, raw = call_llm(
@@ -278,10 +352,17 @@ class LLMSingleExtractor(ExtractorPlugin):
         raw_relations = data.get("relations", [])
         relations = self._process_relations(raw_relations, entities)
 
+        # CORE-SYS2-1b: pass decision dicts through unprocessed — dispatch and validation
+        # happen in SmartMemory.ingest() after the pipeline run.
+        # data is the parsed JSON dict; raw is the raw LLM string — do not use raw.get().
+        raw_decisions = data.get("decisions", []) if self.cfg.extract_decisions else []
+
         result = {"entities": entities, "relations": relations}
+        if self.cfg.extract_decisions:
+            result["decisions"] = raw_decisions
 
         # Cache result (only if we got something useful)
-        if cache and (result["entities"] or result["relations"]):
+        if cache and (result["entities"] or result["relations"] or result.get("decisions")):
             try:
                 cache.set_entity_extraction(cache_key, result)
             except Exception as e:

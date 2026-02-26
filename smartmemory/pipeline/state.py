@@ -48,6 +48,7 @@ class PipelineState:
     ruler_entities: List[Any] = field(default_factory=list)
     llm_entities: List[Any] = field(default_factory=list)
     llm_relations: List[Any] = field(default_factory=list)
+    llm_decisions: List[Dict[str, Any]] = field(default_factory=list)  # CORE-SYS2-1b
     extraction_status: Optional[str] = None  # ruler_only | llm_enriched | llm_failed
 
     # -- Constraint (post-extraction) --

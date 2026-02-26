@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### CORE-SYS2-1b — Auto-Extract Decisions via LLM Schema Extension
+
+- `_build_extraction_schema(extract_decisions: bool)` — builds the LLM response schema by deep-copying `EXTRACTION_JSON_SCHEMA` and optionally appending a `decisions` array property. Never mutates the module-level constant.
+- `EXTRACTION_SCHEMA_VERSION` — integer constant for cache-level schema invalidation. Increment when extraction schema changes.
+- `LLMSingleExtractorConfig.extract_decisions: bool = False` — flag controlling whether the extractor requests decisions from the LLM.
+- Updated cache key in `LLMSingleExtractor._extract_impl()` to include `extract_decisions`, `EXTRACTION_SCHEMA_VERSION`, and a `sha256` text digest (replaces unstable `hash()`).
+- `LLMExtractConfig.extract_decisions: bool = False` and `decision_confidence_threshold: float = 0.75` — pipeline-level controls on `LLMExtractConfig`.
+- `PipelineConfig.with_decisions()` — factory method that builds a default config with LLM decision extraction enabled.
+- `PipelineState.llm_decisions: List[Dict[str, Any]]` — carries raw decision dicts from `LLMExtractStage` to `SmartMemory.ingest()`.
+- `LLMExtractStage` Groq and non-Groq paths both forward `extract_decisions` to the extractor config. `execute()` writes `llm_decisions` to state; `undo()` clears it.
+- `SmartMemory.ingest(extract_decisions=False)` — post-pipeline dispatch block stores qualifying decisions via `DecisionManager.create()`. Tags each decision with `"auto_extracted"`. Non-fatal at every level: per-item `(TypeError, ValueError)` guard + outer `Exception` guard around `create()`.
+- `IngestRequest.extract_decisions: bool = False` (service layer) — exposed on both `/memory/ingest` and `/memory/ingest/full`.
+- 26 unit tests + 4 integration tests.
+
 #### Two-Tier Async Extraction + EntityRuler Self-Learning Loop (CORE-EXT-1)
 - `PipelineConfig.tier1()` — sync-only profile (EntityRuler + store + link + enrich + evolve, no LLM extraction).
 - `RedisStreamQueue.for_extract()` / `.for_ground()` — factory methods for extract and ground worker queues.
