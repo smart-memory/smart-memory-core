@@ -34,7 +34,11 @@ class SpanContext:
             name: Event name in dot notation (e.g., "graph.add_node").
             attributes: Key-value payload for the event.
         """
-        if not self.trace_id:  # no-op when observability is disabled (empty SpanContext)
+        # No-op when observability is disabled AND no in-process sink is active.
+        # When _current_sink is set (lite mode), we must proceed so graph mutation
+        # events reach the WebSocket broadcaster even with observability=False.
+        from smartmemory.observability.events import _current_sink
+        if not self.trace_id and _current_sink.get() is None:
             return
         resolved_component = name.split(".")[0] if name else "unknown"
         operation = name.split(".", 1)[1] if "." in name else name
@@ -100,6 +104,14 @@ def _get_spooler():
 
 
 def _emit_span(event_data: dict) -> None:
+    # DIST-LITE-3: dispatch to in-process sink when one is active (lite mode).
+    # This path is sink-only — the Redis spooler is never reached when a sink is set.
+    from smartmemory.observability.events import _current_sink
+    sink = _current_sink.get()
+    if sink is not None:
+        sink.emit(event_data.get("event_type", "span"), event_data)
+        return
+
     spooler = _get_spooler()
     if spooler is None:
         return

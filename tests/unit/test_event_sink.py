@@ -238,6 +238,92 @@ class TestContextVarDispatch:
 
 
 # ---------------------------------------------------------------------------
+# 2b. Tracing path: SpanContext.emit_event() and _emit_span() with sink
+# ---------------------------------------------------------------------------
+
+
+class TestTracingWithSink:
+    def test_emit_span_dispatches_to_current_sink(self):
+        """_emit_span() routes to _current_sink when set, never touches Redis."""
+        from smartmemory.observability.events import _current_sink
+        from smartmemory.observability.tracing import _emit_span
+
+        mock_sink = MagicMock()
+        token = _current_sink.set(mock_sink)
+        try:
+            _emit_span({
+                "event_type": "span_event",
+                "component": "graph",
+                "operation": "add_node",
+                "name": "graph.add_node",
+            })
+        finally:
+            _current_sink.reset(token)
+
+        mock_sink.emit.assert_called_once()
+        args = mock_sink.emit.call_args[0]
+        assert args[0] == "span_event"
+        assert args[1]["component"] == "graph"
+
+    def test_span_context_emit_event_reaches_sink_when_observability_disabled(self):
+        """SpanContext.emit_event() must reach _current_sink even when trace_id is empty.
+
+        This is the DIST-LITE-3 fix: lite mode sets observability=False which yields
+        SpanContext(trace_id=""). The original guard `if not self.trace_id: return`
+        blocked all span events from reaching the sink. Now it checks both conditions.
+        """
+        from smartmemory.observability.events import _current_sink
+        from smartmemory.observability.tracing import SpanContext
+
+        mock_sink = MagicMock()
+        # SpanContext with empty trace_id — what trace_span() yields under observability=False
+        span = SpanContext(trace_id="", span_id="", name="graph.add_node")
+
+        token = _current_sink.set(mock_sink)
+        try:
+            span.emit_event("graph.add_node", {
+                "memory_id": "test-123",
+                "memory_type": "semantic",
+                "label": "hello",
+            })
+        finally:
+            _current_sink.reset(token)
+
+        # Sink must have received the event despite empty trace_id
+        mock_sink.emit.assert_called_once()
+        payload = mock_sink.emit.call_args[0][1]
+        assert payload["component"] == "graph"
+        assert payload["operation"] == "add_node"
+        assert payload["memory_id"] == "test-123"
+
+    def test_span_context_emit_event_noop_when_no_sink_and_no_trace(self):
+        """With no sink and no trace_id, SpanContext.emit_event() is still a no-op."""
+        from smartmemory.observability.events import _current_sink
+        from smartmemory.observability.tracing import SpanContext
+
+        assert _current_sink.get() is None
+        span = SpanContext(trace_id="", span_id="", name="graph.add_node")
+        # Must not raise, must not dispatch
+        span.emit_event("graph.add_node", {"memory_id": "x"})
+
+    def test_emit_span_does_not_reach_redis_spooler_when_sink_active(self):
+        """When _current_sink is set, _emit_span returns early — Redis spooler never called."""
+        from smartmemory.observability.events import _current_sink
+        from smartmemory.observability.tracing import _emit_span
+
+        mock_sink = MagicMock()
+        token = _current_sink.set(mock_sink)
+        try:
+            with patch("smartmemory.observability.tracing._get_spooler") as mock_get_spooler:
+                _emit_span({"event_type": "span", "component": "graph", "operation": "test"})
+            mock_get_spooler.assert_not_called()
+        finally:
+            _current_sink.reset(token)
+
+        mock_sink.emit.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
 # 3. Integration-lite (SmartMemory wiring)
 # ---------------------------------------------------------------------------
 
