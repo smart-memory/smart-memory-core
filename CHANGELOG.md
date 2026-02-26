@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### DIST-LITE-6 — Clean Lite Install Path (Zero-Infra Facade)
+
+- Moved `falkordb` and `redis` from base dependencies to the `[server]` optional extra in `pyproject.toml`. `pip install smartmemory` now installs zero infra packages.
+- Lazified 8 files that previously had unconditional top-level infra imports: `falkordb.py`, `async_falkordb.py`, `falkor_vector_backend.py`, `ontology/registry.py`, `falkordb_graph_service.py`, `cache.py`, `events.py`, `metrics_consumer.py`.
+- Hard-fail modules (FalkorDB backends, `RedisCache`) raise `ImportError` with an actionable `pip install smartmemory[server]` hint on instantiation.
+- Soft-fail modules (`EventSpooler`, `MetricsConsumer`) degrade gracefully when Redis is absent — `_connected`/`_redis_available` flag prevents any further Redis calls.
+- `create_lite_memory()` now defaults to `PipelineConfig.lite()` when `pipeline_profile` is not supplied, correcting a regression where it ran the full LLM pipeline.
+- 22 new unit tests in `tests/unit/test_lite_install_path.py` covering import-time safety, hard-fail with install hints, soft-fail degradation, and spaCy auto-download.
+
 #### CORE-SYS2-1b — Auto-Extract Decisions via LLM Schema Extension
 
 - `_build_extraction_schema(extract_decisions: bool)` — builds the LLM response schema by deep-copying `EXTRACTION_JSON_SCHEMA` and optionally appending a `decisions` array property. Never mutates the module-level constant.

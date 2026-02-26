@@ -1,8 +1,6 @@
 from typing import Dict, List, Optional
 import math
 
-from falkordb import FalkorDB
-
 from smartmemory.utils import get_config
 from .base import VectorBackend
 
@@ -18,14 +16,19 @@ class FalkorVectorBackend(VectorBackend):
     """
 
     def __init__(self, collection_name: str, persist_directory: Optional[str]):  # persist_directory unused
-        if FalkorDB is None:
-            raise RuntimeError("falkordb package is not installed but vector backend=falkordb")
+        try:
+            from falkordb import FalkorDB as _FalkorDB
+        except ImportError:
+            raise ImportError(
+                "falkordb is required for server mode. "
+                "Install it with: pip install smartmemory[server]"
+            ) from None
         graph_cfg = get_config("graph_db") or {}
         # graph_cfg is a ValidatedConfigDict; support dict access too for safety
         host = getattr(graph_cfg, "host", None) or (graph_cfg.get("host") if isinstance(graph_cfg, dict) else None) or "localhost"
         port = getattr(graph_cfg, "port", None) or (graph_cfg.get("port") if isinstance(graph_cfg, dict) else None) or 9010
         graph_name = getattr(graph_cfg, "graph_name", None) or (graph_cfg.get("graph_name") if isinstance(graph_cfg, dict) else None) or "smartmemory"
-        self.db = FalkorDB(host=host, port=port)
+        self.db = _FalkorDB(host=host, port=port)
         self.graph = self.db.select_graph(graph_name)
         # Use a label derived from collection to isolate per-collection vectors
         # Sanitize to alphanumeric + underscore

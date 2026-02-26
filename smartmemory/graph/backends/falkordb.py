@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import logging
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-from falkordb import FalkorDB
 from smartmemory.graph.backends.backend import SmartGraphBackend
 from smartmemory.utils import unflatten_dict, flatten_dict, get_config
 from smartmemory.utils.deduplication import get_canonical_key, normalize_entity_type
@@ -66,7 +67,14 @@ class FalkorDBBackend(SmartGraphBackend):
 
         self.scope_provider = scope_provider or DefaultScopeProvider()
 
-        self.db = FalkorDB(host=self.host, port=self.port)
+        try:
+            from falkordb import FalkorDB as _FalkorDB
+        except ImportError:
+            raise ImportError(
+                "falkordb is required for server mode. "
+                "Install it with: pip install smartmemory[server]"
+            ) from None
+        self.db = _FalkorDB(host=self.host, port=self.port)
         self.graph = self.db.select_graph(self.graph_name)
 
     # ---------- Capability Checks ----------

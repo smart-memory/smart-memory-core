@@ -7,7 +7,6 @@ import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-import falkordb
 from smartmemory.configuration import MemoryConfig
 from smartmemory.ontology.ir_models import OntologyIR, Concept, Relation, TaxonomyRelation, Status
 
@@ -32,7 +31,14 @@ class FalkorDBGraphService:
         self.graph = None
 
         try:
-            self.client = falkordb.FalkorDB(host=host, port=port)
+            import falkordb as _falkordb
+        except ImportError:
+            raise ImportError(
+                "falkordb is required for server mode. "
+                "Install it with: pip install smartmemory[server]"
+            ) from None
+        try:
+            self.client = _falkordb.FalkorDB(host=host, port=port)
             self.graph = self.client.select_graph(graph_name)
             logger.info(f"FalkorDB connected: {host}:{port}/{graph_name}")
         except Exception as e:

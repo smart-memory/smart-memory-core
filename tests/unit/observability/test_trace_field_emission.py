@@ -34,12 +34,13 @@ def _make_spooler(**overrides):
 
     with (
         patch("smartmemory.observability.events.get_config", return_value=cfg),
-        patch("smartmemory.observability.events.redis.Redis", return_value=mock_redis),
+        patch("redis.Redis", return_value=mock_redis),
     ):
         from smartmemory.observability.events import EventSpooler
 
         spooler = EventSpooler(**overrides)
         spooler.redis_client = mock_redis
+        spooler._connected = True
         return spooler, mock_redis
 
 

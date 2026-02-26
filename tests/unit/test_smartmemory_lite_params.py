@@ -176,7 +176,9 @@ def test_pipeline_profile_applied_in_build():
         config = mem._build_pipeline_config()
         assert config.coreference.enabled is False
         assert config.extraction.llm_extract.enabled is False
-        assert config.enrich.enricher_names == ["basic_enricher"]
+        assert config.enrich.enricher_names == [
+            "basic_enricher", "sentiment_enricher", "temporal_enricher", "topic_enricher"
+        ]
         assert config.enrich.wikidata.enabled is False
 
 

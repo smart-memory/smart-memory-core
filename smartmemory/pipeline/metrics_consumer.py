@@ -20,9 +20,10 @@ from __future__ import annotations
 import json
 import logging
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import redis
+if TYPE_CHECKING:
+    import redis
 
 from smartmemory.utils import get_config
 
@@ -40,20 +41,31 @@ class MetricsConsumer:
 
     def __init__(
         self,
-        redis_client: redis.Redis | None = None,
+        redis_client: redis.Redis | None = None,  # annotation is a deferred string (PEP 563)
         stream_name: str = METRICS_STREAM,
     ):
-        if redis_client is not None:
-            self.redis = redis_client
-        else:
-            config = get_config()
-            rc = config.cache.redis
-            self.redis = redis.Redis(
-                host=rc.host, port=int(rc.port), db=1, decode_responses=True
-            )
+        self._redis_available = False
         self.stream_name = stream_name
         self._last_id = "0-0"
-        self._restore_cursor()
+
+        if redis_client is not None:
+            self.redis = redis_client
+            self._redis_available = True
+        else:
+            try:
+                import redis as _redis
+                config = get_config()
+                rc = config.cache.redis
+                self.redis = _redis.Redis(
+                    host=rc.host, port=int(rc.port), db=1, decode_responses=True
+                )
+                self._redis_available = True
+            except (ImportError, Exception) as exc:
+                logger.debug("Redis unavailable for metrics consumer: %s", exc)
+                self.redis = None
+
+        if self._redis_available:
+            self._restore_cursor()
 
     # -- cursor persistence --------------------------------------------------
 
@@ -150,6 +162,8 @@ class MetricsConsumer:
         Args:
             max_iterations: Cap on events to process (None = all pending).
         """
+        if not self._redis_available:
+            return 0
         processed = 0
         batch_size = 100
 
@@ -231,6 +245,8 @@ class MetricsConsumer:
         Returns:
             List of bucket dicts sorted by timestamp ascending.
         """
+        if not self._redis_available:
+            return []
         now_ts = time.time()
         start_bucket = self._bucket_ts(now_ts - hours * 3600)
         end_bucket = self._bucket_ts(now_ts)

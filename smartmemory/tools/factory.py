@@ -9,6 +9,26 @@ def _default_data_dir() -> Path:
     return Path.home() / ".smartmemory"
 
 
+def _ensure_spacy_model(model: str = "en_core_web_sm") -> None:
+    """Auto-download spaCy model on first use if not already installed.
+
+    Uses rich for progress output when available (pip install smartmemory[lite]).
+    Falls back to plain print on a base install without rich.
+    """
+    import spacy
+    if spacy.util.is_package(model):
+        return
+    try:
+        from rich.console import Console
+        _print = Console().print
+    except ImportError:
+        _print = print  # type: ignore[assignment]
+    _print(f"Downloading spaCy model '{model}' (first run only)...")
+    import spacy.cli
+    spacy.cli.download(model)
+    _print(f"spaCy model '{model}' ready.")
+
+
 def create_lite_memory(
     data_dir: Optional[str] = None,
     entity_ruler_patterns=None,
@@ -31,11 +51,16 @@ def create_lite_memory(
             (full pipeline). Pass PipelineConfig.lite() to disable LLM extraction and
             network enrichers.
     """
+    _ensure_spacy_model()
     from smartmemory.graph.backends.sqlite import SQLiteBackend
     from smartmemory.graph.smartgraph import SmartGraph
+    from smartmemory.pipeline.config import PipelineConfig
     from smartmemory.smart_memory import SmartMemory
     from smartmemory.stores.vector.backends.usearch import UsearchVectorBackend
     from smartmemory.utils.cache import NoOpCache
+
+    if pipeline_profile is None:
+        pipeline_profile = PipelineConfig.lite()
 
     data_path = Path(data_dir).expanduser() if data_dir else _default_data_dir()
     data_path.mkdir(parents=True, exist_ok=True)

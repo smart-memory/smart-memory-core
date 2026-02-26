@@ -7,12 +7,14 @@ Uses ``falkordb.asyncio`` to provide non-blocking graph I/O on top of
 Pure utility functions (``sanitize_label``, ``_is_valid_property``,
 ``_serialize_value``) are imported from the sync module to avoid duplication.
 """
+from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from falkordb.asyncio import FalkorDB as AsyncFalkorDB
+if TYPE_CHECKING:
+    from falkordb.asyncio import FalkorDB as AsyncFalkorDB
 
 from smartmemory.graph.backends.async_backend import AsyncSmartGraphBackend
 from smartmemory.graph.backends.falkordb import sanitize_label, FalkorDBBackend
@@ -82,10 +84,17 @@ class AsyncFalkorDBBackend(AsyncSmartGraphBackend):
 
         Must be awaited before any query method is called.
         """
+        try:
+            from falkordb.asyncio import FalkorDB as _AsyncFalkorDB
+        except ImportError:
+            raise ImportError(
+                "falkordb is required for server mode. "
+                "Install it with: pip install smartmemory[server]"
+            ) from None
         kwargs: Dict[str, Any] = {"host": self.host, "port": self.port}
         if self.max_connections is not None:
             kwargs["max_connections"] = self.max_connections
-        self._db = AsyncFalkorDB(**kwargs)
+        self._db = _AsyncFalkorDB(**kwargs)
         self._graph = self._db.select_graph(self.graph_name)
 
     async def close(self) -> None:

@@ -11,7 +11,6 @@ import json
 import logging
 import os
 import pickle
-import redis
 from typing import Any, Dict, List, Optional, Union
 
 from smartmemory.utils import get_config
@@ -33,6 +32,14 @@ class RedisCache:
 
     def __init__(self, redis_url: Optional[str] = None, prefix: str = "smartmemory"):
         """Initialize Redis cache with connection and configuration."""
+        try:
+            import redis as _redis
+        except ImportError:
+            raise ImportError(
+                "redis is required for caching. "
+                "Install it with: pip install smartmemory[server]"
+            ) from None
+
         self.prefix = prefix
 
         # Get Redis configuration - fail fast if missing
@@ -41,14 +48,14 @@ class RedisCache:
 
         # Connect to Redis
         if redis_url:
-            self.redis = redis.from_url(redis_url)
+            self.redis = _redis.from_url(redis_url)
         else:
             host = redis_config.host
             port = redis_config.port
             db = redis_config.get("db", 0)
             password = redis_config.get("password", None)
 
-            self.redis = redis.Redis(
+            self.redis = _redis.Redis(
                 host=host,
                 port=port,
                 db=db,

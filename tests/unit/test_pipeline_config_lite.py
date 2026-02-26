@@ -19,11 +19,11 @@ def test_lite_llm_extract_disabled():
 
 
 def test_lite_enrichers_basic_only():
-    """PipelineConfig.lite() restricts enrichers to basic_enricher only."""
+    """PipelineConfig.lite() restricts enrichers to local-only (no HTTP enrichers)."""
     config = PipelineConfig.lite()
-    assert config.enrich.enricher_names == ["basic_enricher"], (
-        "lite mode must only run basic_enricher — no HTTP enrichers"
-    )
+    assert config.enrich.enricher_names == [
+        "basic_enricher", "sentiment_enricher", "temporal_enricher", "topic_enricher"
+    ], "lite mode must exclude HTTP enrichers (wikipedia, link_expansion) but keep local ones"
 
 
 def test_lite_wikidata_disabled():

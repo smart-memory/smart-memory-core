@@ -12,14 +12,16 @@ Enhancements:
 """
 
 import json
+import logging
 import os
 import random
-import redis
 import socket
 import uuid
 from typing import Any, Dict, Optional, Iterator, List
 
 from smartmemory.utils import get_config, now
+
+logger = logging.getLogger(__name__)
 
 
 def _is_observability_enabled() -> bool:
@@ -76,7 +78,14 @@ class EventSpooler:
         else:
             eff_stream = base_stream
 
-        self.redis_client = redis.Redis(host=host, port=port, db=eff_db, decode_responses=True)
+        try:
+            import redis as _redis
+            self.redis_client = _redis.Redis(host=host, port=port, db=eff_db, decode_responses=True)
+            self._connected = True
+        except (ImportError, Exception) as exc:
+            logger.debug("Redis unavailable for event spooler: %s", exc)
+            self.redis_client = None
+            self._connected = False
         self.stream_name = eff_stream
         self.db = eff_db
         self.namespace = active_namespace
@@ -134,7 +143,7 @@ class EventSpooler:
         CORE-OBS-2: trace field kwargs become top-level Redis Stream fields when
         provided. Existing callers that don't pass them are unaffected.
         """
-        if not self.obs_enabled:
+        if not self._connected or not self.obs_enabled:
             return
 
         # Per-event sampling
@@ -285,7 +294,12 @@ class EventStream:
         else:
             eff_stream = base_stream
 
-        self.redis_client = redis.Redis(host=host, port=port, db=eff_db, decode_responses=True)
+        try:
+            import redis as _redis
+            self.redis_client = _redis.Redis(host=host, port=port, db=eff_db, decode_responses=True)
+        except (ImportError, Exception) as exc:
+            logger.debug("Redis unavailable for event stream: %s", exc)
+            self.redis_client = None
         self.stream_name = eff_stream
 
     @staticmethod
@@ -395,7 +409,15 @@ class RedisStreamQueue:
             base_stream = stream_name
         ns = config.get("active_namespace")
         eff_stream = f"{base_stream}:{ns}" if ns else base_stream
-        self.redis = redis.Redis(host=host, port=port, db=db or 2, decode_responses=True)
+        try:
+            import redis as _redis
+            self.redis = _redis.Redis(host=host, port=port, db=db or 2, decode_responses=True)
+            self._redis_mod = _redis
+        except ImportError:
+            raise ImportError(
+                "redis is required for RedisStreamQueue. "
+                "Install it with: pip install smartmemory[server]"
+            ) from None
         self.stream_name = eff_stream
         self.group = group
         self.consumer = consumer or f"consumer-{uuid.uuid4().hex[:6]}"
@@ -406,7 +428,7 @@ class RedisStreamQueue:
         try:
             # MKSTREAM creates stream if absent; $ starts from new messages
             self.redis.xgroup_create(self.stream_name, self.group, id="$", mkstream=True)
-        except redis.ResponseError as e:
+        except self._redis_mod.ResponseError as e:
             # Group already exists -> ignore
             if "BUSYGROUP" not in str(e):
                 raise

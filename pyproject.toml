@@ -38,7 +38,6 @@ classifiers = [
 ]
 
 dependencies = [
-    "falkordb>=1.0.0",
     "python-dateutil>=2.8.0",
     "spacy>=3.0.0",
     "vaderSentiment>=3.3.0",
@@ -47,12 +46,17 @@ dependencies = [
     "openai>=1.0.0",
     "scikit-learn>=1.0.0",
     "pydantic>=2.0.0",
-    "redis>=4.0.0",
     "tomli>=2.0.0; python_version < '3.11'",
     "dspy>=3.0.0",
 ]
 
 [project.optional-dependencies]
+# Full server mode: FalkorDB graph database + Redis cache/observability
+server = [
+    "falkordb>=1.0.0",
+    "redis>=4.0.0",
+]
+
 # Optional dependencies for specific extractors
 rebel = ["transformers>=4.0.0"]
 relik = ["relik>=0.1.0"]
@@ -98,6 +102,8 @@ dev = [
 
 # All optional dependencies
 all = [
+    "falkordb>=1.0.0",
+    "redis>=4.0.0",
     "transformers>=4.0.0",
     "relik>=0.1.0",
     "fastcoref>=2.1.0",

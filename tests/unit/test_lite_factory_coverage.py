@@ -115,14 +115,15 @@ def test_apply_lite_pipeline_profile_disables_llm_extract(tmp_path):
 
 
 def test_apply_lite_pipeline_profile_limits_enrichers(tmp_path):
-    """The patched _build_pipeline_config limits enrichers to basic_enricher only."""
+    """The patched _build_pipeline_config limits enrichers to local-only enrichers (no HTTP)."""
     from smartmemory.stores.vector.vector_store import VectorStore
     try:
         memory = create_lite_memory(str(tmp_path))
         config = memory._build_pipeline_config()
-        assert config.enrich.enricher_names == ["basic_enricher"], (
-            "only basic_enricher should run in lite mode — no HTTP enrichers"
-        )
+        # Lite mode runs all local enrichers; HTTP-dependent ones (wikipedia, link_expansion) are excluded.
+        assert config.enrich.enricher_names == [
+            "basic_enricher", "sentiment_enricher", "temporal_enricher", "topic_enricher"
+        ], "lite mode must exclude HTTP enrichers (wikipedia, link_expansion) but keep local ones"
     finally:
         VectorStore.set_default_backend(None)
 

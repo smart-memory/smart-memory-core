@@ -1,4 +1,3 @@
-import falkordb
 import json
 import logging
 from datetime import datetime
@@ -37,11 +36,18 @@ class OntologyRegistry:
     def _init_falkordb_connection(self):
         """Initialize FalkorDB connection."""
         try:
+            import falkordb as _falkordb
+        except ImportError:
+            raise ImportError(
+                "falkordb is required for server mode. "
+                "Install it with: pip install smartmemory[server]"
+            ) from None
+        try:
             host = self.config.graph_db.get("host", "localhost")
             port = self.config.graph_db.get("port", 9010)
             graph_name = self.config.graph_db.get("graph_name", "ontology")
 
-            self.client = falkordb.FalkorDB(host=host, port=port)
+            self.client = _falkordb.FalkorDB(host=host, port=port)
             self.graph = self.client.select_graph(graph_name)
             logger.info(f"FalkorDB connected for ontology registries: {host}:{port}/{graph_name}")
         except Exception as e:

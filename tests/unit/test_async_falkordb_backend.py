@@ -117,7 +117,7 @@ class TestConnectionLifecycle:
         mock_db = MagicMock()
         mock_db.select_graph.return_value = mock_graph
 
-        with patch("smartmemory.graph.backends.async_falkordb.AsyncFalkorDB", return_value=mock_db):
+        with patch("falkordb.asyncio.FalkorDB", return_value=mock_db):
             await backend.connect()
 
         mock_db.select_graph.assert_called_once_with("myg")
@@ -143,7 +143,7 @@ class TestConnectionLifecycle:
         mock_db.connection = MagicMock()
         mock_db.connection.aclose = AsyncMock()
 
-        with patch("smartmemory.graph.backends.async_falkordb.AsyncFalkorDB", return_value=mock_db):
+        with patch("falkordb.asyncio.FalkorDB", return_value=mock_db):
             async with backend as b:
                 assert b is backend
                 assert backend._graph is mock_graph
