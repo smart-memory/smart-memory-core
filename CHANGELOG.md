@@ -11,6 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### DIST-LITE-3 — Lite Mode Graph Viewer Animations (Phase 1 — core)
+
+- `EventSink` — `runtime_checkable` Protocol defining `emit(event_type, payload) -> None`.
+- `InProcessQueueSink` — `asyncio.Queue(maxsize=1000)`-backed sink. `emit()` bridges any thread to the asyncio loop via `call_soon_threadsafe(_put)`. The `_put` closure owns the `QueueFull` catch on the loop thread so the caller thread never raises. `attach_loop(loop | None)` wires or detaches the running loop. `_dropped` counter logs at every 100th dropped event.
+- `NoOpSink` — zero-overhead null object satisfying `EventSink`.
+- `_current_sink: ContextVar[EventSink | None]` — set/reset by `SmartMemory.ingest()` per call so span events from any pipeline stage reach the sink without touching stage interfaces.
+- `emit_event()` — dispatches to `_current_sink` before the Redis guard, independent of `SMARTMEMORY_OBSERVABILITY`.
+- `SmartMemory.__init__` — new `event_sink=None` param.
+- `SmartMemory.ingest()` — both Tier-1 async and sync full-pipeline branches wrap `_pipeline_runner.run()` with ContextVar set/reset in `finally`.
+- `create_lite_memory()` and `lite_context()` — `event_sink=None` threaded through.
+
+### Fixed
+
+#### DIST-LITE-3 — Tracing span events blocked from in-process sink
+
+- `SpanContext.emit_event()` guard changed from `if not self.trace_id` to `if not self.trace_id and _current_sink.get() is None`. Lite mode's `observability=False` yields `SpanContext(trace_id="")`, causing the old guard to silently drop all `graph.add_node` / `graph.add_edge` events before reaching the sink.
+- `_emit_span()` — checks `_current_sink` at entry: when a sink is active, emits to it and returns early, bypassing the Redis `EventSpooler`.
+
 #### DIST-LITE-6 — Clean Lite Install Path (Zero-Infra Facade)
 
 - Moved `falkordb` and `redis` from base dependencies to the `[server]` optional extra in `pyproject.toml`. `pip install smartmemory` now installs zero infra packages.
