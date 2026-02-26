@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "smartmemory"
+name = "smartmemory-core"
 dynamic = ["version"]
 description = "Multi-layered AI memory system with graph databases, vector stores, and intelligent processing pipelines"
 readme = "README.md"
