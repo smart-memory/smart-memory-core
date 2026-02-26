@@ -33,6 +33,7 @@ def create_lite_memory(
     data_dir: Optional[str] = None,
     entity_ruler_patterns=None,
     pipeline_profile=None,
+    event_sink=None,          # DIST-LITE-3: InProcessQueueSink or None
 ):
     """Create a SmartMemory instance backed by SQLite + usearch. No Docker required.
 
@@ -50,6 +51,8 @@ def create_lite_memory(
         pipeline_profile: PipelineConfig to use. Defaults to ``PipelineConfig.lite()``
             (EntityRuler + local enrichers, no LLM calls). Pass ``PipelineConfig.default()``
             to enable LLM extraction and network enrichers.
+        event_sink: Optional in-process event sink (DIST-LITE-3). When provided, pipeline
+            events are dispatched to this sink instead of Redis. Defaults to None.
     """
     _ensure_spacy_model()
     from smartmemory.graph.backends.sqlite import SQLiteBackend
@@ -80,11 +83,12 @@ def create_lite_memory(
         observability=False,
         pipeline_profile=pipeline_profile,
         entity_ruler_patterns=entity_ruler_patterns,
+        event_sink=event_sink,    # DIST-LITE-3
     )
 
 
 @contextmanager
-def lite_context(data_dir: Optional[str] = None, pipeline_profile=None):
+def lite_context(data_dir: Optional[str] = None, pipeline_profile=None, event_sink=None):
     """Context manager that creates a Lite SmartMemory and resets all globals on exit.
 
     Restores observability env, vector backend, cache override, and closes the SQLite
@@ -97,6 +101,8 @@ def lite_context(data_dir: Optional[str] = None, pipeline_profile=None):
         pipeline_profile: PipelineConfig to use. Defaults to PipelineConfig.default()
             (full pipeline). Pass PipelineConfig.lite() to disable LLM extraction and
             network enrichers.
+        event_sink: Optional in-process event sink (DIST-LITE-3). Passed to
+            ``create_lite_memory()``. Defaults to None.
     """
     from smartmemory.stores.vector.vector_store import VectorStore
     from smartmemory.utils.cache import set_cache_override
@@ -107,7 +113,7 @@ def lite_context(data_dir: Optional[str] = None, pipeline_profile=None):
 
     memory = None
     try:
-        memory = create_lite_memory(data_dir, pipeline_profile=pipeline_profile)
+        memory = create_lite_memory(data_dir, pipeline_profile=pipeline_profile, event_sink=event_sink)
         yield memory
     finally:
         # Restore globals regardless of whether construction, yield, or body raised.

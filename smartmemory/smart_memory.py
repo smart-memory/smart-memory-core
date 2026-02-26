@@ -94,6 +94,7 @@ class SmartMemory(MemoryBase):
         observability: bool = True,
         pipeline_profile: Optional[Any] = None,
         entity_ruler_patterns=None,
+        event_sink=None,           # DIST-LITE-3: InProcessQueueSink or None
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -103,6 +104,7 @@ class SmartMemory(MemoryBase):
         self._observability = observability
         self._pipeline_profile = pipeline_profile
         self._entity_ruler_patterns = entity_ruler_patterns
+        self._event_sink = event_sink  # DIST-LITE-3
 
         # Wire observability toggle.
         # We save the old env value before overwriting so a later observability=True
@@ -506,11 +508,18 @@ class SmartMemory(MemoryBase):
                 for k, v in context.items():
                     meta.setdefault(k, v)
 
-            state = self._pipeline_runner.run(
-                text=normalized_item.content or "",
-                config=tier1_cfg,
-                metadata=meta,
-            )
+            # DIST-LITE-3: set ContextVar so emit_event() dispatches to sink for this call
+            from smartmemory.observability.events import _current_sink as _cs
+            _token = _cs.set(self._event_sink) if self._event_sink else None
+            try:
+                state = self._pipeline_runner.run(
+                    text=normalized_item.content or "",
+                    config=tier1_cfg,
+                    metadata=meta,
+                )
+            finally:
+                if _token is not None:
+                    _cs.reset(_token)
             item_id = state.item_id
             entity_ids: dict = state.entity_ids or {}
 
@@ -674,11 +683,18 @@ class SmartMemory(MemoryBase):
             except Exception as e:
                 logger.debug(f"Failed to merge conversation_context into metadata: {e}")
 
-        state = self._pipeline_runner.run(
-            text=normalized_item.content or "",
-            config=pipeline_cfg,
-            metadata=meta,
-        )
+        # DIST-LITE-3: set ContextVar so emit_event() dispatches to sink for this call
+        from smartmemory.observability.events import _current_sink as _cs
+        _token = _cs.set(self._event_sink) if self._event_sink else None
+        try:
+            state = self._pipeline_runner.run(
+                text=normalized_item.content or "",
+                config=pipeline_cfg,
+                metadata=meta,
+            )
+        finally:
+            if _token is not None:
+                _cs.reset(_token)
 
         # CORE-SYS2-1b: dispatch auto-extracted decisions — non-fatal, pipeline work is done
         if pipeline_cfg.extraction.llm_extract.extract_decisions and state.llm_decisions:

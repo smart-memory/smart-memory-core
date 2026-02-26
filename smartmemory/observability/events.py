@@ -11,13 +11,16 @@ Enhancements:
   (keeps existing fields: event_type, component, operation, data)
 """
 
+import asyncio
 import json
 import logging
 import os
 import random
 import socket
 import uuid
+from contextvars import ContextVar
 from typing import Any, Dict, Optional, Iterator, List
+from typing import Protocol, runtime_checkable
 
 from smartmemory.utils import get_config, now
 
@@ -37,6 +40,78 @@ def _is_observability_enabled() -> bool:
 # Defaults for observability stream
 STREAM_NAME = "smartmemory:events"
 REDIS_DB_EVENTS = 1
+
+
+# ---------------------------------------------------------------------------
+# DIST-LITE-3: In-process event sink (bypasses Redis for Lite mode)
+# ---------------------------------------------------------------------------
+
+@runtime_checkable
+class EventSink(Protocol):
+    """Protocol for in-process event consumers. Structurally satisfied by any object
+    that exposes ``emit(event_type, payload) -> None``."""
+
+    def emit(self, event_type: str, payload: dict) -> None:
+        ...
+
+
+_current_sink: ContextVar["EventSink | None"] = ContextVar("_current_sink", default=None)
+
+
+class InProcessQueueSink:
+    """Thread-safe event sink backed by an asyncio.Queue.
+
+    Bridges sync emit() callers (pipeline stages, any thread) to an asyncio
+    broadcast loop via call_soon_threadsafe.  QueueFull handling runs on the
+    loop thread inside the _put closure — never in the caller thread.
+
+    Lifecycle:
+        sink = InProcessQueueSink()
+        sink.attach_loop(loop)   # call once, inside asyncio.run()
+        ...
+        sink.attach_loop(None)   # detach on server shutdown
+    """
+
+    def __init__(self) -> None:
+        self._q: asyncio.Queue = asyncio.Queue(maxsize=1000)
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._dropped: int = 0
+
+    def attach_loop(self, loop: asyncio.AbstractEventLoop | None) -> None:
+        """Attach (or detach when None) the running event loop."""
+        self._loop = loop
+
+    def emit(self, event_type: str, payload: dict) -> None:
+        """Schedule event delivery. Safe to call from any thread at any time."""
+        if self._loop is None:
+            return
+
+        item = {"event_type": event_type, **payload}
+
+        def _put() -> None:
+            try:
+                self._q.put_nowait(item)
+            except asyncio.QueueFull:
+                self._dropped += 1
+                if self._dropped % 100 == 1:
+                    logger.warning(
+                        "InProcessQueueSink: event dropped (total dropped: %d). "
+                        "Consider increasing queue capacity or reducing event rate.",
+                        self._dropped,
+                    )
+
+        try:
+            self._loop.call_soon_threadsafe(_put)
+        except RuntimeError:
+            # Loop is closed or not running — emit is a no-op.
+            pass
+
+
+class NoOpSink:
+    """Sink that silently discards all events. Useful as a null object."""
+
+    def emit(self, event_type: str, payload: dict) -> None:  # noqa: D401
+        pass
 
 
 class EventSpooler:
@@ -233,7 +308,15 @@ def emit_event(
 
     Auto-attaches the current trace_id from the active span context (if any)
     so that all events emitted within a pipeline trace are groupable.
+
+    When a sink is active (set by SmartMemory.ingest() via _current_sink ContextVar),
+    dispatches to the sink and returns early — the Redis EventSpooler is never created.
     """
+    # DIST-LITE-3: ContextVar dispatch — independent of Redis observability toggle.
+    sink = _current_sink.get()
+    if sink is not None:
+        sink.emit(event_type, {"component": component, "operation": operation, **(data or {}), **(metadata or {})})
+        return
     if not _is_observability_enabled():
         return
     # Import here to avoid circular dependency (tracing imports events)
