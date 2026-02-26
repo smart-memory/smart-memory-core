@@ -49,6 +49,7 @@ class PipelineState:
     llm_entities: List[Any] = field(default_factory=list)
     llm_relations: List[Any] = field(default_factory=list)
     llm_decisions: List[Dict[str, Any]] = field(default_factory=list)  # CORE-SYS2-1b
+    reasoning_trace: Optional[Any] = None  # CORE-SYS2-1c: ReasoningTrace from ReasoningDetectStage
     extraction_status: Optional[str] = None  # ruler_only | llm_enriched | llm_failed
 
     # -- Constraint (post-extraction) --
@@ -104,6 +105,8 @@ class PipelineState:
                 val = val.isoformat()
             elif f.name == "token_tracker" and val is not None:
                 val = val.summary()
+            elif f.name == "reasoning_trace" and val is not None:
+                val = val.to_dict() if hasattr(val, "to_dict") else None
             out[f.name] = val
         return out
 
@@ -120,6 +123,10 @@ class PipelineState:
             # Skip token_tracker — summary dict cannot be reconstructed
             # into a live tracker; start fresh on resumed pipelines.
             if k == "token_tracker":
+                continue
+            # Skip reasoning_trace — consumed in-process by sync dispatch,
+            # not needed after cross-process deserialization.
+            if k == "reasoning_trace":
                 continue
             # Re-parse datetime strings
             if k in ("started_at", "completed_at") and isinstance(v, str):

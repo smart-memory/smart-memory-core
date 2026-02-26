@@ -20,6 +20,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `create_lite_memory()` now defaults to `PipelineConfig.lite()` when `pipeline_profile` is not supplied, correcting a regression where it ran the full LLM pipeline.
 - 22 new unit tests in `tests/unit/test_lite_install_path.py` covering import-time safety, hard-fail with install hints, soft-fail degradation, and spaCy auto-download.
 
+#### CORE-SYS2-1c — Opt-In Reasoning Detection Stage
+
+- `ReasoningDetectConfig` dataclass on `ExtractionConfig` — `enabled: bool = False`, `min_quality_score: float = 0.4`, `use_llm_detection: bool = True`.
+- `ReasoningDetectStage` — new pipeline stage after `LLMExtractStage`. Detects reasoning traces (explicit Thought/Action markers or LLM-based implicit detection) via `ReasoningExtractor`. Text priority: `simplified_sentences` > `resolved_text` > `text`. Non-fatal — exceptions logged, never propagated.
+- `PipelineState.reasoning_trace` — carries detected `ReasoningTrace` from stage to post-pipeline dispatch. Serialized via `to_dict()`, dropped on `from_dict()` (not reconstructable from dict).
+- `PipelineConfig.with_reasoning()` — factory method for standalone use/testing (not usable as `pipeline_profile=` constructor argument).
+- `SmartMemory.ingest(extract_reasoning=False)` — opt-in flag. When enabled, post-pipeline dispatch stores reasoning trace as `MemoryItem(memory_type="reasoning", metadata={"auto_extracted": True})` via `self.add()`, linked to source item via `PRODUCED` edge.
+- Flag stamps happen AFTER `_apply_pipeline_profile()` to survive lite profile override. Pre-existing 1b gap fixed: `extract_decisions` stamp also moved after profile application.
+- Sync-only extraction flags contract: async paths (core `sync=False`, service `mode=async`, EventBus) are never stamped. Contract encoded as automated tests.
+- `IngestRequest.extract_reasoning: bool = False` (service layer) — forwarded in both `/memory/ingest` and `/memory/ingest/full` sync routes.
+- 36 unit tests + 4 integration tests.
+
 #### CORE-SYS2-1b — Auto-Extract Decisions via LLM Schema Extension
 
 - `_build_extraction_schema(extract_decisions: bool)` — builds the LLM response schema by deep-copying `EXTRACTION_JSON_SCHEMA` and optionally appending a `decisions` array property. Never mutates the module-level constant.

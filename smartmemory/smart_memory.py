@@ -292,12 +292,15 @@ class SmartMemory(MemoryBase):
         if self._entity_ruler_patterns is not None:
             pattern_manager = self._entity_ruler_patterns
 
+        from smartmemory.pipeline.stages.reasoning_detect import ReasoningDetectStage
+
         stages = [
             ClassifyStage(self._ingestion_flow),
             CoreferenceStageCommand(),
             SimplifyStage(),
             EntityRulerStage(pattern_manager=pattern_manager),
             LLMExtractStage(),
+            ReasoningDetectStage(),  # CORE-SYS2-1c
         ]
         if ontology_constrain_stage is not None:
             stages.append(ontology_constrain_stage)
@@ -378,6 +381,7 @@ class SmartMemory(MemoryBase):
         pipeline_config=None,
         sync=True,
         extract_decisions: bool = False,
+        extract_reasoning: bool = False,
     ):
         """Map legacy ingest() parameters to a v2 PipelineConfig."""
         from smartmemory.pipeline.config import PipelineConfig
@@ -397,8 +401,6 @@ class SmartMemory(MemoryBase):
             config.enrich.enricher_names = list(enricher_names)
         if not sync:
             config.mode = "async"
-        if extract_decisions:
-            config.extraction.llm_extract.extract_decisions = True
 
         # Pull workspace from scope provider
         try:
@@ -410,6 +412,12 @@ class SmartMemory(MemoryBase):
         # Apply constructor-injected pipeline profile (e.g. PipelineConfig.lite())
         if self._pipeline_profile is not None:
             _apply_pipeline_profile(config, self._pipeline_profile)
+
+        # Caller flags override profiles — stamp AFTER profile application
+        if extract_decisions:
+            config.extraction.llm_extract.extract_decisions = True
+        if extract_reasoning:
+            config.extraction.reasoning_detect.enabled = True
 
         return config
 
@@ -431,6 +439,7 @@ class SmartMemory(MemoryBase):
         sync: Optional[bool] = None,
         auto_challenge: Optional[bool] = None,
         extract_decisions: bool = False,
+        extract_reasoning: bool = False,
         **kwargs,
     ) -> Union[str, Dict[str, Any]]:
         """
@@ -648,6 +657,7 @@ class SmartMemory(MemoryBase):
             pipeline_config=pipeline_config,
             sync=True,
             extract_decisions=extract_decisions,
+            extract_reasoning=extract_reasoning,
         )
 
         # Build metadata dict for the pipeline — merge context so memory_type flows through
@@ -703,6 +713,43 @@ class SmartMemory(MemoryBase):
                         logger.warning("Failed to store auto-extracted decision: %s", _e)
             except Exception as _e:
                 logger.warning("Decision dispatch failed (non-fatal): %s", _e)
+
+        # CORE-SYS2-1c: dispatch auto-extracted reasoning trace — non-fatal
+        if pipeline_cfg.extraction.reasoning_detect.enabled and state.reasoning_trace:
+            try:
+                from smartmemory.models.memory_item import MemoryItem as _MemoryItem
+
+                _trace = state.reasoning_trace
+                _reasoning_item = _MemoryItem(
+                    content=_trace.content,
+                    memory_type="reasoning",
+                    metadata={
+                        "trace_id": _trace.trace_id,
+                        "quality_score": (
+                            _trace.evaluation.quality_score if _trace.evaluation else None
+                        ),
+                        "step_count": _trace.step_count,
+                        "has_explicit_markup": _trace.has_explicit_markup,
+                        "auto_extracted": True,
+                    },
+                )
+                _reasoning_item_id = self.add(_reasoning_item)
+
+                if state.item_id and self._graph:
+                    self._graph.add_edge(
+                        source_id=_reasoning_item_id,
+                        target_id=state.item_id,
+                        edge_type="PRODUCED",
+                        properties={
+                            "confidence": (
+                                _trace.evaluation.quality_score
+                                if _trace.evaluation
+                                else 0.5
+                            ),
+                        },
+                    )
+            except Exception as _e:
+                logger.warning("Reasoning dispatch failed (non-fatal): %s", _e)
 
         # Save token usage summary for retrieval by service layer (CFS-1)
         if state.token_tracker:

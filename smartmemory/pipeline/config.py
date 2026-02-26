@@ -129,6 +129,20 @@ class ConstrainConfig(MemoryBaseModel):
 
 
 # ------------------------------------------------------------------ #
+# Detection configs
+# ------------------------------------------------------------------ #
+
+
+@dataclass
+class ReasoningDetectConfig(MemoryBaseModel):
+    """Opt-in reasoning trace detection (CORE-SYS2-1c)."""
+
+    enabled: bool = False  # opt-in
+    min_quality_score: float = 0.4  # matches ReasoningEvaluation.should_store threshold
+    use_llm_detection: bool = True  # allow LLM fallback for implicit reasoning
+
+
+# ------------------------------------------------------------------ #
 # Composite configs
 # ------------------------------------------------------------------ #
 
@@ -142,6 +156,7 @@ class ExtractionConfig(MemoryBaseModel):
     llm_extract: LLMExtractConfig = field(default_factory=LLMExtractConfig)
     promotion: PromotionConfig = field(default_factory=PromotionConfig)
     constrain: ConstrainConfig = field(default_factory=ConstrainConfig)
+    reasoning_detect: ReasoningDetectConfig = field(default_factory=ReasoningDetectConfig)
     max_extraction_attempts: int = 3
 
 
@@ -309,6 +324,22 @@ class PipelineConfig(MemoryBaseModel):
         """
         config = cls.default(workspace_id=workspace_id)
         config.extraction.llm_extract.extract_decisions = True
+        return config
+
+    @classmethod
+    def with_reasoning(cls, workspace_id: Optional[str] = None) -> "PipelineConfig":
+        """Default pipeline with reasoning detection enabled (CORE-SYS2-1c).
+
+        Same as default() but with reasoning_detect.enabled=True.
+        Reasoning traces above the quality threshold (0.4) are stored automatically.
+
+        Note: This factory is intended for standalone use or testing, NOT as a
+        ``pipeline_profile=`` constructor argument. Profile application copies only
+        4 fields and does not propagate reasoning_detect. To enable reasoning in
+        production, pass ``extract_reasoning=True`` to ``ingest()`` instead.
+        """
+        config = cls.default(workspace_id=workspace_id)
+        config.extraction.reasoning_detect.enabled = True
         return config
 
 
