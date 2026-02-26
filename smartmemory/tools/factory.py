@@ -36,20 +36,20 @@ def create_lite_memory(
 ):
     """Create a SmartMemory instance backed by SQLite + usearch. No Docker required.
 
-    Lite mode refers to the storage layer only: SQLite replaces FalkorDB, usearch
-    replaces the FalkorDB vector index, Redis cache is a no-op, and observability
-    events are disabled. The pipeline runs at full quality by default — LLM extraction
-    and enrichers are active if API keys are available.
+    Lite mode replaces FalkorDB with SQLite, the FalkorDB vector index with usearch,
+    Redis cache with a no-op, and disables observability event emission. The pipeline
+    defaults to ``PipelineConfig.lite()`` — EntityRuler + local enrichers only, no LLM
+    calls and no network enrichers.
 
-    To opt into a restricted pipeline (no LLM calls, no network enrichers), pass
-    ``pipeline_profile=PipelineConfig.lite()`` explicitly.
+    To run the full pipeline (LLM extraction, network enrichers), pass
+    ``pipeline_profile=PipelineConfig.default()`` explicitly.
 
     Args:
         data_dir: Directory for SQLite and usearch persistence. Defaults to ~/.smartmemory.
         entity_ruler_patterns: Optional pattern manager injected into EntityRulerStage.
-        pipeline_profile: PipelineConfig to use. Defaults to PipelineConfig.default()
-            (full pipeline). Pass PipelineConfig.lite() to disable LLM extraction and
-            network enrichers.
+        pipeline_profile: PipelineConfig to use. Defaults to ``PipelineConfig.lite()``
+            (EntityRuler + local enrichers, no LLM calls). Pass ``PipelineConfig.default()``
+            to enable LLM extraction and network enrichers.
     """
     _ensure_spacy_model()
     from smartmemory.graph.backends.sqlite import SQLiteBackend

@@ -6,6 +6,7 @@ that _emit_span() passes them correctly.
 """
 
 import json
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -23,7 +24,12 @@ class _AttrDict(dict):
 
 
 def _make_spooler(**overrides):
-    """Create an EventSpooler with mocked Redis and config."""
+    """Create an EventSpooler with mocked Redis and config.
+
+    Uses patch.dict(sys.modules) rather than patch("redis.Redis") so the test
+    works in environments where the redis package is not installed (e.g. a bare
+    ``pip install smartmemory`` without [server]).
+    """
     mock_redis = MagicMock()
     cfg = _AttrDict(
         {
@@ -32,9 +38,15 @@ def _make_spooler(**overrides):
     )
     cfg.get = lambda key, default=None: {} if key in ("observability", "active_namespace") else default
 
+    # Build a minimal fake redis module so that `import redis as _redis` inside
+    # EventSpooler succeeds even when the real package is absent.
+    mock_redis_mod = MagicMock()
+    mock_redis_mod.Redis.return_value = mock_redis
+    mock_redis_mod.ResponseError = Exception  # must be a real exception class
+
     with (
         patch("smartmemory.observability.events.get_config", return_value=cfg),
-        patch("redis.Redis", return_value=mock_redis),
+        patch.dict(sys.modules, {"redis": mock_redis_mod}),
     ):
         from smartmemory.observability.events import EventSpooler
 

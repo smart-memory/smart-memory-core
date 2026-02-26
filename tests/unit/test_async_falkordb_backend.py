@@ -5,6 +5,7 @@ All async graph I/O is mocked at the AsyncGraph level.
 """
 
 import inspect
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -117,7 +118,9 @@ class TestConnectionLifecycle:
         mock_db = MagicMock()
         mock_db.select_graph.return_value = mock_graph
 
-        with patch("falkordb.asyncio.FalkorDB", return_value=mock_db):
+        mock_asyncio_mod = MagicMock()
+        mock_asyncio_mod.FalkorDB.return_value = mock_db
+        with patch.dict(sys.modules, {"falkordb": MagicMock(), "falkordb.asyncio": mock_asyncio_mod}):
             await backend.connect()
 
         mock_db.select_graph.assert_called_once_with("myg")
@@ -143,7 +146,9 @@ class TestConnectionLifecycle:
         mock_db.connection = MagicMock()
         mock_db.connection.aclose = AsyncMock()
 
-        with patch("falkordb.asyncio.FalkorDB", return_value=mock_db):
+        mock_asyncio_mod = MagicMock()
+        mock_asyncio_mod.FalkorDB.return_value = mock_db
+        with patch.dict(sys.modules, {"falkordb": MagicMock(), "falkordb.asyncio": mock_asyncio_mod}):
             async with backend as b:
                 assert b is backend
                 assert backend._graph is mock_graph
