@@ -104,8 +104,11 @@ The memory ingestion flow processes data through several stages:
 ### From PyPI (Recommended)
 
 ```bash
-# Core package
+# Core package (zero infra — SQLite + usearch, no Docker required)
 pip install smartmemory
+
+# With FalkorDB + Redis server backends
+pip install smartmemory[server]        # FalkorDB graph DB + Redis cache
 
 # With optional features
 pip install smartmemory[cli]           # CLI tools
