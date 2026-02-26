@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Two-Tier Async Extraction + EntityRuler Self-Learning Loop (CORE-EXT-1)
+- `PipelineConfig.tier1()` — sync-only profile (EntityRuler + store + link + enrich + evolve, no LLM extraction).
+- `RedisStreamQueue.for_extract()` / `.for_ground()` — factory methods for extract and ground worker queues.
+- `smartmemory/background/extraction_worker.py` — `process_extract_job()`: LLM diff → net-new entities/relations → EntityPattern upsert (count++) → ruler reload signal. `enable_ontology` flag from payload gates all ontology writes.
+- `smartmemory/background/id_resolver.py` — pure functions bridging SHA-256 LLM ID space to FalkorDB graph node IDs.
+- `OntologyGraph.get_entity_patterns()` frequency gate: `count >= 2` required; single-occurrence patterns excluded from ruler.
+- `ingest(sync=False)` now runs Tier 1 inline and enqueues to extract stream. Previously bypassed the pipeline entirely.
+- Memory type preserved in async path via `meta.setdefault("memory_type", ...)`.
+
 #### CORE-EVO-ENH-3 — Hebbian Co-Retrieval Edge Reinforcement
 
 - **`smartmemory/graph/models/schema_validator.py`** (modified): Registered `CO_RETRIEVED` edge schema in `_register_default_schemas()` after the `RELATED` edge. Source and target node types: `{"semantic", "episodic", "procedural", "zettel"}`. Optional properties: `co_retrieval_count` (int), `weight` (float), `first_co_retrieved_at` (str), `last_co_retrieved_at` (str). No `workspace_id` in schema — auto-stamped by scope provider on every write.
