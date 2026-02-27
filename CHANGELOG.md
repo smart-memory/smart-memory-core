@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### CODE-DEV-3 — Semantic Code Search
+
+- `semantic_code_search()` in `smartmemory/code/search.py` — intent-based vector search over code entities. Embeds the query via `create_embeddings()`, searches the shared `semantic_memory` vector collection with 3× oversampling, post-filters to `memory_type="code"` results, and hydrates each hit from the graph backend. Supports `entity_type` and `repo` filters, and `scope_provider` for workspace isolation.
+- REST `/memory/code/search?semantic=true` — new `semantic` query parameter on the existing code search endpoint. When `true`, delegates to `semantic_code_search()` and returns results with a `score` field. Default (`false`) preserves the existing Cypher substring path.
+- MCP `code_search` tool — `semantic` parameter added. When enabled, formats results as a scored table with graph context (calls/called-by neighbors). Extracts `scope_provider` from `graph.backend` for workspace isolation.
+- Python SDK `SmartMemoryClient.code_search(query, semantic=False, ...)` — new method wrapping `GET /memory/code/search` with all filter params.
+- `SmartMemory.ingest_code()` now enters `_di_context()` to push ContextVar dependencies (cache, vector_backend, observability, event_sink) before running `CodeIndexer.index()`, fixing embedding writes that depend on `VectorStore` resolving its backend from context.
+- 36 new tests across 3 repos: 16 unit + integration tests in `smart-memory`, 12 unit + integration tests in `smart-memory-service`, 8 SDK tests in `smart-memory-client`.
+
 #### CODE-DEV-2/C — Embeddings in CodeIndexer
 
 - `CodeIndexer._generate_embeddings()` in `smartmemory/code/indexer.py` — after bulk node and edge writes, generates vector embeddings for every code entity and upserts them into the `semantic_memory` vector collection. Embedding input is `f"{entity.name} {entity.entity_type} {entity.file_path} {entity.docstring}".strip()` — the composite string specified by the design spec. Code nodes have no `content` field; this composite serves as the semantic text. Uses `create_embeddings()` and `VectorStore.upsert()` with `is_global=True`, the same path used by the pipeline's StoreStage.

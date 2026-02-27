@@ -214,6 +214,11 @@ class TestIngestCodeCallsSeedPatterns:
         sm.scope_provider.get_scope.return_value = MagicMock(workspace_id="default")
         sm._enable_ontology = False
         sm._code_pattern_manager = None
+        # Required by _di_context() which ingest_code() enters
+        sm._cache = None
+        sm._vector_backend = None
+        sm._observability = True
+        sm._event_sink = None
         return sm
 
     def test_seed_patterns_called_after_index(self):
@@ -274,6 +279,11 @@ class TestIngestCodePassesLanguages:
         sm.scope_provider.get_scope.return_value = MagicMock(workspace_id="default")
         sm._enable_ontology = False
         sm._code_pattern_manager = None
+        # Required by _di_context() which ingest_code() enters
+        sm._cache = None
+        sm._vector_backend = None
+        sm._observability = True
+        sm._event_sink = None
         return sm
 
     def test_ingest_code_passes_languages_to_indexer(self):
@@ -316,6 +326,11 @@ class TestIngestCodeAutodetectsCommitHash:
         sm.scope_provider.get_scope.return_value = MagicMock(workspace_id="default")
         sm._enable_ontology = False
         sm._code_pattern_manager = None
+        # Required by _di_context() which ingest_code() enters
+        sm._cache = None
+        sm._vector_backend = None
+        sm._observability = True
+        sm._event_sink = None
         return sm
 
     def test_commit_hash_captured_when_git_available(self):
@@ -420,12 +435,13 @@ class TestSeedPatternsFromCode:
 
         sm = SmartMemory.__new__(SmartMemory)
         sm._enable_ontology = True
+        sm._entity_ruler_patterns = None
         sm.scope_provider = MagicMock()
         sm.scope_provider.get_scope.return_value = MagicMock(workspace_id="ws-test")
 
         mock_pm = MagicMock()
         mock_pm.add_patterns.return_value = 2
-        sm._code_pattern_manager = mock_pm
+        sm._pipeline_pattern_manager = mock_pm
 
         entities = [
             _make_entity("TokenValidator", "class"),
@@ -434,7 +450,9 @@ class TestSeedPatternsFromCode:
         sm.seed_patterns_from_code(entities)
 
         mock_pm.add_patterns.assert_called_once_with(
-            {"TokenValidator": "class", "validate_token": "function"}
+            {"TokenValidator": "class", "validate_token": "function"},
+            source="code_index",
+            initial_count=2,
         )
 
     def test_empty_entities_is_noop(self):
@@ -455,9 +473,10 @@ class TestSeedPatternsFromCode:
 
         sm = SmartMemory.__new__(SmartMemory)
         sm._enable_ontology = True
+        sm._entity_ruler_patterns = None
         mock_pm = MagicMock()
         mock_pm.add_patterns.return_value = 1
-        sm._code_pattern_manager = mock_pm
+        sm._pipeline_pattern_manager = mock_pm
 
         entities = [
             _make_entity("GoodClass", "class"),
@@ -465,23 +484,71 @@ class TestSeedPatternsFromCode:
         ]
         sm.seed_patterns_from_code(entities)
 
-        mock_pm.add_patterns.assert_called_once_with({"GoodClass": "class"})
+        mock_pm.add_patterns.assert_called_once_with(
+            {"GoodClass": "class"},
+            source="code_index",
+            initial_count=2,
+        )
 
     def test_ontology_disabled_is_noop(self):
-        """When _enable_ontology=False, no pattern manager is created or called."""
+        """When _enable_ontology=False and no entity_ruler_patterns, seeding is a no-op."""
         from smartmemory.smart_memory import SmartMemory
 
         sm = SmartMemory.__new__(SmartMemory)
         sm._enable_ontology = False
-        sm._code_pattern_manager = None
+        sm._entity_ruler_patterns = None
+        sm._pipeline_pattern_manager = None
         sm.scope_provider = MagicMock()
         sm.scope_provider.get_scope.return_value = MagicMock(workspace_id="default")
 
         entities = [_make_entity("SomeClass", "class")]
 
-        # Should not raise, and _code_pattern_manager remains None after the call
+        # Should not raise, and _pipeline_pattern_manager remains None
         sm.seed_patterns_from_code(entities)
-        assert sm._code_pattern_manager is None
+        assert sm._pipeline_pattern_manager is None
+
+    def test_injected_manager_without_add_pattern_falls_through(self):
+        """Injected pattern manager lacking add_pattern falls to Path A/B, not crash."""
+        from smartmemory.smart_memory import SmartMemory
+
+        sm = SmartMemory.__new__(SmartMemory)
+        sm._enable_ontology = True
+
+        # Inject a manager that only satisfies get_patterns() — no add_pattern
+        minimal_pm = MagicMock(spec=["get_patterns"])
+        minimal_pm.get_patterns.return_value = {}
+        sm._entity_ruler_patterns = minimal_pm
+
+        mock_pipeline_pm = MagicMock()
+        mock_pipeline_pm.add_patterns.return_value = 1
+        sm._pipeline_pattern_manager = mock_pipeline_pm
+
+        entities = [_make_entity("SomeClass", "class")]
+        sm.seed_patterns_from_code(entities)
+
+        # Should skip Lite path and use Path A instead
+        assert not hasattr(minimal_pm, "add_pattern") or not minimal_pm.add_pattern.called
+        mock_pipeline_pm.add_patterns.assert_called_once()
+
+    def test_ontology_disabled_non_lite_manager_is_noop(self):
+        """Ontology disabled + injected manager without add_pattern → no FalkorDB writes."""
+        from smartmemory.smart_memory import SmartMemory
+
+        sm = SmartMemory.__new__(SmartMemory)
+        sm._enable_ontology = False
+
+        # Inject a read-only manager (get_patterns only, no add_pattern)
+        minimal_pm = MagicMock(spec=["get_patterns"])
+        minimal_pm.get_patterns.return_value = {}
+        sm._entity_ruler_patterns = minimal_pm
+        sm._pipeline_pattern_manager = None
+
+        entities = [_make_entity("SomeClass", "class")]
+
+        # Should not crash, and should not attempt any FalkorDB operations
+        with patch("smartmemory.smart_memory.OntologyGraph", autospec=True) as mock_og:
+            sm.seed_patterns_from_code(entities)
+            mock_og.assert_not_called()  # No OntologyGraph construction
 
 
 # ---------------------------------------------------------------------------
@@ -554,6 +621,7 @@ class TestPatternManagerAddPatterns:
             confidence=0.9,
             workspace_id="test-ws",
             source="code_index",
+            initial_count=1,
         )
 
 

@@ -138,6 +138,7 @@ class SmartMemory(MemoryBase):
         # Defer flow construction until needed (lazy)
         self._ingestion_flow = None
         self._pipeline_runner = None
+        self._pipeline_pattern_manager = None  # CODE-DEV-4: stored in _create_pipeline_runner()
         # CFS-1/CFS-2: Mutable state from the most recent ingest() call.
         # NOT thread-safe — each concurrent request must use its own SmartMemory instance.
         # SecureSmartMemory creates a per-request instance, satisfying this requirement.
@@ -234,6 +235,7 @@ class SmartMemory(MemoryBase):
             from smartmemory.ontology.pattern_manager import PatternManager
 
             pattern_manager = PatternManager(ontology_graph, workspace_id=workspace_id)
+            self._pipeline_pattern_manager = pattern_manager  # CODE-DEV-4: for seed_patterns_from_code() reload
 
             # Phase 4: EntityPairCache for relation caching
             from smartmemory.ontology.entity_pair_cache import EntityPairCache
@@ -1438,7 +1440,8 @@ class SmartMemory(MemoryBase):
 
         exclude_set: Optional[set] = set(exclude_dirs) if exclude_dirs else None
         indexer = CodeIndexer(graph=self._graph, repo=repo, repo_root=directory, exclude_dirs=exclude_set)
-        index_result = indexer.index(languages=languages)
+        with self._di_context():
+            index_result = indexer.index(languages=languages)
 
         if index_result.entities:
             self.seed_patterns_from_code(index_result.entities)
@@ -1455,44 +1458,79 @@ class SmartMemory(MemoryBase):
         them into the workspace's PatternManager so that future ``ingest()``
         calls recognise code symbols as named entities.
 
-        A no-op when ontology support is disabled or when ``entities`` is empty.
+        Three paths:
+        - **Lite mode** (``entity_ruler_patterns`` injected): calls ``add_pattern()``
+          on the LitePatternManager with ``initial_frequency=2`` to bypass threshold.
+        - **Path A** (pipeline already initialised): adds patterns to the pipeline's
+          PatternManager and reloads — patterns available immediately.
+        - **Path B** (pipeline not yet initialised): persists to FalkorDB via a
+          throwaway PatternManager — patterns load on next ``_create_pipeline_runner()``.
 
         Args:
             entities: List of ``CodeEntity`` objects (as returned in
                 ``IndexResult.entities``).
         """
+        # NOTE: _enable_ontology guard moved to early-return position. Prior behavior:
+        # when enable_ontology=False and no entity_ruler_patterns injected,
+        # this was a no-op buried inside the PatternManager lazy-init block.
+        if not self._enable_ontology and self._entity_ruler_patterns is None:
+            return
+
         patterns = {e.name: e.entity_type for e in entities if getattr(e, "name", None)}
         if not patterns:
             return
 
-        # Lazily construct the code-specific PatternManager on first call.
-        if not hasattr(self, "_code_pattern_manager") or self._code_pattern_manager is None:
-            try:
-                from smartmemory.ontology.pattern_manager import PatternManager
-                from smartmemory.graph.ontology_graph import OntologyGraph
+        # Path 1: Lite mode (entity_ruler_patterns injected with add_pattern support)
+        # The injection contract is only get_patterns() → dict[str, str]. If the
+        # injected manager doesn't implement add_pattern, fall through to Path A/B.
+        if self._entity_ruler_patterns is not None and hasattr(self._entity_ruler_patterns, "add_pattern"):
+            import inspect
 
-                workspace_id = "default"
+            lpm = self._entity_ruler_patterns
+            has_initial_freq = "initial_frequency" in inspect.signature(lpm.add_pattern).parameters
+            for name, label in patterns.items():
                 try:
-                    scope = self.scope_provider.get_scope()
-                    workspace_id = getattr(scope, "workspace_id", None) or "default"
-                except Exception:
-                    pass
+                    if has_initial_freq:
+                        lpm.add_pattern(name, label, initial_frequency=2)
+                    else:
+                        # Fallback for older LitePatternManager without initial_frequency
+                        lpm.add_pattern(name, label)
+                        lpm.add_pattern(name, label)
+                except (ValueError, Exception):
+                    pass  # quality gate rejections (short name, low confidence)
+            logger.debug("seed_patterns_from_code: seeded %d patterns (Lite mode)", len(patterns))
+            return
 
-                if self._enable_ontology:
-                    ontology_graph = OntologyGraph(workspace_id=workspace_id)
-                    self._code_pattern_manager: Optional[Any] = PatternManager(
-                        ontology_graph, workspace_id=workspace_id
-                    )
-                else:
-                    self._code_pattern_manager = None
-            except Exception as exc:
-                logger.debug("Could not create PatternManager for code seeding: %s", exc)
-                self._code_pattern_manager = None
+        # Paths A and B require ontology support (FalkorDB-backed PatternManager).
+        # If ontology is disabled and the Lite path didn't fire, seeding is a no-op.
+        if not self._enable_ontology:
+            return
 
-        if self._code_pattern_manager is not None:
-            accepted = self._code_pattern_manager.add_patterns(patterns)
-            logger.debug(
-                "seed_patterns_from_code: seeded %d patterns from %d entities",
-                accepted,
-                len(patterns),
+        # Path A: Pipeline already initialised — use its PatternManager directly
+        if self._pipeline_pattern_manager is not None:
+            accepted = self._pipeline_pattern_manager.add_patterns(
+                patterns, source="code_index", initial_count=2
             )
+            self._pipeline_pattern_manager.reload()
+            logger.debug("seed_patterns_from_code: seeded %d (Path A — immediate reload)", accepted)
+            return
+
+        # Path B: Pipeline not yet initialised — persist to FalkorDB
+        # Next _create_pipeline_runner() will pick them up via get_entity_patterns()
+        try:
+            from smartmemory.ontology.pattern_manager import PatternManager
+            from smartmemory.graph.ontology_graph import OntologyGraph
+
+            workspace_id = "default"
+            try:
+                scope = self.scope_provider.get_scope()
+                workspace_id = getattr(scope, "workspace_id", None) or "default"
+            except Exception:
+                pass
+
+            ontology_graph = OntologyGraph(workspace_id=workspace_id)
+            pm = PatternManager(ontology_graph, workspace_id=workspace_id)
+            accepted = pm.add_patterns(patterns, source="code_index", initial_count=2)
+            logger.debug("seed_patterns_from_code: seeded %d (Path B — FalkorDB persist)", accepted)
+        except Exception as exc:
+            logger.debug("seed_patterns_from_code Path B failed: %s", exc)
