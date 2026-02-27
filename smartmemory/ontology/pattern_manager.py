@@ -58,7 +58,9 @@ class PatternManager:
         with self._lock:
             return dict(self._patterns)
 
-    def add_patterns(self, patterns: Dict[str, str]) -> int:
+    def add_patterns(
+        self, patterns: Dict[str, str], *, source: str = "code_index", initial_count: int = 1
+    ) -> int:
         """Merge additional name→type patterns into the in-memory cache.
 
         Filters short names and common word blocklist entries before accepting.
@@ -67,6 +69,9 @@ class PatternManager:
 
         Args:
             patterns: Mapping of entity name to entity type label.
+            source: Provenance tag stored on the EntityPattern node.
+            initial_count: Starting count for new patterns. Use 2 for AST-validated
+                code patterns to bypass the ``count >= 2`` discovery threshold.
 
         Returns:
             Number of net-new patterns accepted (duplicates excluded).
@@ -92,7 +97,8 @@ class PatternManager:
                     label=label,
                     confidence=0.9,
                     workspace_id=self._workspace_id,
-                    source="code_index",
+                    source=source,
+                    initial_count=initial_count,
                 )
             except Exception as exc:
                 logger.debug("Failed to persist code pattern '%s': %s", key, exc)

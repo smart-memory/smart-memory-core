@@ -42,11 +42,12 @@ class ExtendedMockBackend:
             ws = params.get("ws", "default")
             glob = params.get("glob", False)
             source = params.get("source", "llm_discovery")
+            initial_count = params.get("initial_count", 1)
             key = (name, label)
             if key not in self._patterns:
                 self._patterns[key] = {
                     "name": name, "label": label, "confidence": conf,
-                    "workspace_id": ws, "is_global": glob, "source": source, "count": 1,
+                    "workspace_id": ws, "is_global": glob, "source": source, "count": initial_count,
                 }
             else:
                 p = self._patterns[key]
@@ -77,8 +78,12 @@ class ExtendedMockBackend:
         # --- EntityPattern listing for workspace ---
         if "EntityPattern" in cypher and "is_global" in cypher and "workspace_id" in cypher:
             ws = params.get("ws", "default")
+            # Match production filter: COALESCE(p.count, 1) >= 2
+            has_count_filter = "count" in cypher and ">= 2" in cypher
             results = []
             for (_name, _label), props in self._patterns.items():
+                if has_count_filter and props.get("count", 1) < 2:
+                    continue
                 if props.get("is_global") or props.get("workspace_id") == ws:
                     results.append([props["name"], props["label"], props["confidence"], props["source"]])
             return results
@@ -173,9 +178,9 @@ def test_add_entity_pattern_increments_count(graph, backend):
 
 
 def test_get_entity_patterns_filters_by_workspace(graph):
-    graph.add_entity_pattern("python", "Technology", 0.9, workspace_id="test", is_global=False)
-    graph.add_entity_pattern("java", "Technology", 0.8, workspace_id="other", is_global=False)
-    graph.add_entity_pattern("docker", "Technology", 0.95, is_global=True)
+    graph.add_entity_pattern("python", "Technology", 0.9, workspace_id="test", is_global=False, initial_count=2)
+    graph.add_entity_pattern("java", "Technology", 0.8, workspace_id="other", is_global=False, initial_count=2)
+    graph.add_entity_pattern("docker", "Technology", 0.95, is_global=True, initial_count=2)
 
     patterns = graph.get_entity_patterns("test")
     names = {p["name"] for p in patterns}
@@ -189,6 +194,41 @@ def test_get_type_assignments_returns_types(graph):
     assignments = graph.get_type_assignments("alice")
     assert len(assignments) == 1
     assert assignments[0]["type"] == "Person"
+
+
+# ------------------------------------------------------------------ #
+# initial_count threshold (CODE-DEV-4)
+# ------------------------------------------------------------------ #
+
+
+def test_initial_count_2_visible_immediately(graph):
+    """Pattern created with initial_count=2 passes the count >= 2 threshold."""
+    graph.add_entity_pattern("fastapi", "Technology", 0.9, workspace_id="test", initial_count=2)
+    patterns = graph.get_entity_patterns("test")
+    names = {p["name"] for p in patterns}
+    assert "fastapi" in names
+
+
+def test_initial_count_1_invisible_until_second_call(graph):
+    """Default initial_count=1 means the pattern is invisible until seen twice."""
+    graph.add_entity_pattern("flask", "Technology", 0.8, workspace_id="test")
+    patterns = graph.get_entity_patterns("test")
+    names = {p["name"] for p in patterns}
+    assert "flask" not in names  # count=1, below threshold
+
+    # Second call triggers ON MATCH SET count = count + 1 → count=2
+    graph.add_entity_pattern("flask", "Technology", 0.85, workspace_id="test")
+    patterns = graph.get_entity_patterns("test")
+    names = {p["name"] for p in patterns}
+    assert "flask" in names  # count=2, passes threshold
+
+
+def test_seed_patterns_visible_via_get_entity_patterns(graph):
+    """Seed patterns use initial_count=2 and are immediately visible."""
+    graph.seed_entity_patterns({"numpy": "Technology"})
+    patterns = graph.get_entity_patterns("test")
+    names = {p["name"] for p in patterns}
+    assert "numpy" in names
 
 
 # ------------------------------------------------------------------ #

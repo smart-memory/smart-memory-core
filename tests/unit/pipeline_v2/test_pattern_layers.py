@@ -41,14 +41,14 @@ def test_seed_layer_is_global(graph, backend):
 
 
 def test_promoted_layer_is_global(graph, backend):
-    graph.add_entity_pattern("react", "Technology", 0.9, is_global=True, source="promoted")
+    graph.add_entity_pattern("react", "Technology", 0.9, is_global=True, source="promoted", initial_count=2)
     pattern = backend._patterns[("react", "Technology")]
     assert pattern["is_global"] is True
     assert pattern["source"] == "promoted"
 
 
 def test_tenant_layer_is_workspace_scoped(graph, backend):
-    graph.add_entity_pattern("mylib", "Technology", 0.7, workspace_id="acme", is_global=False, source="llm_discovery")
+    graph.add_entity_pattern("mylib", "Technology", 0.7, workspace_id="acme", is_global=False, source="llm_discovery", initial_count=2)
     pattern = backend._patterns[("mylib", "Technology")]
     assert pattern["is_global"] is False
     assert pattern["workspace_id"] == "acme"
@@ -61,8 +61,8 @@ def test_tenant_layer_is_workspace_scoped(graph, backend):
 
 
 def test_tenant_patterns_only_visible_to_own_workspace(graph):
-    graph.add_entity_pattern("internal-tool", "Tool", 0.8, workspace_id="acme", is_global=False)
-    graph.add_entity_pattern("shared-lib", "Technology", 0.9, is_global=True, source="seed")
+    graph.add_entity_pattern("internal-tool", "Tool", 0.8, workspace_id="acme", is_global=False, initial_count=2)
+    graph.add_entity_pattern("shared-lib", "Technology", 0.9, is_global=True, source="seed", initial_count=2)
 
     acme_patterns = graph.get_entity_patterns("acme")
     other_patterns = graph.get_entity_patterns("other")
@@ -78,8 +78,8 @@ def test_tenant_patterns_only_visible_to_own_workspace(graph):
 
 def test_pattern_manager_merges_all_visible_layers(graph):
     graph.seed_entity_patterns({"python": "Technology"})
-    graph.add_entity_pattern("react", "Technology", 0.9, is_global=True, source="promoted")
-    graph.add_entity_pattern("mylib", "Technology", 0.7, workspace_id="default", is_global=False, source="llm_discovery")
+    graph.add_entity_pattern("react", "Technology", 0.9, is_global=True, source="promoted", initial_count=2)
+    graph.add_entity_pattern("mylib", "Technology", 0.7, workspace_id="default", is_global=False, source="llm_discovery", initial_count=2)
 
     pm = PatternManager(graph, workspace_id="default")
     patterns = pm.get_patterns()
@@ -96,8 +96,8 @@ def test_pattern_manager_merges_all_visible_layers(graph):
 
 def test_pattern_stats_counts_by_source(graph):
     graph.seed_entity_patterns({"python": "Technology", "react": "Technology"})
-    graph.add_entity_pattern("fastapi", "Technology", 0.9, is_global=True, source="promoted")
-    graph.add_entity_pattern("mylib", "Technology", 0.7, source="llm_discovery")
+    graph.add_entity_pattern("fastapi", "Technology", 0.9, is_global=True, source="promoted", initial_count=2)
+    graph.add_entity_pattern("mylib", "Technology", 0.7, source="llm_discovery", initial_count=2)
 
     stats = graph.get_pattern_stats()
     assert stats["seed"] == 2

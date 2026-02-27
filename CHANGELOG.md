@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### CODE-DEV-4 — Code-Aware EntityRuler Patterns
+
+- `OntologyGraph.add_entity_pattern()` now accepts `initial_count` parameter — code-sourced patterns (from AST parsing) bypass the `count >= 2` discovery threshold by setting `initial_count=2`, making them immediately visible to the EntityRuler.
+- `PatternManager.add_patterns()` now accepts keyword-only `source` and `initial_count` parameters, passed through to `add_entity_pattern()`.
+- `LitePatternManager.add_pattern()` now accepts `initial_frequency` parameter — same threshold bypass for JSONL-backed Lite mode.
+- `SmartMemory.seed_patterns_from_code()` rewritten with three seeding paths: (1) Lite mode via injected `entity_ruler_patterns` with `hasattr` protocol guard, (2) Path A — pipeline exists, seeds via `_pipeline_pattern_manager` + `reload()`, (3) Path B — pipeline lazy, persists to FalkorDB for pickup on first `ingest()`.
+- `SmartMemory._pipeline_pattern_manager` reference stored during `_create_pipeline_runner()` — eliminates the separate `_code_pattern_manager` instance (Gap 1 fix).
+- `OntologyGraph.seed_entity_patterns()` now passes `initial_count=2` for curated seed patterns.
+- REST `POST /memory/code/index` now seeds EntityRuler patterns after successful bulk write — hosted users get pattern seeding parity with the SDK path.
+- 20 new tests across 3 repos: `test_ontology_graph_extended.py` (3), `test_pattern_manager.py` (4), `test_patterns.py` (4), `test_code_dev2_embeddings.py` (2), `test_code_index_seeding.py` (3 — new file), plus updates to 4 existing tests.
+
 #### CODE-DEV-3 — Semantic Code Search
 
 - `semantic_code_search()` in `smartmemory/code/search.py` — intent-based vector search over code entities. Embeds the query via `create_embeddings()`, searches the shared `semantic_memory` vector collection with 3× oversampling, post-filters to `memory_type="code"` results, and hydrates each hit from the graph backend. Supports `entity_type` and `repo` filters, and `scope_provider` for workspace isolation.

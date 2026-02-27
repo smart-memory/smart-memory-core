@@ -225,8 +225,15 @@ class OntologyGraph:
         workspace_id: str | None = None,
         is_global: bool = False,
         source: str = "llm_discovery",
+        initial_count: int = 1,
     ) -> bool:
         """Create an EntityPattern node linked to its EntityType via :IS_INSTANCE_OF.
+
+        Args:
+            initial_count: Starting count for new patterns. Use 2 for AST-validated
+                code patterns to bypass the ``count >= 2`` discovery threshold in
+                ``get_entity_patterns()``. Default 1 preserves the existing threshold
+                for LLM-discovered patterns.
 
         Returns:
             True if created, False on error.
@@ -237,7 +244,7 @@ class OntologyGraph:
                 "MERGE (t:EntityType {name: $label}) "
                 "MERGE (p:EntityPattern {name: $name, label: $label}) "
                 "ON CREATE SET p.confidence = $conf, p.workspace_id = $ws, "
-                "p.is_global = $glob, p.source = $source, p.discovered_at = timestamp(), p.count = 1 "
+                "p.is_global = $glob, p.source = $source, p.discovered_at = timestamp(), p.count = $initial_count "
                 "ON MATCH SET p.count = COALESCE(p.count, 1) + 1, "
                 "p.confidence = (COALESCE(p.confidence, 0) + $conf) / 2 "
                 "MERGE (p)-[:IS_INSTANCE_OF]->(t)",
@@ -248,6 +255,7 @@ class OntologyGraph:
                     "ws": workspace_id or self.workspace_id,
                     "glob": is_global,
                     "source": source,
+                    "initial_count": initial_count,
                 },
                 graph_name=self._graph_name,
             )
@@ -302,7 +310,7 @@ class OntologyGraph:
         to_seed = patterns or defaults
         created = 0
         for name, label in to_seed.items():
-            if self.add_entity_pattern(name, label, 0.95, is_global=True, source="seed"):
+            if self.add_entity_pattern(name, label, 0.95, is_global=True, source="seed", initial_count=2):
                 created += 1
         return created
 
