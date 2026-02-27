@@ -6,7 +6,7 @@ import time
 from typing import Any, Optional
 
 from smartmemory.code.models import CodeEntity, CodeRelation, ImportSymbol, IndexResult
-from smartmemory.code.parser import CodeParser, collect_python_files, parse_file
+from smartmemory.code.parser import collect_python_files, parse_file
 from smartmemory.code.ts_parser import collect_ts_files
 
 logger = logging.getLogger(__name__)
@@ -158,7 +158,6 @@ class CodeIndexer:
         self.graph = graph
         self.repo = repo
         self.repo_root = os.path.abspath(repo_root)
-        self.parser = CodeParser(repo=repo, repo_root=repo_root)
         self.exclude_dirs = exclude_dirs
 
     def index(self, languages: Optional[list[str]] = None) -> IndexResult:

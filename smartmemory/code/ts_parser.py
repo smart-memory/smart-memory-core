@@ -71,9 +71,6 @@ DEFAULT_EXCLUDE_DIRS = {
     "coverage",
 }
 
-# Express-style router HTTP methods
-_EXPRESS_HTTP_METHODS = {"get", "post", "put", "delete", "patch", "head", "options", "all"}
-
 
 def _child_by_field(node, field: str):
     """Safe child_by_field_name — returns None when absent."""
@@ -345,6 +342,8 @@ class TSParser:
             # Extract calls inside this function
             if body:
                 self._collect_calls(body, entity, rel_path, source, result)
+                # Walk nested declarations (e.g. inner functions inside arrow functions)
+                self._walk(body, entity, rel_path, source, result, depth + 1)
             elif value_node:
                 self._collect_calls(value_node, entity, rel_path, source, result)
 
@@ -380,6 +379,8 @@ class TSParser:
         body = _child_by_field(node, "body")
         if body:
             self._collect_calls(body, entity, rel_path, source, result)
+            # Walk nested declarations (e.g. inner functions defined inside a method body)
+            self._walk(body, entity, rel_path, source, result, depth + 1)
 
     # ── Relation extractors ─────────────────────────────────────────────────
 
