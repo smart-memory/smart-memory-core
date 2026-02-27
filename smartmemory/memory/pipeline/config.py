@@ -23,7 +23,17 @@ class ClassificationConfig(MemoryBaseModel):
                 'episodic': ['event', 'happened', 'occurred', 'experience'],
                 'semantic': ['definition', 'concept', 'knowledge', 'fact'],
                 'procedural': ['how to', 'steps', 'process', 'method'],
-                'zettel': ['note', 'idea', 'thought', 'reminder']
+                'zettel': ['note', 'idea', 'thought', 'reminder'],
+                'reasoning': [
+                    'therefore', 'because', 'reasoning', 'conclude', 'concluded',
+                    'inference', 'deduced', 'it follows', 'thus', 'hence',
+                    'my reasoning', 'i think because', 'this means',
+                ],
+                'decision': [
+                    'decided', 'decision', 'chose', 'choosing', 'i will',
+                    'going to', 'resolved', 'agreed', 'committed', 'opted',
+                    'my decision', 'we decided', "i've decided",
+                ],
             }
 
 

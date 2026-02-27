@@ -35,10 +35,13 @@ def _run_ingest_with_trace(trace=None, reasoning_enabled=True, graph=None):
     """
     from smartmemory.pipeline.state import PipelineState
 
-    # Build a realistic post-pipeline state
+    # Build a realistic post-pipeline state.
+    # memory_type="semantic" reflects a typical classify-stage output — required by
+    # the CORE-SYS2-1d PRODUCED gate (target must be in schema_validator allowed set).
     state = PipelineState(
         text="test content",
         item_id="item_123",
+        memory_type="semantic",
         reasoning_trace=trace,
     )
 

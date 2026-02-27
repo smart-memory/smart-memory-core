@@ -34,6 +34,9 @@ from smartmemory.graph.ontology_graph import OntologyGraph
 
 logger = logging.getLogger(__name__)
 
+# CORE-SYS2-1d: PRODUCED edge target types allowed by schema_validator.py:568
+_PRODUCED_ALLOWED_TARGETS: frozenset = frozenset({"decision", "semantic", "episodic", "procedural", "zettel"})
+
 
 def _apply_pipeline_profile(config: Any, profile: Any) -> None:
     """Copy lite-mode flags from a PipelineConfig profile onto a freshly-built config.
@@ -683,13 +686,30 @@ class SmartMemory(MemoryBase):
             )
 
         # CORE-SYS2-1b: dispatch auto-extracted decisions — non-fatal, pipeline work is done
-        if pipeline_cfg.extraction.llm_extract.extract_decisions and state.llm_decisions:
+        # CORE-SYS2-1d: also fires when classify routes memory_type="decision"
+        if (pipeline_cfg.extraction.llm_extract.extract_decisions and state.llm_decisions) \
+                or state.memory_type == "decision":
             try:
                 from smartmemory.decisions.manager import DecisionManager
 
                 _threshold = pipeline_cfg.extraction.llm_extract.decision_confidence_threshold
                 _dm = DecisionManager(memory=self)
-                for _raw in state.llm_decisions:
+
+                # CORE-SYS2-1d: classify-based dispatch — store primary item when
+                # classified as "decision" but no LLM sub-decisions were extracted
+                if state.memory_type == "decision" and not state.llm_decisions:
+                    try:
+                        _dm.create(
+                            content=state.text,
+                            decision_type="inference",
+                            confidence=0.75,
+                            source_type="inferred",
+                            tags=["auto_classified"],
+                        )
+                    except Exception as _e:
+                        logger.warning("Failed to store classify-dispatched decision: %s", _e)
+
+                for _raw in state.llm_decisions or []:  # guard: None when classify-only path
                     if not isinstance(_raw, dict):
                         logger.debug("Skipping non-dict auto-extracted decision: %r", _raw)
                         continue
@@ -717,7 +737,9 @@ class SmartMemory(MemoryBase):
                 logger.warning("Decision dispatch failed (non-fatal): %s", _e)
 
         # CORE-SYS2-1c: dispatch auto-extracted reasoning trace — non-fatal
-        if pipeline_cfg.extraction.reasoning_detect.enabled and state.reasoning_trace:
+        # CORE-SYS2-1d: also fires when classify routes memory_type="reasoning"
+        if (pipeline_cfg.extraction.reasoning_detect.enabled or state.memory_type == "reasoning") \
+                and state.reasoning_trace:
             try:
                 from smartmemory.models.memory_item import MemoryItem as _MemoryItem
 
@@ -735,7 +757,8 @@ class SmartMemory(MemoryBase):
                 )
                 _reasoning_item_id = self.add(_reasoning_item)
 
-                if state.item_id and self._graph:
+                # CORE-SYS2-1d: gate on schema-allowed target types (schema_validator.py:568)
+                if state.item_id and self._graph and state.memory_type in _PRODUCED_ALLOWED_TARGETS:
                     self._graph.add_edge(
                         source_id=_reasoning_item_id,
                         target_id=state.item_id,
@@ -743,6 +766,11 @@ class SmartMemory(MemoryBase):
                         properties={
                             "confidence": (_trace.evaluation.quality_score if _trace.evaluation else 0.5),
                         },
+                    )
+                elif state.item_id and self._graph:
+                    logger.debug(
+                        "Skipping PRODUCED edge: target memory_type=%r not in allowed set",
+                        state.memory_type,
                     )
             except Exception as _e:
                 logger.warning("Reasoning dispatch failed (non-fatal): %s", _e)

@@ -28,7 +28,7 @@ class ReasoningDetectStage:
 
     def execute(self, state: PipelineState, config: PipelineConfig) -> PipelineState:
         rd_cfg = config.extraction.reasoning_detect
-        if not rd_cfg.enabled:
+        if not rd_cfg.enabled and state.memory_type != "reasoning":
             return state
 
         # Build text from best available source
