@@ -68,7 +68,13 @@ class SymbolTable:
             module_path = entity.name
         else:
             # Convert file_path to dotted module: "a/b/c.py" → "a.b.c"
-            module_path = entity.file_path.replace("/", ".").replace("\\", ".").removesuffix(".py")
+            # Strip Python and TS/JS extensions so both language parsers produce
+            # module_path values that match the ImportSymbol.module_path format.
+            module_path = entity.file_path.replace("/", ".").replace("\\", ".")
+            for _suffix in (".py", ".ts", ".tsx", ".js", ".jsx"):
+                if module_path.endswith(_suffix):
+                    module_path = module_path[: -len(_suffix)]
+                    break
             module_path = module_path.removesuffix(".__init__")
 
         if module_path not in self._module_entities:

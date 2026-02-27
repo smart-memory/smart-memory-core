@@ -10,7 +10,7 @@ tree-sitter-javascript==0.25.0.
 import os
 from typing import Optional
 
-from smartmemory.code.models import CodeEntity, CodeRelation, ParseResult
+from smartmemory.code.models import CodeEntity, CodeRelation, ImportSymbol, ParseResult
 
 # Lazy-initialised language singletons — only paid if TS parsing is used.
 _TSX_LANGUAGE = None
@@ -411,8 +411,41 @@ class TSParser:
 
         return None
 
+    @staticmethod
+    def _ts_file_path_to_module_path(file_path: str) -> str:
+        """Convert a repo-relative TS/JS file path to a dotted module path.
+
+        Mirrors the transformation ``SymbolTable.register_entity`` applies to
+        Python files, but strips TS/JS extensions instead of ``.py``.
+
+        Examples::
+
+            "src/lib/utils.ts"  → "src.lib.utils"
+            "components/Button.tsx" → "components.Button"
+            "helpers.js"        → "helpers"
+        """
+        _TS_SUFFIXES = (".ts", ".tsx", ".js", ".jsx")
+        path = file_path.replace("\\", "/")
+        for suffix in _TS_SUFFIXES:
+            if path.endswith(suffix):
+                path = path[: -len(suffix)]
+                break
+        return path.replace("/", ".")
+
     def _extract_import_stmt(self, node, module: CodeEntity, rel_path: str, source: bytes, result: ParseResult):
-        """Extract import declarations as IMPORTS edges."""
+        """Extract import declarations as IMPORTS edges and ImportSymbol entries.
+
+        For each resolved local import, an IMPORTS edge is added (existing
+        behaviour) **and** one or more ``ImportSymbol`` objects are appended to
+        ``result.import_symbols`` so that ``CodeIndexer._build_symbol_table``
+        can resolve cross-file CALLS edges for TS/JS files.
+
+        Patterns handled:
+        - ``import { Bar } from './lib'``           → named import
+        - ``import { Bar as B } from './lib'``      → aliased named import
+        - ``import foo from './lib'``               → default import
+        - ``import * as lib from './lib'``          → namespace import
+        """
         source_node = _child_by_field(node, "source")
         if not source_node:
             return
@@ -421,8 +454,78 @@ class TSParser:
         resolved = self._resolve_ts_specifier(specifier, rel_path)
         if resolved is None:
             return  # external package or unresolvable — skip
+
         target_id = f"code::{self.repo}::{resolved}::{resolved}"
         result.relations.append(CodeRelation(source_id=module.item_id, target_id=target_id, relation_type="IMPORTS"))
+
+        # Derive the module_path that SymbolTable.register_entity will use for
+        # entities defined in the resolved file, so that register_import() can
+        # look them up correctly.
+        module_path = self._ts_file_path_to_module_path(resolved)
+
+        # Walk the import clause to collect individual imported names.
+        # NOTE: import_clause is NOT a named field in the grammar — it is a
+        # child node whose *type* is "import_clause".  We must search by type,
+        # not by field name (child_by_field_name returns None for it).
+        import_clause = next((c for c in node.children if c.type == "import_clause"), None)
+        if import_clause is None:
+            # Side-effect-only import: import './lib' — no symbols to bind.
+            return
+
+        for child in import_clause.children:
+            if child.type == "namespace_import":
+                # import * as lib from './lib'
+                # The identifier inside namespace_import is the alias.
+                alias_node = None
+                for ns_child in child.children:
+                    if ns_child.type == "identifier":
+                        alias_node = ns_child
+                        break
+                if alias_node is not None:
+                    local_name = _node_text(alias_node, source)
+                    result.import_symbols.append(
+                        ImportSymbol(
+                            importing_file=rel_path,
+                            local_name=local_name,
+                            module_path=module_path,
+                            original_name=local_name,
+                            is_module_import=True,
+                        )
+                    )
+
+            elif child.type == "named_imports":
+                # import { Bar } from './lib'   or   import { Bar as B } from './lib'
+                for specifier_node in child.children:
+                    if specifier_node.type != "import_specifier":
+                        continue
+                    name_node = _child_by_field(specifier_node, "name")
+                    alias_node = _child_by_field(specifier_node, "alias")
+                    if name_node is None:
+                        continue
+                    original_name = _node_text(name_node, source)
+                    local_name = _node_text(alias_node, source) if alias_node is not None else original_name
+                    result.import_symbols.append(
+                        ImportSymbol(
+                            importing_file=rel_path,
+                            local_name=local_name,
+                            module_path=module_path,
+                            original_name=original_name,
+                            is_module_import=False,
+                        )
+                    )
+
+            elif child.type == "identifier":
+                # import foo from './lib'  (default import)
+                local_name = _node_text(child, source)
+                result.import_symbols.append(
+                    ImportSymbol(
+                        importing_file=rel_path,
+                        local_name=local_name,
+                        module_path=module_path,
+                        original_name="default",
+                        is_module_import=False,
+                    )
+                )
 
     def _extract_call_expr(self, node, parent: CodeEntity, rel_path: str, source: bytes, result: ParseResult):
         """Emit a CALLS edge for a top-level call_expression."""

@@ -11,9 +11,10 @@ from unittest.mock import patch
 
 import pytest
 
-from smartmemory.code.models import CodeEntity, ParseResult
+from smartmemory.code.models import CodeEntity, ImportSymbol, ParseResult
 from smartmemory.code.ts_parser import TSParser, collect_ts_files
 from smartmemory.code.parser import parse_file, CodeParser
+from smartmemory.code.indexer import CodeIndexer, SymbolTable
 
 
 # ── Sample source fixtures ──────────────────────────────────────────────────
@@ -432,3 +433,171 @@ class TestErrorHandling:
         result = parser.parse_file(str(f))
         modules = [e for e in result.entities if e.entity_type == "module"]
         assert len(modules) == 1
+
+
+# ── ImportSymbol population ───────────────────────────────────────────────────
+
+
+class TestImportSymbols:
+    """_extract_import_stmt must populate parse_result.import_symbols.
+
+    These tests verify that each TS/JS import pattern produces the correct
+    ImportSymbol entries so that CodeIndexer can resolve cross-file CALLS.
+    """
+
+    def _make_parser(self, tmp_path) -> TSParser:
+        return TSParser(repo="test-repo", repo_root=str(tmp_path))
+
+    def test_named_import_populates_import_symbols(self, tmp_path):
+        """``import { Bar } from './lib'`` with ``lib.ts`` present produces one ImportSymbol.
+
+        The symbol must have local_name='Bar', original_name='Bar', and
+        is_module_import=False.
+        """
+        (tmp_path / "lib.ts").write_bytes(b"export class Bar {}\n")
+        app = tmp_path / "app.ts"
+        app.write_bytes(b"import { Bar } from './lib';\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(app))
+
+        assert result.import_symbols, "Expected at least one ImportSymbol"
+        sym = next((s for s in result.import_symbols if s.local_name == "Bar"), None)
+        assert sym is not None, f"No ImportSymbol with local_name='Bar': {result.import_symbols}"
+        assert sym.original_name == "Bar"
+        assert sym.is_module_import is False
+        assert sym.importing_file == "app.ts"
+
+    def test_aliased_import_uses_alias_as_local_name(self, tmp_path):
+        """``import { Bar as B } from './lib'`` → local_name='B', original_name='Bar'."""
+        (tmp_path / "lib.ts").write_bytes(b"export class Bar {}\n")
+        app = tmp_path / "app.ts"
+        app.write_bytes(b"import { Bar as B } from './lib';\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(app))
+
+        sym = next((s for s in result.import_symbols if s.local_name == "B"), None)
+        assert sym is not None, f"No ImportSymbol with local_name='B': {result.import_symbols}"
+        assert sym.original_name == "Bar"
+        assert sym.is_module_import is False
+
+    def test_namespace_import_is_module_import(self, tmp_path):
+        """``import * as lib from './lib'`` → is_module_import=True, local_name='lib'."""
+        (tmp_path / "lib.ts").write_bytes(b"export function helper() {}\n")
+        app = tmp_path / "app.ts"
+        app.write_bytes(b"import * as lib from './lib';\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(app))
+
+        sym = next((s for s in result.import_symbols if s.local_name == "lib"), None)
+        assert sym is not None, f"No ImportSymbol with local_name='lib': {result.import_symbols}"
+        assert sym.is_module_import is True
+        assert sym.module_path == "lib"  # lib.ts → "lib"
+
+    def test_default_import_sets_original_name_to_default(self, tmp_path):
+        """``import foo from './lib'`` → local_name='foo', original_name='default'."""
+        (tmp_path / "lib.ts").write_bytes(b"export default function lib() {}\n")
+        app = tmp_path / "app.ts"
+        app.write_bytes(b"import foo from './lib';\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(app))
+
+        sym = next((s for s in result.import_symbols if s.local_name == "foo"), None)
+        assert sym is not None, f"No ImportSymbol with local_name='foo': {result.import_symbols}"
+        assert sym.original_name == "default"
+        assert sym.is_module_import is False
+
+    def test_bare_package_import_produces_no_import_symbols(self, tmp_path):
+        """Bare package imports (``import { useState } from 'react'``) yield no ImportSymbols."""
+        app = tmp_path / "app.ts"
+        app.write_bytes(b"import { useState } from 'react';\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(app))
+
+        assert result.import_symbols == [], (
+            f"Expected no ImportSymbols for bare package import, got: {result.import_symbols}"
+        )
+
+    def test_module_path_matches_register_entity_format(self, tmp_path):
+        """module_path in ImportSymbol must match SymbolTable.register_entity conversion.
+
+        SymbolTable converts file_path via:
+          file_path.replace('/', '.').replace('\\', '.').removesuffix('.py')
+
+        For TS files the parser must strip TS extensions the same way so that
+        register_import can look up the module correctly.
+        """
+        (tmp_path / "utils").mkdir()
+        (tmp_path / "utils" / "helpers.ts").write_bytes(b"export function add() {}\n")
+        app = tmp_path / "app.ts"
+        app.write_bytes(b"import { add } from './utils/helpers';\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(app))
+
+        sym = next((s for s in result.import_symbols if s.local_name == "add"), None)
+        assert sym is not None, f"No ImportSymbol for 'add': {result.import_symbols}"
+        # utils/helpers.ts → "utils.helpers"  (same dotted pattern as Python files)
+        assert sym.module_path == "utils.helpers", (
+            f"Expected module_path='utils.helpers', got '{sym.module_path}'"
+        )
+
+    def test_cross_file_ts_calls_resolved_end_to_end(self, tmp_path):
+        """Full end-to-end: CALLS edge from app.ts::main resolves to lib.ts::helper.
+
+        Scenario:
+          lib.ts   — exports ``function helper()``
+          app.ts   — ``import { helper } from './lib'; function main() { helper(); }``
+
+        After building the symbol table and resolving cross-file calls, the CALLS
+        edge emitted by ``main`` must target the lib.ts::helper entity, not the
+        same-file guess ``app.ts::helper``.
+        """
+        lib = tmp_path / "lib.ts"
+        lib.write_bytes(b"export function helper() { return 42; }\n")
+
+        app = tmp_path / "app.ts"
+        app.write_bytes(b"import { helper } from './lib';\nfunction main() { helper(); }\n")
+
+        parser = self._make_parser(tmp_path)
+        lib_result = parser.parse_file(str(lib))
+        app_result = parser.parse_file(str(app))
+
+        all_entities = lib_result.entities + app_result.entities
+        all_import_symbols = lib_result.import_symbols + app_result.import_symbols
+
+        # Build symbol table (mirrors what CodeIndexer._build_symbol_table does)
+        table = SymbolTable()
+        for entity in all_entities:
+            table.register_entity(entity)
+        for sym in all_import_symbols:
+            table.register_import(sym)
+
+        # Locate the CALLS edge from main
+        calls_from_main = [
+            r
+            for r in app_result.relations
+            if r.relation_type == "CALLS" and "main" in r.source_id
+        ]
+        assert calls_from_main, "Expected at least one CALLS edge from main"
+
+        # Resolve target via the symbol table
+        callee = calls_from_main[0].properties.get("callee")
+        assert callee == "helper", f"Expected callee='helper', got '{callee}'"
+
+        resolved_id = table.resolve("app.ts", "helper")
+        assert resolved_id is not None, (
+            "Symbol table could not resolve 'helper' in app.ts — import_symbols not populated"
+        )
+
+        # The resolved id must point to lib.ts::helper, NOT app.ts::helper
+        assert "lib.ts" in resolved_id, (
+            f"Expected cross-file resolution to lib.ts::helper, got: {resolved_id}"
+        )
+        assert "app.ts" not in resolved_id, (
+            f"Resolved to same-file entity instead of cross-file: {resolved_id}"
+        )
