@@ -148,6 +148,65 @@ class TestTSParserEntityTypes:
         assert entity.entity_type == "function"
 
 
+# ── Nested function extraction ───────────────────────────────────────────────
+
+
+class TestNestedFunctionExtraction:
+    """Verify that functions nested inside arrow functions and class methods are extracted.
+
+    These cover the _walk(body) calls added to _extract_variable_decl and
+    _extract_method so that inner function declarations are not silently dropped.
+    """
+
+    def test_function_decl_inside_arrow_body_extracted(self, tmp_path):
+        """function declaration nested inside an arrow function body is extracted as a child."""
+        src = b"const outer = () => { function inner() { return 1; } };\n"
+        result = _parse_tsx(src, tmp_path)
+
+        outer = _entity_by_name(result, "outer")
+        inner = _entity_by_name(result, "inner")
+        assert inner.entity_type == "function"
+
+        # DEFINES edge must link outer → inner (not module → inner)
+        defines = [
+            r
+            for r in result.relations
+            if r.relation_type == "DEFINES" and r.source_id == outer.item_id and r.target_id == inner.item_id
+        ]
+        assert len(defines) == 1, "Expected DEFINES edge from outer to inner"
+
+    def test_arrow_function_inside_arrow_body_extracted(self, tmp_path):
+        """Arrow function nested inside another arrow function body is extracted."""
+        src = b"const outer = () => { const inner = () => 42; };\n"
+        result = _parse_tsx(src, tmp_path)
+
+        outer = _entity_by_name(result, "outer")
+        inner = _entity_by_name(result, "inner")
+
+        defines = [
+            r
+            for r in result.relations
+            if r.relation_type == "DEFINES" and r.source_id == outer.item_id and r.target_id == inner.item_id
+        ]
+        assert len(defines) == 1, "Expected DEFINES edge from outer to inner"
+
+    def test_function_decl_inside_method_body_extracted(self, tmp_path):
+        """function declaration nested inside a class method body is extracted."""
+        src = b"class Foo { bar() { function helper() { return 2; } } }\n"
+        result = _parse_tsx(src, tmp_path)
+
+        bar = _entity_by_name(result, "bar")
+        helper = _entity_by_name(result, "helper")
+        assert helper.entity_type == "function"
+
+        defines = [
+            r
+            for r in result.relations
+            if r.relation_type == "DEFINES" and r.source_id == bar.item_id and r.target_id == helper.item_id
+        ]
+        assert len(defines) == 1, "Expected DEFINES edge from bar to helper"
+
+
 # ── Hook detection edge cases ─────────────────────────────────────────────────
 
 
