@@ -11,6 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### CORE-SYS2-1d — Classify Stage Auto-Routing for Reasoning and Decision
+
+- `ClassificationConfig.content_indicators` extended with `reasoning` (13 keywords: therefore, because, conclude, inference, deduced…) and `decision` (13 keywords: decided, chose, committed, resolved…) lists. When `content_analysis_enabled=True`, classify automatically routes matching content without caller flags.
+- `_PRODUCED_ALLOWED_TARGETS: frozenset` module constant in `smart_memory.py` matching `schema_validator.py:568` allowed target types — used by the new PRODUCED edge gate.
+- 16 new unit tests in `tests/unit/test_classify_routing_sys2_1d.py`: classify keyword routing, `ReasoningDetectStage` guard activation, decision dispatch no-double-dispatch contract, PRODUCED gate membership and behavioral tests.
+
+### Changed
+
+#### CORE-SYS2-1d — Classify Stage Auto-Routing for Reasoning and Decision
+
+- `ReasoningDetectStage.execute()` — guard extended: `if not rd_cfg.enabled` → `if not rd_cfg.enabled and state.memory_type != "reasoning"`. Stage auto-activates on classify-routed items without `extract_reasoning=True`.
+- `SmartMemory.ingest()` decision dispatch — condition extended with `or state.memory_type == "decision"`; classify-based `_dm.create()` added before the LLM loop; loop guarded with `or []` for None safety when only classify fires.
+- `SmartMemory.ingest()` reasoning dispatch — condition extended with `or state.memory_type == "reasoning"`.
+- `SmartMemory.ingest()` PRODUCED edge — replaced unconditional `add_edge()` with explicit type gate (`memory_type in _PRODUCED_ALLOWED_TARGETS`). Fixes pre-existing silent schema validation failures for `working`/`opinion`/`observation` targets; now logs at DEBUG level instead of swallowing the error.
+- `tests/unit/test_ingest_reasoning_dispatch.py` — `_run_ingest_with_trace()` fixture updated: `PipelineState` now includes `memory_type="semantic"` to satisfy the new PRODUCED gate.
+
 #### CORE-DI-1 — Per-Instance Dependency Injection
 
 - `_cache_ctx: ContextVar` in `utils/cache.py` — `get_cache()` checks this before the process-global `_CACHE_OVERRIDE`.
