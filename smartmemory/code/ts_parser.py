@@ -187,7 +187,12 @@ class TSParser:
                 # expression_statement is intentionally NOT included: recursing into it causes
                 # every CALLS edge inside a function body to be emitted twice (once by
                 # _collect_calls and once via _walk -> expression_statement -> call_expression).
+                is_default = any(c.type == "default" for c in child.children)
+                entities_before = len(result.entities)
                 self._walk(child, parent, rel_path, source, result, depth)
+                if is_default and len(result.entities) > entities_before:
+                    # The first entity extracted inside this default export is the exported symbol.
+                    result.entities[entities_before].is_default_export = True
 
             elif ntype == "import_statement":
                 self._extract_import_stmt(child, parent, rel_path, source, result)

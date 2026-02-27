@@ -660,3 +660,142 @@ class TestImportSymbols:
         assert "app.ts" not in resolved_id, (
             f"Resolved to same-file entity instead of cross-file: {resolved_id}"
         )
+
+
+class TestDefaultExportImport:
+    """Default import resolution: import foo from './lib' where lib uses export default."""
+
+    def _make_parser(self, repo_root) -> TSParser:
+        return TSParser(repo="test-repo", repo_root=str(repo_root))
+
+    def test_export_default_function_sets_is_default_export(self, tmp_path):
+        """export default function helper() {} — entity must have is_default_export=True."""
+        f = tmp_path / "lib.ts"
+        f.write_bytes(b"export default function helper() { return 42; }\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(f))
+
+        helpers = [e for e in result.entities if e.name == "helper"]
+        assert helpers, f"No 'helper' entity found: {[e.name for e in result.entities]}"
+        assert helpers[0].is_default_export, "helper should be marked as default export"
+
+    def test_export_default_class_sets_is_default_export(self, tmp_path):
+        """export default class AuthService {} — class entity gets is_default_export=True."""
+        f = tmp_path / "svc.ts"
+        f.write_bytes(b"export default class AuthService {}\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(f))
+
+        svc = [e for e in result.entities if e.name == "AuthService"]
+        assert svc, f"No 'AuthService' entity: {[e.name for e in result.entities]}"
+        assert svc[0].is_default_export, "AuthService should be marked as default export"
+
+    def test_non_default_export_does_not_set_flag(self, tmp_path):
+        """export function named() {} — is_default_export must remain False."""
+        f = tmp_path / "lib.ts"
+        f.write_bytes(b"export function named() {}\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(f))
+
+        named = [e for e in result.entities if e.name == "named"]
+        assert named, "Expected 'named' entity"
+        assert not named[0].is_default_export, "Named export should NOT be marked as default"
+
+    def test_symbol_table_registers_default_export(self, tmp_path):
+        """SymbolTable._module_defaults is populated from is_default_export entities."""
+        f = tmp_path / "lib.ts"
+        f.write_bytes(b"export default function helper() {}\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(f))
+
+        table = SymbolTable()
+        for entity in result.entities:
+            table.register_entity(entity)
+
+        assert "lib" in table._module_defaults, (
+            f"'lib' not in _module_defaults: {list(table._module_defaults.keys())}"
+        )
+
+    def test_default_import_resolves_to_exported_entity(self, tmp_path):
+        """import foo from './lib' — foo resolves to lib::helper (not None)."""
+        lib = tmp_path / "lib.ts"
+        lib.write_bytes(b"export default function helper() { return 42; }\n")
+
+        app = tmp_path / "app.ts"
+        app.write_bytes(b"import foo from './lib';\nfunction main() { foo(); }\n")
+
+        parser = self._make_parser(tmp_path)
+        lib_result = parser.parse_file(str(lib))
+        app_result = parser.parse_file(str(app))
+
+        table = SymbolTable()
+        for entity in lib_result.entities + app_result.entities:
+            table.register_entity(entity)
+        for sym in lib_result.import_symbols + app_result.import_symbols:
+            table.register_import(sym)
+
+        resolved = table.resolve("app.ts", "foo")
+        assert resolved is not None, (
+            "Default import 'foo' should resolve to lib.ts::helper but got None"
+        )
+        assert "lib.ts" in resolved, (
+            f"Expected resolution to lib.ts entity, got: {resolved}"
+        )
+        assert "helper" in resolved, (
+            f"Expected resolution to include 'helper', got: {resolved}"
+        )
+
+    def test_default_import_calls_edge_resolves_end_to_end(self, tmp_path):
+        """End-to-end: foo() CALLS edge in app.ts resolves to lib.ts::helper.
+
+        Scenario:
+          lib.ts  — export default function helper() { return 42; }
+          app.ts  — import foo from './lib'; function main() { foo(); }
+
+        After symbol table + cross-file resolution, the CALLS edge from main
+        must point at lib.ts::helper, not the same-file guess app.ts::foo.
+        """
+        lib = tmp_path / "lib.ts"
+        lib.write_bytes(b"export default function helper() { return 42; }\n")
+
+        app = tmp_path / "app.ts"
+        app.write_bytes(b"import foo from './lib';\nfunction main() { foo(); }\n")
+
+        parser = self._make_parser(tmp_path)
+        lib_result = parser.parse_file(str(lib))
+        app_result = parser.parse_file(str(app))
+
+        all_entities = lib_result.entities + app_result.entities
+        all_import_symbols = lib_result.import_symbols + app_result.import_symbols
+
+        table = SymbolTable()
+        for entity in all_entities:
+            table.register_entity(entity)
+        for sym in all_import_symbols:
+            table.register_import(sym)
+
+        # Find CALLS edges from main
+        calls_from_main = [
+            r
+            for r in app_result.relations
+            if r.relation_type == "CALLS" and "main" in r.source_id
+        ]
+        assert calls_from_main, "Expected at least one CALLS edge from main"
+
+        callee = calls_from_main[0].properties.get("callee")
+        assert callee == "foo", f"Expected callee='foo', got '{callee}'"
+
+        resolved_id = table.resolve("app.ts", "foo")
+        assert resolved_id is not None, (
+            "Symbol table could not resolve default-import 'foo' in app.ts"
+        )
+        assert "lib.ts" in resolved_id, (
+            f"Expected cross-file resolution to lib.ts::helper, got: {resolved_id}"
+        )
+        assert "helper" in resolved_id, (
+            f"Expected item_id to contain 'helper', got: {resolved_id}"
+        )

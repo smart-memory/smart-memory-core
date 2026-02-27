@@ -23,6 +23,7 @@ class CodeEntity:
     bases: list[str] = field(default_factory=list)
     http_method: str = ""
     http_path: str = ""
+    is_default_export: bool = False
 
     @property
     def item_id(self) -> str:

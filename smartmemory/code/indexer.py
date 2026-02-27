@@ -52,6 +52,9 @@ class SymbolTable:
         # Module-scoped entity registry: module_path → {entity_name → item_id}
         # Used to resolve "alias.EntityName" attribute calls from module imports.
         self._module_entities: dict[str, dict[str, str]] = {}
+        # Default export registry: module_path → item_id
+        # Used to resolve "import foo from './lib'" where foo is the default export.
+        self._module_defaults: dict[str, str] = {}
 
     # ------------------------------------------------------------------
     # Stage 1 — entity registration
@@ -89,6 +92,9 @@ class SymbolTable:
             # (avoids false positives when two classes share a method name).
             self._module_entities[module_path].setdefault(bare_name, entity.item_id)
 
+        if getattr(entity, "is_default_export", False):
+            self._module_defaults[module_path] = entity.item_id
+
     # ------------------------------------------------------------------
     # Stage 2 — import binding
     # ------------------------------------------------------------------
@@ -108,6 +114,12 @@ class SymbolTable:
             for entity_name, item_id in mod_entities.items():
                 attr_key = (sym.importing_file, f"{sym.local_name}.{entity_name}")
                 self._table.setdefault(attr_key, item_id)
+        elif sym.original_name == "default":
+            # "import foo from './lib'" — default import; resolve via the module's
+            # default export registry rather than by name ("default" is never a real entity name).
+            resolved = self._module_defaults.get(sym.module_path)
+            if resolved is not None:
+                self._table[key] = resolved
         else:
             # "from foo import Bar" or "from foo import Bar as B"
             mod_entities = self._module_entities.get(sym.module_path, {})
