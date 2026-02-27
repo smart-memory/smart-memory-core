@@ -1,5 +1,5 @@
 """smartmemory.tools.factory — zero-infra SmartMemory factory for Lite."""
-import os
+
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
@@ -16,15 +16,18 @@ def _ensure_spacy_model(model: str = "en_core_web_sm") -> None:
     Falls back to plain print on a base install without rich.
     """
     import spacy
+
     if spacy.util.is_package(model):
         return
     try:
         from rich.console import Console
+
         _print = Console().print
     except ImportError:
         _print = print  # type: ignore[assignment]
     _print(f"Downloading spaCy model '{model}' (first run only)...")
     import spacy.cli
+
     spacy.cli.download(model)
     _print(f"spaCy model '{model}' ready.")
 
@@ -33,7 +36,7 @@ def create_lite_memory(
     data_dir: Optional[str] = None,
     entity_ruler_patterns=None,
     pipeline_profile=None,
-    event_sink=None,          # DIST-LITE-3: InProcessQueueSink or None
+    event_sink=None,  # DIST-LITE-3: InProcessQueueSink or None
 ):
     """Create a SmartMemory instance backed by SQLite + usearch. No Docker required.
 
@@ -83,7 +86,7 @@ def create_lite_memory(
         observability=False,
         pipeline_profile=pipeline_profile,
         entity_ruler_patterns=entity_ruler_patterns,
-        event_sink=event_sink,    # DIST-LITE-3
+        event_sink=event_sink,  # DIST-LITE-3
     )
 
 
@@ -104,28 +107,11 @@ def lite_context(data_dir: Optional[str] = None, pipeline_profile=None, event_si
         event_sink: Optional in-process event sink (DIST-LITE-3). Passed to
             ``create_lite_memory()``. Defaults to None.
     """
-    from smartmemory.stores.vector.vector_store import VectorStore
-    from smartmemory.utils.cache import set_cache_override
-
-    # Capture observability env BEFORE any global mutation so we can restore it
-    # unconditionally — even if create_lite_memory() raises partway through.
-    prev_obs = os.environ.get("SMARTMEMORY_OBSERVABILITY")
-
     memory = None
     try:
         memory = create_lite_memory(data_dir, pipeline_profile=pipeline_profile, event_sink=event_sink)
         yield memory
     finally:
-        # Restore globals regardless of whether construction, yield, or body raised.
-        VectorStore.set_default_backend(None)
-        set_cache_override(None)
-
-        # Restore observability env to its pre-context value.
-        if prev_obs is None:
-            os.environ.pop("SMARTMEMORY_OBSERVABILITY", None)
-        else:
-            os.environ["SMARTMEMORY_OBSERVABILITY"] = prev_obs
-
         # Close the SQLite backend explicitly — don't rely on GC for WAL flush.
         if memory is not None:
             try:

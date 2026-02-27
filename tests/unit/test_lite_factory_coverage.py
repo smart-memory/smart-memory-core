@@ -1,13 +1,13 @@
 """Additional coverage tests for smartmemory.tools.factory.
 
 Focuses on:
-- lite_context() resets VectorStore backend on normal exit
-- lite_context() resets VectorStore backend even when body raises
+- lite_context() ContextVar state does not leak outside the context (CORE-DI-1)
+- lite_context() closes the SQLite backend on normal exit and exception
 - create_lite_memory creates the data directory if it doesn't exist
 - create_lite_memory respects custom data_dir
 - SmartMemory constructor (via create_lite_memory) sets coreference.enabled=False,
   llm_extract.enabled=False, and enricher_names=["basic_enricher"] via pipeline_profile
-- SmartMemory constructor (via create_lite_memory) sets runner._metrics=None via observability=False
+- SmartMemory constructor (via create_lite_memory) stores NoOpCache in _cache without global mutation
 """
 import os
 import pytest
@@ -24,40 +24,32 @@ except ImportError:
 pytestmark = pytest.mark.skipif(not _LITE_AVAILABLE, reason="smartmemory-lite not installed")
 
 
-# ── lite_context cleanup contract ────────────────────────────────────────────
-# NOTE: These tests verify the contract via spy rather than checking the module
-# global directly. The unit autouse fixture patches VectorStore, so the real
-# module global (_DEFAULT_BACKEND) is not written. We test via the mock call
-# count that set_default_backend(None) is always called in the finally block.
+# ── lite_context ContextVar isolation contract (CORE-DI-1) ───────────────────
 
-def test_lite_context_calls_set_default_backend_none_on_normal_exit(tmp_path):
-    """lite_context() calls VectorStore.set_default_backend(None) on normal exit."""
-    from unittest.mock import call
-    from smartmemory.stores.vector.vector_store import VectorStore
+def test_lite_context_vector_backend_ctx_cleared_on_exit(tmp_path):
+    """lite_context() does NOT call set_default_backend(None); _vector_backend_ctx is None outside."""
+    from smartmemory.stores.vector.vector_store import _vector_backend_ctx
 
-    with lite_context(str(tmp_path)) as memory:
-        assert memory is not None
+    with patch("smartmemory.stores.vector.vector_store.VectorStore.set_default_backend") as mock_set:
+        with lite_context(str(tmp_path)) as memory:
+            assert memory is not None
+        mock_set.assert_not_called()
 
-    # The finally block must have called set_default_backend(None)
-    # (mock is installed by autouse unit_isolation_patches fixture)
-    set_calls = [c for c in VectorStore.set_default_backend.call_args_list if c == call(None)]
-    assert len(set_calls) >= 1, (
-        "lite_context must call VectorStore.set_default_backend(None) on exit"
+    assert _vector_backend_ctx.get() is None, (
+        "_vector_backend_ctx must not leak outside lite_context"
     )
 
 
-def test_lite_context_resets_backend_even_on_exception(tmp_path):
-    """lite_context() calls set_default_backend(None) even when the body raises."""
-    from unittest.mock import call
-    from smartmemory.stores.vector.vector_store import VectorStore
+def test_lite_context_vector_backend_ctx_cleared_on_exception(tmp_path):
+    """_vector_backend_ctx is None outside lite_context even when body raises."""
+    from smartmemory.stores.vector.vector_store import _vector_backend_ctx
 
     with pytest.raises(RuntimeError, match="intentional"):
         with lite_context(str(tmp_path)):
             raise RuntimeError("intentional test error")
 
-    set_calls = [c for c in VectorStore.set_default_backend.call_args_list if c == call(None)]
-    assert len(set_calls) >= 1, (
-        "lite_context must call VectorStore.set_default_backend(None) even on exception"
+    assert _vector_backend_ctx.get() is None, (
+        "_vector_backend_ctx must not leak even on exception"
     )
 
 
@@ -145,18 +137,13 @@ def test_apply_lite_pipeline_profile_disables_wikidata(tmp_path):
 
 def test_create_lite_memory_uses_noop_cache(tmp_path):
     """create_lite_memory() wires a NoOpCache via SmartMemory(cache=...) constructor."""
-    from smartmemory.stores.vector.vector_store import VectorStore
-    from smartmemory.utils.cache import get_cache, NoOpCache, set_cache_override
-    try:
-        memory = create_lite_memory(str(tmp_path))
-        # The SmartMemory constructor called set_cache_override(NoOpCache())
-        assert isinstance(get_cache(), NoOpCache), (
-            "create_lite_memory must install a NoOpCache via set_cache_override"
-        )
-        assert memory._cache is not None, "_cache attribute must be set"
-    finally:
-        VectorStore.set_default_backend(None)
-        set_cache_override(None)
+    from smartmemory.utils.cache import NoOpCache
+    memory = create_lite_memory(str(tmp_path))
+    # Constructor stores NoOpCache in _cache without calling set_cache_override (CORE-DI-1)
+    assert isinstance(memory._cache, NoOpCache), (
+        "create_lite_memory must pass a NoOpCache to SmartMemory(cache=...) constructor"
+    )
+    assert memory._cache is not None, "_cache attribute must be set"
 
 
 # ── lite_context observability restore (P2) ───────────────────────────────────
@@ -245,28 +232,21 @@ def test_lite_context_closes_sqlite_backend_on_exception(tmp_path):
 
 # ── lite_context cleanup on construction failure (P2) ────────────────────────
 
-def test_lite_context_restores_globals_if_create_lite_memory_raises(tmp_path):
-    """lite_context() restores env, vector backend, and cache even when create_lite_memory() raises."""
-    from smartmemory.stores.vector.vector_store import VectorStore
-    from smartmemory.utils.cache import set_cache_override
+def test_lite_context_no_ctx_leak_if_create_lite_memory_raises(tmp_path):
+    """lite_context() leaves no ContextVar values set when create_lite_memory() raises (memory is None)."""
+    from smartmemory.stores.vector.vector_store import _vector_backend_ctx
+    from smartmemory.utils.cache import _cache_ctx
+    from smartmemory.observability.tracing import _observability_ctx
 
-    os.environ["SMARTMEMORY_OBSERVABILITY"] = "sentinel-value"
-    try:
-        with patch(
-            "smartmemory.tools.factory.create_lite_memory",
-            side_effect=RuntimeError("construction failed"),
-        ):
-            with pytest.raises(RuntimeError, match="construction failed"):
-                with lite_context(str(tmp_path)):
-                    pass  # never reached
+    with patch(
+        "smartmemory.tools.factory.create_lite_memory",
+        side_effect=RuntimeError("construction failed"),
+    ):
+        with pytest.raises(RuntimeError, match="construction failed"):
+            with lite_context(str(tmp_path)):
+                pass  # never reached
 
-        # Env var must be restored to the sentinel, not left as "false".
-        assert os.environ.get("SMARTMEMORY_OBSERVABILITY") == "sentinel-value", (
-            "lite_context must restore observability env even when create_lite_memory raises"
-        )
-        # Vector backend and cache should be reset.
-        assert VectorStore.set_default_backend.called or True  # already verified elsewhere
-    finally:
-        set_cache_override(None)
-        VectorStore.set_default_backend(None)
-        os.environ.pop("SMARTMEMORY_OBSERVABILITY", None)
+    # No ContextVars must have been set (memory is None, _di_context never called)
+    assert _vector_backend_ctx.get() is None
+    assert _cache_ctx.get() is None
+    assert _observability_ctx.get() is None

@@ -41,17 +41,26 @@ def _make_sm(stack, **kwargs):
     return SmartMemory(graph=_make_mock_graph(), **kwargs)
 
 
-def test_observability_false_sets_env_var():
-    """SmartMemory(observability=False) sets SMARTMEMORY_OBSERVABILITY=false in env."""
+def test_observability_false_no_env_mutation():
+    """SmartMemory(observability=False) stores False in _observability; os.environ NOT mutated at construction."""
     old = os.environ.get("SMARTMEMORY_OBSERVABILITY")
     try:
         os.environ.pop("SMARTMEMORY_OBSERVABILITY", None)
         with ExitStack() as stack:
             mem = _make_sm(stack, observability=False)
-            assert os.environ.get("SMARTMEMORY_OBSERVABILITY") == "false", (
-                "observability=False must set SMARTMEMORY_OBSERVABILITY=false"
+            # Constructor must NOT write to os.environ — only _di_context() does
+            assert os.environ.get("SMARTMEMORY_OBSERVABILITY") is None, (
+                "SmartMemory constructor must NOT write to os.environ"
             )
             assert mem._observability is False
+
+        # Inside _di_context(), _observability_ctx is False; outside, it resets to None
+        from smartmemory.observability.tracing import _observability_ctx
+        with mem._di_context():
+            assert _observability_ctx.get() is False
+        assert _observability_ctx.get() is None, (
+            "_observability_ctx must reset to None after _di_context exits"
+        )
     finally:
         if old is None:
             os.environ.pop("SMARTMEMORY_OBSERVABILITY", None)
@@ -59,107 +68,102 @@ def test_observability_false_sets_env_var():
             os.environ["SMARTMEMORY_OBSERVABILITY"] = old
 
 
-def test_observability_true_restores_env_after_false():
-    """SmartMemory(observability=True) restores the pre-disable env value, not just pops it."""
-    import smartmemory.smart_memory as _sm_mod
-    old_saved = _sm_mod._obs_pre_disable_value
-    old_env = os.environ.get("SMARTMEMORY_OBSERVABILITY")
+def test_observability_ctx_resets_on_exit():
+    """_di_context() resets _observability_ctx to None after the context exits (normal and exception)."""
+    from smartmemory.observability.tracing import _observability_ctx
+
+    with ExitStack() as stack:
+        mem = _make_sm(stack, observability=False)
+
+    # Normal exit
+    with mem._di_context():
+        assert _observability_ctx.get() is False
+    assert _observability_ctx.get() is None, (
+        "_observability_ctx must reset to None after _di_context exits cleanly"
+    )
+
+    # Exception path — ContextVar must still reset
     try:
-        # Case A: no env var before — constructor set env=false, restore=pop.
-        os.environ.pop("SMARTMEMORY_OBSERVABILITY", None)
-        _sm_mod._obs_pre_disable_value = _sm_mod._SENTINEL
-        with ExitStack() as stack:
-            _make_sm(stack, observability=False)
-        assert os.environ.get("SMARTMEMORY_OBSERVABILITY") == "false"
-        with ExitStack() as stack:
-            _make_sm(stack, observability=True)
-        assert "SMARTMEMORY_OBSERVABILITY" not in os.environ, (
-            "observability=True must pop env when it was absent before the disable"
-        )
-
-        # Case B: user had SMARTMEMORY_OBSERVABILITY=false before — must be restored, not cleared.
-        os.environ["SMARTMEMORY_OBSERVABILITY"] = "false"
-        _sm_mod._obs_pre_disable_value = _sm_mod._SENTINEL
-        with ExitStack() as stack:
-            _make_sm(stack, observability=False)
-        with ExitStack() as stack:
-            _make_sm(stack, observability=True)
-        assert os.environ.get("SMARTMEMORY_OBSERVABILITY") == "false", (
-            "observability=True must restore 'false' when user had it set before the disable"
-        )
-    finally:
-        _sm_mod._obs_pre_disable_value = old_saved
-        if old_env is None:
-            os.environ.pop("SMARTMEMORY_OBSERVABILITY", None)
-        else:
-            os.environ["SMARTMEMORY_OBSERVABILITY"] = old_env
+        with mem._di_context():
+            assert _observability_ctx.get() is False
+            raise ValueError("synthetic")
+    except ValueError:
+        pass
+    assert _observability_ctx.get() is None, (
+        "_observability_ctx must reset to None after _di_context exits via exception"
+    )
 
 
-def test_observability_restore_is_reentrant():
-    """Multiple observability=False calls must not clobber the original env value.
+def test_observability_ctx_isolation_across_instances():
+    """Two SmartMemory instances with different observability see independent ContextVar values inside _di_context."""
+    from smartmemory.observability.tracing import _observability_ctx
 
-    Repro sequence:
-        env = "true"
-        SmartMemory(observability=False)  # saves "true", sets "false"
-        SmartMemory(observability=False)  # must NOT overwrite save slot with "false"
-        SmartMemory(observability=True)   # must restore "true", not "false"
-    """
-    import smartmemory.smart_memory as _sm_mod
-    old_saved = _sm_mod._obs_pre_disable_value
-    old_env = os.environ.get("SMARTMEMORY_OBSERVABILITY")
-    try:
-        os.environ["SMARTMEMORY_OBSERVABILITY"] = "true"
-        _sm_mod._obs_pre_disable_value = _sm_mod._SENTINEL
+    with ExitStack() as stack:
+        mem_off = _make_sm(stack, observability=False)
 
-        with ExitStack() as stack:
-            _make_sm(stack, observability=False)   # saves "true"
-        with ExitStack() as stack:
-            _make_sm(stack, observability=False)   # must NOT overwrite save slot
-        with ExitStack() as stack:
-            _make_sm(stack, observability=True)    # restore
+    # Outside any _di_context, the ContextVar is None regardless of instance config
+    assert _observability_ctx.get() is None
 
-        assert os.environ.get("SMARTMEMORY_OBSERVABILITY") == "true", (
-            "observability=True must restore the original env value even after "
-            "multiple consecutive observability=False constructions"
-        )
-    finally:
-        _sm_mod._obs_pre_disable_value = old_saved
-        if old_env is None:
-            os.environ.pop("SMARTMEMORY_OBSERVABILITY", None)
-        else:
-            os.environ["SMARTMEMORY_OBSERVABILITY"] = old_env
+    # Inside mem_off's _di_context, observability is disabled
+    with mem_off._di_context():
+        assert _observability_ctx.get() is False
+
+    # After exit, it resets
+    assert _observability_ctx.get() is None
+
+    # Nested _di_context calls reset in LIFO order (the token pattern)
+    with ExitStack() as stack2:
+        mem_off2 = _make_sm(stack2, observability=False)
+    with mem_off._di_context():
+        inner_val = _observability_ctx.get()
+        assert inner_val is False
+    assert _observability_ctx.get() is None
 
 
 # ---------------------------------------------------------------------------
 # vector_backend
 # ---------------------------------------------------------------------------
 
-def test_vector_backend_calls_set_default():
-    """SmartMemory(vector_backend=x) calls VectorStore.set_default_backend(x)."""
+def test_vector_backend_stored_not_global():
+    """SmartMemory(vector_backend=x) stores x in _vector_backend; set_default_backend is NOT called."""
+    from smartmemory.stores.vector.vector_store import _vector_backend_ctx
+
     sentinel = object()
-    with ExitStack() as stack:
-        mock_set = stack.enter_context(
-            patch("smartmemory.stores.vector.vector_store.VectorStore.set_default_backend")
-        )
-        mem = _make_sm(stack, vector_backend=sentinel)
-        mock_set.assert_called_once_with(sentinel)
-        assert mem._vector_backend is sentinel
+    with patch("smartmemory.stores.vector.vector_store.VectorStore.set_default_backend") as mock_set:
+        with ExitStack() as stack:
+            mem = _make_sm(stack, vector_backend=sentinel)
+        mock_set.assert_not_called()
+
+    assert mem._vector_backend is sentinel
+
+    # _vector_backend_ctx is None outside _di_context, holds sentinel inside
+    assert _vector_backend_ctx.get() is None
+    with mem._di_context():
+        assert _vector_backend_ctx.get() is sentinel
+    assert _vector_backend_ctx.get() is None
 
 
 # ---------------------------------------------------------------------------
 # cache
 # ---------------------------------------------------------------------------
 
-def test_cache_calls_set_cache_override():
-    """SmartMemory(cache=x) calls set_cache_override(x)."""
-    from smartmemory.utils.cache import NoOpCache
+def test_cache_stored_not_global():
+    """SmartMemory(cache=x) stores x in _cache; set_cache_override is NOT called."""
+    from smartmemory.utils.cache import NoOpCache, _cache_ctx
 
     noop = NoOpCache()
-    with ExitStack() as stack:
-        mock_override = stack.enter_context(patch("smartmemory.utils.cache.set_cache_override"))
-        mem = _make_sm(stack, cache=noop)
-        mock_override.assert_called_once_with(noop)
-        assert mem._cache is noop
+    with patch("smartmemory.utils.cache.set_cache_override") as mock_override:
+        with ExitStack() as stack:
+            mem = _make_sm(stack, cache=noop)
+        mock_override.assert_not_called()
+
+    assert mem._cache is noop
+
+    # _cache_ctx is None outside _di_context, holds noop inside
+    assert _cache_ctx.get() is None
+    with mem._di_context():
+        assert _cache_ctx.get() is noop
+    assert _cache_ctx.get() is None
 
 
 # ---------------------------------------------------------------------------

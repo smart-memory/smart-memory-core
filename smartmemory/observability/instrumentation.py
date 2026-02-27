@@ -19,14 +19,19 @@ import os
 import warnings
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
+from smartmemory.observability.tracing import _observability_ctx
+
 
 def _is_observability_enabled() -> bool:
     """Read observability toggle from env at call time.
 
-    Default: enabled. Set SMARTMEMORY_OBSERVABILITY=false to disable.
-    Reading at call time allows SmartMemory(observability=False) to set the env var
-    after import and have it take effect immediately.
+    Per-instance override (CORE-DI-1): if _observability_ctx is set by
+    SmartMemory._di_context(), it takes priority over the env var.
+    Default: enabled. Set SMARTMEMORY_OBSERVABILITY=false to disable globally.
     """
+    ctx = _observability_ctx.get()
+    if ctx is not None:
+        return ctx
     return os.getenv("SMARTMEMORY_OBSERVABILITY", "true").lower() in ("true", "1", "yes", "on")
 
 

@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import pickle
+from contextvars import ContextVar
 from typing import Any, Dict, List, Optional, Union
 
 from smartmemory.utils import get_config
@@ -36,8 +37,7 @@ class RedisCache:
             import redis as _redis
         except ImportError:
             raise ImportError(
-                "redis is required for caching. "
-                "Install it with: pip install smartmemory[server]"
+                "redis is required for caching. Install it with: pip install smartmemory[server]"
             ) from None
 
         self.prefix = prefix
@@ -247,6 +247,9 @@ _global_cache: Optional[RedisCache] = None
 # Used by SmartMemory(cache=...) constructor parameter to inject a custom backend.
 _CACHE_OVERRIDE: Optional[Any] = None
 
+# CORE-DI-1: per-call override via ContextVar (set by SmartMemory._di_context())
+_cache_ctx: ContextVar[Optional[Any]] = ContextVar("_cache_ctx", default=None)
+
 
 def set_cache_override(cache: Optional[Any]) -> None:
     """Override the cache returned by get_cache().
@@ -263,6 +266,10 @@ def set_cache_override(cache: Optional[Any]) -> None:
 
 def get_cache() -> RedisCache:
     """Get the global Redis cache instance."""
+    # CORE-DI-1: per-instance override takes priority over all process globals
+    ctx = _cache_ctx.get()
+    if ctx is not None:
+        return ctx  # type: ignore[return-value]
     global _global_cache
     if _CACHE_OVERRIDE is not None:
         return _CACHE_OVERRIDE  # type: ignore[return-value]

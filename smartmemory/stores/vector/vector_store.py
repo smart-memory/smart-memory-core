@@ -1,7 +1,8 @@
 import json
+from contextvars import ContextVar
 from datetime import datetime
 from time import perf_counter
-from typing import Optional
+from typing import Any, Optional
 
 from smartmemory.observability.tracing import trace_span
 from smartmemory.stores.vector.backends.base import create_backend
@@ -11,6 +12,9 @@ from smartmemory.scope_provider import DefaultScopeProvider
 
 
 _DEFAULT_BACKEND = None
+
+# CORE-DI-1: per-call override via ContextVar (set by SmartMemory._di_context())
+_vector_backend_ctx: ContextVar[Optional[Any]] = ContextVar("_vector_backend_ctx", default=None)
 
 
 class VectorStore:
@@ -95,6 +99,15 @@ class VectorStore:
         """Construct a VectorStore that delegates to a configured backend."""
         self.scope_provider = scope_provider or DefaultScopeProvider()
 
+        # CORE-DI-1: per-instance ContextVar override (highest priority)
+        ctx_backend = _vector_backend_ctx.get()
+        if ctx_backend is not None:
+            self._backend = ctx_backend
+            self._collection_name = collection_name or "default"
+            self.collection = self._backend
+            return
+
+        # Process-global override (backward compat, lower priority)
         if _DEFAULT_BACKEND is not None:
             self._backend = _DEFAULT_BACKEND
             self._collection_name = collection_name or "default"

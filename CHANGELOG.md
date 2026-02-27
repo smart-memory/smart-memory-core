@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### CORE-DI-1 — Per-Instance Dependency Injection
+
+- `_cache_ctx: ContextVar` in `utils/cache.py` — `get_cache()` checks this before the process-global `_CACHE_OVERRIDE`.
+- `_vector_backend_ctx: ContextVar` in `stores/vector/vector_store.py` — `VectorStore.__init__` checks this before module-level `_DEFAULT_BACKEND`.
+- `_observability_ctx: ContextVar` in `observability/tracing.py` — `_is_enabled()` checks this before `os.environ`. Wired into `events.py` and `instrumentation.py` via top-level import.
+- `SmartMemory._di_context()` — `@contextmanager` that sets all four ContextVars unconditionally at operation entry and resets them LIFO on exit. Always outer wrapper over `trace_span` in `add()`, `delete()`, and `search()` so span enablement and sink routing see the per-instance config.
+- 6 new unit tests in `tests/unit/test_di_context.py`: all-four-vars contract, cache/vector/observability thread isolation, exception reset, and no-global-mutation on construct.
+
+### Changed
+
+#### CORE-DI-1 — Per-Instance Dependency Injection
+
+- `SmartMemory.__init__` — removed three global-mutation side effects: `os.environ["SMARTMEMORY_OBSERVABILITY"]`, `VectorStore.set_default_backend()`, `set_cache_override()`. Constructor stores instance attrs only; `_di_context()` activates them per operation.
+- `SmartMemory.ingest()` both branches, `add()`, `delete()`, `search()`, `embeddings_search()`, `clear()` — wrapped with `_di_context()`.
+- `lite_context()` — removed global-reset teardown block; only the SQLite `backend.close()` remains.
+- 8 broken unit tests rewritten in `test_smartmemory_lite_params.py` and `test_lite_factory_coverage.py` to verify ContextVar contract instead of global-mutation contract.
+
 #### DIST-LITE-4 — Loginless Pip-Bundled Graph Viewer (SQLiteBackend read methods)
 
 - `SQLiteBackend.get_all_edges()` — returns all edges as list of dicts with 8 keys: `source_id`, `target_id`, `edge_type`, `memory_type`, `valid_from`, `valid_to`, `created_at`, `properties` (deserialized). Uses `with self._lock:`.

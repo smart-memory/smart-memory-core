@@ -22,6 +22,7 @@ from contextvars import ContextVar
 from typing import Any, Dict, Optional, Iterator, List
 from typing import Protocol, runtime_checkable
 
+from smartmemory.observability.tracing import _observability_ctx
 from smartmemory.utils import get_config, now
 
 logger = logging.getLogger(__name__)
@@ -30,10 +31,13 @@ logger = logging.getLogger(__name__)
 def _is_observability_enabled() -> bool:
     """Read observability toggle from env at call time.
 
-    Default: enabled. Set SMARTMEMORY_OBSERVABILITY=false to disable.
-    Reading at call time allows SmartMemory(observability=False) to set the env var
-    after import and have it take effect immediately.
+    Per-instance override (CORE-DI-1): if _observability_ctx is set by
+    SmartMemory._di_context(), it takes priority over the env var.
+    Default: enabled. Set SMARTMEMORY_OBSERVABILITY=false to disable globally.
     """
+    ctx = _observability_ctx.get()
+    if ctx is not None:
+        return ctx
     return os.getenv("SMARTMEMORY_OBSERVABILITY", "true").lower() in ("true", "1", "yes", "on")
 
 
@@ -46,13 +50,13 @@ REDIS_DB_EVENTS = 1
 # DIST-LITE-3: In-process event sink (bypasses Redis for Lite mode)
 # ---------------------------------------------------------------------------
 
+
 @runtime_checkable
 class EventSink(Protocol):
     """Protocol for in-process event consumers. Structurally satisfied by any object
     that exposes ``emit(event_type, payload) -> None``."""
 
-    def emit(self, event_type: str, payload: dict) -> None:
-        ...
+    def emit(self, event_type: str, payload: dict) -> None: ...
 
 
 _current_sink: ContextVar["EventSink | None"] = ContextVar("_current_sink", default=None)
@@ -155,6 +159,7 @@ class EventSpooler:
 
         try:
             import redis as _redis
+
             self.redis_client = _redis.Redis(host=host, port=port, db=eff_db, decode_responses=True)
             self._connected = True
         except (ImportError, Exception) as exc:
@@ -379,6 +384,7 @@ class EventStream:
 
         try:
             import redis as _redis
+
             self.redis_client = _redis.Redis(host=host, port=port, db=eff_db, decode_responses=True)
         except (ImportError, Exception) as exc:
             logger.debug("Redis unavailable for event stream: %s", exc)
@@ -494,12 +500,12 @@ class RedisStreamQueue:
         eff_stream = f"{base_stream}:{ns}" if ns else base_stream
         try:
             import redis as _redis
+
             self.redis = _redis.Redis(host=host, port=port, db=db or 2, decode_responses=True)
             self._redis_mod = _redis
         except ImportError:
             raise ImportError(
-                "redis is required for RedisStreamQueue. "
-                "Install it with: pip install smartmemory[server]"
+                "redis is required for RedisStreamQueue. Install it with: pip install smartmemory[server]"
             ) from None
         self.stream_name = eff_stream
         self.group = group

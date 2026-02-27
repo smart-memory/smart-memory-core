@@ -1,13 +1,6 @@
 import logging
-import os
+from contextlib import contextmanager
 from typing import Optional, Union, Any, Dict, List
-
-# Saves the SMARTMEMORY_OBSERVABILITY value that existed before the most recent
-# SmartMemory(observability=False) constructor set it to "false".  None means the
-# env var was absent before our write; _SENTINEL means no constructor write is
-# pending (i.e. the env var is currently user-controlled, not constructor-set).
-_SENTINEL = object()
-_obs_pre_disable_value: object = _SENTINEL  # _SENTINEL = no active constructor write
 
 from smartmemory.conversation.context import ConversationContext
 from smartmemory.memory.pipeline.config import PipelineConfigBundle
@@ -94,7 +87,7 @@ class SmartMemory(MemoryBase):
         observability: bool = True,
         pipeline_profile: Optional[Any] = None,
         entity_ruler_patterns=None,
-        event_sink=None,           # DIST-LITE-3: InProcessQueueSink or None
+        event_sink=None,  # DIST-LITE-3: InProcessQueueSink or None
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -105,38 +98,6 @@ class SmartMemory(MemoryBase):
         self._pipeline_profile = pipeline_profile
         self._entity_ruler_patterns = entity_ruler_patterns
         self._event_sink = event_sink  # DIST-LITE-3
-
-        # Wire observability toggle.
-        # We save the old env value before overwriting so a later observability=True
-        # instance can restore exactly what was there — not just "pop" — which would
-        # otherwise silently erase a user-set SMARTMEMORY_OBSERVABILITY=false.
-        global _obs_pre_disable_value
-        if not observability:
-            # Only save on the FIRST disable — subsequent False calls must not
-            # overwrite the original env value with our own "false" write.
-            if _obs_pre_disable_value is _SENTINEL:
-                _obs_pre_disable_value = os.environ.get("SMARTMEMORY_OBSERVABILITY")
-            os.environ["SMARTMEMORY_OBSERVABILITY"] = "false"
-        elif _obs_pre_disable_value is not _SENTINEL:
-            # A prior constructor disabled observability; restore the pre-disable value.
-            old = _obs_pre_disable_value
-            _obs_pre_disable_value = _SENTINEL
-            if old is None:
-                os.environ.pop("SMARTMEMORY_OBSERVABILITY", None)
-            else:
-                os.environ["SMARTMEMORY_OBSERVABILITY"] = old  # type: ignore[assignment]
-
-        # Wire vector backend: set class-level default for all VectorStore instances.
-        if vector_backend is not None:
-            from smartmemory.stores.vector.vector_store import VectorStore
-
-            VectorStore.set_default_backend(vector_backend)
-
-        # Wire cache override: redirect all get_cache() calls to the provided instance.
-        if cache is not None:
-            from smartmemory.utils.cache import set_cache_override
-
-            set_cache_override(cache)
 
         # Use DefaultScopeProvider if none provided (for OSS usage)
         # Service layer should always provide a secure ScopeProvider
@@ -424,6 +385,41 @@ class SmartMemory(MemoryBase):
         return config
 
     # =========================================================================
+    # Dependency injection context (CORE-DI-1)
+    # =========================================================================
+
+    @contextmanager
+    def _di_context(self):
+        """Activate per-instance dependency overrides for the duration of one operation.
+
+        Sets ContextVars for cache, vector_backend, observability, and event_sink so
+        all downstream consumers (get_cache(), VectorStore(), _is_enabled(), emit_event())
+        see this instance's configuration without mutating any process-wide global.
+        Replaces the global-setter approach used before CORE-DI-1.
+        """
+        resets: list = []
+        try:
+            # Always set all four vars unconditionally so nested _di_context() calls
+            # from default-config instances cannot inherit an outer instance's overrides.
+            from smartmemory.utils.cache import _cache_ctx
+            resets.append((_cache_ctx, _cache_ctx.set(self._cache)))
+
+            from smartmemory.stores.vector.vector_store import _vector_backend_ctx
+            resets.append((_vector_backend_ctx, _vector_backend_ctx.set(self._vector_backend)))
+
+            from smartmemory.observability.tracing import _observability_ctx
+            # None → use env default (observability=True); False → disabled
+            resets.append((_observability_ctx, _observability_ctx.set(None if self._observability else False)))
+
+            from smartmemory.observability.events import _current_sink
+            resets.append((_current_sink, _current_sink.set(self._event_sink)))
+
+            yield
+        finally:
+            for var, token in reversed(resets):
+                var.reset(token)
+
+    # =========================================================================
     # Core operations (ingest, add, get, search, update, delete, link)
     # These stay inline as the hot path.
     # =========================================================================
@@ -508,18 +504,12 @@ class SmartMemory(MemoryBase):
                 for k, v in context.items():
                     meta.setdefault(k, v)
 
-            # DIST-LITE-3: set ContextVar so emit_event() dispatches to sink for this call
-            from smartmemory.observability.events import _current_sink as _cs
-            _token = _cs.set(self._event_sink) if self._event_sink else None
-            try:
+            with self._di_context():
                 state = self._pipeline_runner.run(
                     text=normalized_item.content or "",
                     config=tier1_cfg,
                     metadata=meta,
                 )
-            finally:
-                if _token is not None:
-                    _cs.reset(_token)
             item_id = state.item_id
             entity_ids: dict = state.entity_ids or {}
 
@@ -529,13 +519,15 @@ class SmartMemory(MemoryBase):
                 from smartmemory.observability.events import RedisStreamQueue
 
                 q = RedisStreamQueue.for_extract()
-                q.enqueue({
-                    "job_type": "extract",
-                    "item_id": item_id,
-                    "workspace_id": tier1_cfg.workspace_id or "",
-                    "entity_ids": entity_ids,
-                    "enable_ontology": self._enable_ontology,
-                })
+                q.enqueue(
+                    {
+                        "job_type": "extract",
+                        "item_id": item_id,
+                        "workspace_id": tier1_cfg.workspace_id or "",
+                        "entity_ids": entity_ids,
+                        "enable_ontology": self._enable_ontology,
+                    }
+                )
                 queued = True
             except Exception:
                 queued = False
@@ -683,18 +675,12 @@ class SmartMemory(MemoryBase):
             except Exception as e:
                 logger.debug(f"Failed to merge conversation_context into metadata: {e}")
 
-        # DIST-LITE-3: set ContextVar so emit_event() dispatches to sink for this call
-        from smartmemory.observability.events import _current_sink as _cs
-        _token = _cs.set(self._event_sink) if self._event_sink else None
-        try:
+        with self._di_context():
             state = self._pipeline_runner.run(
                 text=normalized_item.content or "",
                 config=pipeline_cfg,
                 metadata=meta,
             )
-        finally:
-            if _token is not None:
-                _cs.reset(_token)
 
         # CORE-SYS2-1b: dispatch auto-extracted decisions — non-fatal, pipeline work is done
         if pipeline_cfg.extraction.llm_extract.extract_decisions and state.llm_decisions:
@@ -741,9 +727,7 @@ class SmartMemory(MemoryBase):
                     memory_type="reasoning",
                     metadata={
                         "trace_id": _trace.trace_id,
-                        "quality_score": (
-                            _trace.evaluation.quality_score if _trace.evaluation else None
-                        ),
+                        "quality_score": (_trace.evaluation.quality_score if _trace.evaluation else None),
                         "step_count": _trace.step_count,
                         "has_explicit_markup": _trace.has_explicit_markup,
                         "auto_extracted": True,
@@ -757,11 +741,7 @@ class SmartMemory(MemoryBase):
                         target_id=state.item_id,
                         edge_type="PRODUCED",
                         properties={
-                            "confidence": (
-                                _trace.evaluation.quality_score
-                                if _trace.evaluation
-                                else 0.5
-                            ),
+                            "confidence": (_trace.evaluation.quality_score if _trace.evaluation else 0.5),
                         },
                     )
             except Exception as _e:
@@ -871,7 +851,8 @@ class SmartMemory(MemoryBase):
                         item.metadata["provenance"].setdefault("source", "working_memory")
                 except Exception as e:
                     logger.warning(f"Failed to set default working memory metadata: {e}")
-                result = self._crud.add(item, **kwargs)
+                with self._di_context():
+                    result = self._crud.add(item, **kwargs)
                 return result["memory_node_id"]
             else:
                 # Fallback: in-memory buffer with NO hard max length
@@ -882,18 +863,21 @@ class SmartMemory(MemoryBase):
                 self._working_buffer.append(item)
                 return item.item_id
         else:
-            # For other memory types, use the standard CRUD
-            with trace_span(
-                "memory.add",
-                {
-                    "memory_type": memory_type,
-                    "content_length": len(getattr(item, "content", "") or ""),
-                },
-            ) as span:
-                result = self._crud.add(item, **kwargs)
-                item_id = result["memory_node_id"]
-                span.attributes["memory_id"] = item_id
-                return item_id
+            # For other memory types, use the standard CRUD.
+            # _di_context must be outer so trace_span sees the per-instance observability
+            # setting at entry and routes the emitted event to the correct sink at exit.
+            with self._di_context():
+                with trace_span(
+                    "memory.add",
+                    {
+                        "memory_type": memory_type,
+                        "content_length": len(getattr(item, "content", "") or ""),
+                    },
+                ) as span:
+                    result = self._crud.add(item, **kwargs)
+                    item_id = result["memory_node_id"]
+                    span.attributes["memory_id"] = item_id
+                    return item_id
 
     def _add_impl(self, item, **kwargs) -> str:
         """Implement abstract method from MemoryBase."""
@@ -1034,10 +1018,11 @@ class SmartMemory(MemoryBase):
         return item_id
 
     def delete(self, item_id: str, **kwargs) -> bool:
-        with trace_span("memory.delete", {"memory_id": item_id}) as span:
-            result = self._crud.delete(item_id)
-            span.attributes["success"] = result
-            return result
+        with self._di_context():
+            with trace_span("memory.delete", {"memory_id": item_id}) as span:
+                result = self._crud.delete(item_id)
+                span.attributes["success"] = result
+                return result
 
     def search(
         self,
@@ -1067,7 +1052,8 @@ class SmartMemory(MemoryBase):
             if persist_enabled:
                 # Use canonical search for working memory stored in graph
                 # ScopeProvider handles tenant/user filtering automatically
-                results = self._search.search(query, top_k=top_k, memory_type="working", **kwargs)
+                with self._di_context():
+                    results = self._search.search(query, top_k=top_k, memory_type="working", **kwargs)
 
                 # Optional: filter by conversation_id when provided
                 conv_id = None
@@ -1127,25 +1113,27 @@ class SmartMemory(MemoryBase):
                 return []
 
         # Use canonical search component directly
-        # ScopeProvider handles all tenant/workspace/user filtering automatically
-        with trace_span(
-            "memory.search",
-            {
-                "query_length": len(query) if query else 0,
-                "top_k": top_k,
-                "memory_type": memory_type,
-            },
-        ) as span:
-            results = self._search.search(query, top_k=top_k, memory_type=memory_type, **kwargs)
-            span.attributes["results_count"] = len(results) if results else 0
-            final_results = results[:top_k]
-            try:
-                from smartmemory.observability.retrieval_tracking import emit_retrieval_search
+        # ScopeProvider handles all tenant/workspace/user filtering automatically.
+        # _di_context must be outer so trace_span entry/exit see the per-instance config.
+        with self._di_context():
+            with trace_span(
+                "memory.search",
+                {
+                    "query_length": len(query) if query else 0,
+                    "top_k": top_k,
+                    "memory_type": memory_type,
+                },
+            ) as span:
+                results = self._search.search(query, top_k=top_k, memory_type=memory_type, **kwargs)
+                span.attributes["results_count"] = len(results) if results else 0
+                final_results = results[:top_k]
+                try:
+                    from smartmemory.observability.retrieval_tracking import emit_retrieval_search
 
-                emit_retrieval_search(final_results, query, self.scope_provider)
-            except Exception:
-                pass  # observability failure must never affect search() return
-            return final_results
+                    emit_retrieval_search(final_results, query, self.scope_provider)
+                except Exception:
+                    pass  # observability failure must never affect search() return
+                return final_results
 
     # Linking
     def link(self, source_id: str, target_id: str, link_type: Union[str, "LinkType"] = "RELATED") -> str:
@@ -1172,7 +1160,8 @@ class SmartMemory(MemoryBase):
 
     def embeddings_search(self, embedding, top_k=5):
         """Search for memory items most similar to the given embedding."""
-        return self._search.embeddings_search(embedding, top_k=top_k)
+        with self._di_context():
+            return self._search.embeddings_search(embedding, top_k=top_k)
 
     def add_tags(self, item_id: str, tags: list) -> bool:
         """Delegate add_tags to CRUD submodule."""
@@ -1259,7 +1248,8 @@ class SmartMemory(MemoryBase):
 
     def clear(self):
         """Clear all memory from ALL storage backends comprehensively."""
-        result = self._debug_mgr.clear()
+        with self._di_context():
+            result = self._debug_mgr.clear()
 
         # Clear working memory buffer
         if hasattr(self, "_working_buffer"):

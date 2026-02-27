@@ -38,6 +38,7 @@ class SpanContext:
         # When _current_sink is set (lite mode), we must proceed so graph mutation
         # events reach the WebSocket broadcaster even with observability=False.
         from smartmemory.observability.events import _current_sink
+
         if not self.trace_id and _current_sink.get() is None:
             return
         resolved_component = name.split(".")[0] if name else "unknown"
@@ -60,14 +61,20 @@ class SpanContext:
 
 _current_span: ContextVar[Optional[SpanContext]] = ContextVar("_current_span", default=None)
 
+# CORE-DI-1: per-call observability override (None = use env var fallback)
+_observability_ctx: ContextVar[Optional[bool]] = ContextVar("_observability_ctx", default=None)
+
 
 def _is_enabled() -> bool:
     """Read observability toggle from env at call time.
 
-    Default: enabled. Set SMARTMEMORY_OBSERVABILITY=false to disable.
-    Reading at call time (instead of module load) allows SmartMemory(observability=False)
-    to set the env var after import and have it take effect immediately.
+    Per-instance override (CORE-DI-1): if _observability_ctx is set by
+    SmartMemory._di_context(), it takes priority over the env var.
+    Default: enabled. Set SMARTMEMORY_OBSERVABILITY=false to disable globally.
     """
+    ctx = _observability_ctx.get()
+    if ctx is not None:
+        return ctx
     return os.environ.get("SMARTMEMORY_OBSERVABILITY", "true").strip().lower() not in (
         "false",
         "0",
@@ -107,6 +114,7 @@ def _emit_span(event_data: dict) -> None:
     # DIST-LITE-3: dispatch to in-process sink when one is active (lite mode).
     # This path is sink-only — the Redis spooler is never reached when a sink is set.
     from smartmemory.observability.events import _current_sink
+
     sink = _current_sink.get()
     if sink is not None:
         sink.emit(event_data.get("event_type", "span"), event_data)
