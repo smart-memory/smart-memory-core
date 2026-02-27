@@ -81,31 +81,82 @@ class TestReasoningDetectStageGuard:
         assert result.reasoning_trace is None
 
 
+def _run_ingest_with_decision_state(memory_type="decision", llm_decisions=None,
+                                    extract_decisions=False):
+    """Run SmartMemory.ingest() with a mocked pipeline returning a decision state.
+
+    Uses the same stub pattern as test_ingest_reasoning_dispatch.py.
+    Returns (sm_mock, mock_dm_instance).
+    """
+    from smartmemory.pipeline.state import PipelineState
+    from smartmemory.smart_memory import SmartMemory
+
+    state = PipelineState(
+        text="I decided to adopt microservices for the backend.",
+        item_id="item_decision_001",
+        memory_type=memory_type,
+        llm_decisions=llm_decisions,
+    )
+
+    sm = MagicMock()
+    sm._pipeline_profile = None
+    sm.scope_provider.get_scope.side_effect = Exception("no scope")
+    sm._pipeline_runner.run.return_value = state
+    sm._graph = None  # skip PRODUCED edge for decision tests
+
+    sm._build_pipeline_config = lambda **kw: SmartMemory._build_pipeline_config(sm, **kw)
+
+    mock_dm_instance = MagicMock()
+    # DecisionManager is a lazy import inside ingest() — patch at source module
+    with patch("smartmemory.decisions.manager.DecisionManager",
+               return_value=mock_dm_instance):
+        SmartMemory.ingest(sm, "I decided to adopt microservices for the backend.",
+                           extract_decisions=extract_decisions)
+
+    return sm, mock_dm_instance
+
+
 class TestDecisionDispatch:
     def test_decision_dispatch_fires_on_classified_type(self):
-        """Post-pipeline dispatch creates a decision when state.memory_type == 'decision'
-        with no extract_decisions flag and no state.llm_decisions."""
-        from smartmemory.pipeline.config import PipelineConfig
+        """Post-pipeline dispatch calls DecisionManager.create() when state.memory_type ==
+        'decision', no extract_decisions flag, and no llm_decisions present."""
+        _, mock_dm = _run_ingest_with_decision_state(
+            memory_type="decision", llm_decisions=None, extract_decisions=False
+        )
 
-        config = PipelineConfig()
-        assert not config.extraction.llm_extract.extract_decisions
-
-        mock_dm = MagicMock()
-        with patch("smartmemory.smart_memory._PRODUCED_ALLOWED_TARGETS"):
-            pass  # constant presence verified in TestProducedEdgeGate
-
-        # Pure structural assertion — dispatch block logic covered via integration path
-        # _dispatch_decisions_if_needed is inline; tested via SmartMemory stub in integration
+        mock_dm.create.assert_called_once()
+        call_kwargs = mock_dm.create.call_args[1]
+        assert call_kwargs["decision_type"] == "inference"
+        assert call_kwargs["confidence"] == 0.75
+        assert call_kwargs["source_type"] == "inferred"
+        assert "auto_classified" in call_kwargs["tags"]
 
     def test_decision_dispatch_uses_llm_decisions_when_available(self):
-        """When state.memory_type == 'decision' AND state.llm_decisions is populated,
-        LLM-extracted decisions are processed and the classify-based create is NOT called
-        (no double-dispatch of primary item)."""
-        pass  # Covered in integration tests with mocked LLM pipeline
+        """When state.memory_type == 'decision' AND llm_decisions is populated, only
+        the LLM loop fires — the classify-based create() is NOT called (no double-dispatch)."""
+        llm_decisions = [
+            {"content": "Use microservices", "confidence": 0.9, "decision_type": "architectural"}
+        ]
+        # Need extract_decisions=True to trigger the LLM loop path
+        _, mock_dm = _run_ingest_with_decision_state(
+            memory_type="decision", llm_decisions=llm_decisions, extract_decisions=True
+        )
 
-    def test_decision_dispatch_does_not_fire_when_only_flag_unset(self):
-        """Dispatch does not fire when memory_type != 'decision' and extract_decisions=False."""
-        pass  # Covered by passing case baseline
+        # At least one call should have happened (LLM loop)
+        assert mock_dm.create.call_count >= 1
+        # None of the calls should use "auto_classified" tag (that's the classify-based path)
+        for call in mock_dm.create.call_args_list:
+            tags = call[1].get("tags", [])
+            assert "auto_classified" not in tags, (
+                f"classify-based create() fired despite llm_decisions being populated: tags={tags}"
+            )
+
+    def test_decision_dispatch_does_not_fire_when_memory_type_is_not_decision(self):
+        """Dispatch does not fire when memory_type='semantic' and extract_decisions=False."""
+        _, mock_dm = _run_ingest_with_decision_state(
+            memory_type="semantic", llm_decisions=None, extract_decisions=False
+        )
+        mock_dm.create.assert_not_called()
 
 
 class TestProducedEdgeGate:

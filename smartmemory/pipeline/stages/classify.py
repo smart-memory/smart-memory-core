@@ -10,6 +10,14 @@ from smartmemory.pipeline.state import PipelineState
 if TYPE_CHECKING:
     from smartmemory.pipeline.config import PipelineConfig
 
+# Deterministic priority order for memory_type selection from a classify result set.
+# classify_item() returns a set-derived list with non-deterministic ordering; picking
+# [0] from that list is hash-seed-dependent. This tuple defines the canonical order:
+# specific types (decision, reasoning) override generic defaults (semantic).
+# "zettel" is excluded separately before this lookup (it is a processing route, not
+# a storage type). Any type not listed here falls to the end of priority.
+_TYPE_PRIORITY: tuple = ("decision", "reasoning", "episodic", "procedural", "semantic")
+
 
 class ClassifyStage:
     """Determine memory types for the incoming text."""
@@ -48,8 +56,14 @@ class ClassifyStage:
         if state.memory_type:
             mt = state.memory_type
         else:
-            non_zettel = [t for t in types if t != "zettel"]
-            mt = non_zettel[0] if non_zettel else (types[0] if types else "semantic")
+            # Use deterministic priority rather than set iteration order.
+            # classify_item() returns list(set(...)) which is hash-seed-dependent;
+            # picking [0] is nondeterministic across processes.
+            non_zettel = {t for t in types if t != "zettel"}
+            mt = next(
+                (t for t in _TYPE_PRIORITY if t in non_zettel),
+                next(iter(non_zettel), types[0] if types else "semantic"),
+            )
 
         return replace(
             state,
