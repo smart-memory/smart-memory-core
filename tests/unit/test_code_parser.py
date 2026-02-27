@@ -11,8 +11,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from smartmemory.code.models import CodeEntity, IndexResult
-from smartmemory.code.indexer import CodeIndexer
+from smartmemory.code.models import CodeEntity, ImportSymbol, IndexResult
+from smartmemory.code.indexer import CodeIndexer, SymbolTable
 from smartmemory.code.parser import CodeParser, collect_python_files
 
 
@@ -465,3 +465,347 @@ class TestCodeIndexer:
         assert "workspace_id" in query_str
         assert params["workspace_id"] == "ws-123"
         assert "DETACH DELETE" in query_str
+
+
+# -- Symbol Table Tests (CODE-DEV-5) --
+
+
+class TestSymbolTable:
+    """Unit tests for the SymbolTable used in cross-file call resolution."""
+
+    def _make_entity(self, name: str, entity_type: str, file_path: str, repo: str = "repo") -> CodeEntity:
+        return CodeEntity(name=name, entity_type=entity_type, file_path=file_path, line_number=1, repo=repo)
+
+    def test_symbol_table_built_from_imports(self):
+        """Symbol table maps imported name to target entity's item_id.
+
+        Scenario: file_b.py defines CodeParser; file_a.py imports it with
+        ``from file_b import CodeParser``. After building the table, resolving
+        ("file_a.py", "CodeParser") should return CodeParser's item_id.
+        """
+        repo = "my-repo"
+
+        entity_b = self._make_entity("CodeParser", "class", "file_b.py", repo=repo)
+
+        sym = ImportSymbol(
+            importing_file="file_a.py",
+            local_name="CodeParser",
+            module_path="file_b",
+            original_name="CodeParser",
+            is_module_import=False,
+        )
+
+        table = SymbolTable()
+        table.register_entity(entity_b)
+        table.register_import(sym)
+
+        resolved = table.resolve("file_a.py", "CodeParser")
+        assert resolved == entity_b.item_id, f"Expected {entity_b.item_id!r}, got {resolved!r}"
+
+    def test_symbol_table_alias_import(self):
+        """Aliased imports (``from foo import Bar as B``) resolve via alias."""
+        repo = "r"
+        entity = self._make_entity("Bar", "class", "foo.py", repo=repo)
+
+        sym = ImportSymbol(
+            importing_file="caller.py",
+            local_name="B",
+            module_path="foo",
+            original_name="Bar",
+            is_module_import=False,
+        )
+
+        table = SymbolTable()
+        table.register_entity(entity)
+        table.register_import(sym)
+
+        assert table.resolve("caller.py", "B") == entity.item_id
+        # The original name is NOT a key for this file — the alias is
+        assert table.resolve("caller.py", "Bar") is None
+
+    def test_symbol_table_module_import(self):
+        """``import foo as f`` followed by ``f.Bar()`` resolves Bar's item_id."""
+        repo = "r"
+        module_entity = self._make_entity("foo", "module", "foo.py", repo=repo)
+        bar_entity = self._make_entity("Bar", "class", "foo.py", repo=repo)
+
+        sym = ImportSymbol(
+            importing_file="caller.py",
+            local_name="f",
+            module_path="foo",
+            original_name="foo",
+            is_module_import=True,
+        )
+
+        table = SymbolTable()
+        table.register_entity(module_entity)
+        table.register_entity(bar_entity)
+        table.register_import(sym)
+
+        # Attribute call "f.Bar" should resolve to Bar's item_id
+        assert table.resolve("caller.py", "f.Bar") == bar_entity.item_id
+
+    def test_symbol_table_unknown_name_returns_none(self):
+        """Resolving a name that was never imported returns None."""
+        table = SymbolTable()
+        assert table.resolve("any_file.py", "UnknownFunction") is None
+
+    def test_symbol_table_scoped_to_importing_file(self):
+        """Import in file_a does not leak into file_b's scope."""
+        repo = "r"
+        entity = self._make_entity("Foo", "class", "lib.py", repo=repo)
+
+        sym = ImportSymbol(
+            importing_file="file_a.py",
+            local_name="Foo",
+            module_path="lib",
+            original_name="Foo",
+            is_module_import=False,
+        )
+
+        table = SymbolTable()
+        table.register_entity(entity)
+        table.register_import(sym)
+
+        assert table.resolve("file_a.py", "Foo") == entity.item_id
+        # file_b.py never imported Foo — must not resolve
+        assert table.resolve("file_b.py", "Foo") is None
+
+
+class TestCrossFileCallResolution:
+    """Integration-level tests for cross-file CALLS edge resolution via CodeIndexer."""
+
+    def _make_graph(self) -> MagicMock:
+        graph = MagicMock()
+        graph.execute_query.return_value = []
+        graph.add_nodes_bulk.return_value = 0
+        graph.add_edges_bulk.return_value = 0
+        graph.get_scope_filters.return_value = {}
+        return graph
+
+    def test_cross_file_calls_resolved(self, tmp_path):
+        """CALLS edge to an imported function resolves to the correct item_id.
+
+        File layout:
+          utils.py   — defines ``process()``
+          caller.py  — does ``from utils import process`` then calls ``process()``
+
+        After indexing, the CALLS edge from caller.process_wrapper → process
+        should target ``code::repo::utils.py::process``, not the dangling
+        same-file guess ``code::repo::caller.py::process``.
+        """
+        (tmp_path / "utils.py").write_text(
+            "def process(data):\n"
+            "    '''Process the data.'''\n"
+            "    return data\n"
+        )
+        (tmp_path / "caller.py").write_text(
+            "from utils import process\n"
+            "\n"
+            "def process_wrapper(x):\n"
+            "    return process(x)\n"
+        )
+
+        graph = self._make_graph()
+        indexer = CodeIndexer(graph=graph, repo="repo", repo_root=str(tmp_path))
+        indexer.index()
+
+        bulk_edges = graph.add_edges_bulk.call_args[0][0]
+        calls_edges = [(src, tgt) for src, tgt, etype, _ in bulk_edges if etype == "CALLS"]
+
+        # The resolved CALLS edge target must point to utils.py::process
+        resolved_targets = [tgt for _, tgt in calls_edges]
+        assert any("utils.py::process" in t for t in resolved_targets), (
+            f"Expected a CALLS edge targeting utils.py::process. "
+            f"Got CALLS targets: {resolved_targets}"
+        )
+
+        # There must be no dangling caller.py::process target (wrong same-file guess)
+        assert not any("caller.py::process" in t for t in resolved_targets), (
+            f"Same-file dangling target caller.py::process should have been resolved away. "
+            f"Got: {resolved_targets}"
+        )
+
+    def test_unresolvable_calls_remain_dropped(self, tmp_path):
+        """Calls to names that are not imported from any indexed file are still filtered out.
+
+        ``external_lib`` is not present in the repo, so ``something()`` should
+        remain a dangling CALLS edge and must NOT appear in the bulk_edges list.
+        """
+        (tmp_path / "caller.py").write_text(
+            "from external_lib import something\n"
+            "\n"
+            "def run():\n"
+            "    something()\n"
+        )
+
+        graph = self._make_graph()
+        indexer = CodeIndexer(graph=graph, repo="repo", repo_root=str(tmp_path))
+        indexer.index()
+
+        bulk_edges = graph.add_edges_bulk.call_args[0][0]
+        entity_ids = {n["item_id"] for n in graph.add_nodes_bulk.call_args[0][0]}
+
+        for source_id, target_id, _etype, _ in bulk_edges:
+            assert source_id in entity_ids, f"Dangling source: {source_id}"
+            assert target_id in entity_ids, f"Dangling target: {target_id}"
+
+    def test_import_symbols_populated_by_parser(self, tmp_path):
+        """ParseResult.import_symbols is populated for both import styles."""
+        (tmp_path / "a.py").write_text(
+            "from mylib.utils import helper, Processor\n"
+            "import os\n"
+            "import mylib.models as models\n"
+        )
+        parser = CodeParser(repo="repo", repo_root=str(tmp_path))
+        result = parser.parse_file(str(tmp_path / "a.py"))
+
+        syms = {s.local_name: s for s in result.import_symbols}
+
+        # from-import: bare names recorded
+        assert "helper" in syms
+        assert syms["helper"].module_path == "mylib.utils"
+        assert syms["helper"].original_name == "helper"
+        assert syms["helper"].is_module_import is False
+
+        assert "Processor" in syms
+        assert syms["Processor"].original_name == "Processor"
+
+        # plain import: recorded as module import
+        assert "os" in syms
+        assert syms["os"].is_module_import is True
+
+        # aliased module import
+        assert "models" in syms
+        assert syms["models"].module_path == "mylib.models"
+        assert syms["models"].is_module_import is True
+
+    def test_module_import_alias_cross_file_calls_resolved(self, tmp_path):
+        """Chained alias calls (import lib as f; f.baz()) resolve cross-file.
+
+        With the fixed _get_call_name, the callee stored in the CALLS edge
+        properties is 'f.baz' (full dotted name), which matches the symbol
+        table key pre-registered by register_import for module imports.
+        """
+        (tmp_path / "lib.py").write_text("def baz():\n    return 1\n")
+        (tmp_path / "caller.py").write_text(
+            "import lib as f\n"
+            "\n"
+            "def run():\n"
+            "    result = f.baz()\n"
+        )
+
+        graph = MagicMock()
+        graph.execute_query.return_value = []
+        graph.add_nodes_bulk.return_value = 0
+        graph.add_edges_bulk.return_value = 0
+        graph.get_scope_filters.return_value = {}
+
+        indexer = CodeIndexer(graph=graph, repo="repo", repo_root=str(tmp_path))
+        indexer.index()
+
+        bulk_edges = graph.add_edges_bulk.call_args[0][0]
+        calls_edges = [(src, tgt) for src, tgt, etype, _ in bulk_edges if etype == "CALLS"]
+        resolved_targets = [tgt for _, tgt in calls_edges]
+
+        assert any("lib.py::baz" in t for t in resolved_targets), (
+            f"Expected CALLS edge targeting lib.py::baz. Got: {resolved_targets}"
+        )
+
+    def test_wildcard_import_is_gracefully_ignored(self, tmp_path):
+        """``from foo import *`` does not crash and does not pollute the symbol table.
+
+        The wildcard name '*' cannot be resolved to any specific entity, so
+        the ImportSymbol with local_name='*' should be silently dropped during
+        register_import without raising an exception or adding a spurious entry.
+        """
+        (tmp_path / "user.py").write_text(
+            "from external_lib import *\n"
+            "\n"
+            "def use_something():\n"
+            "    result = some_func()\n"
+        )
+
+        graph = MagicMock()
+        graph.execute_query.return_value = []
+        graph.add_nodes_bulk.return_value = 0
+        graph.add_edges_bulk.return_value = 0
+        graph.get_scope_filters.return_value = {}
+
+        indexer = CodeIndexer(graph=graph, repo="repo", repo_root=str(tmp_path))
+        result = indexer.index()
+
+        assert result.errors == []
+        assert result.files_parsed == 1
+
+        # No dangling edges should sneak past the entity_ids filter
+        bulk_edges = graph.add_edges_bulk.call_args[0][0]
+        entity_ids = {n["item_id"] for n in graph.add_nodes_bulk.call_args[0][0]}
+        for source_id, target_id, _etype, _ in bulk_edges:
+            assert source_id in entity_ids, f"Dangling source: {source_id}"
+            assert target_id in entity_ids, f"Dangling target: {target_id}"
+
+    def test_circular_imports_do_not_infinite_loop(self, tmp_path):
+        """Circular imports (a imports b, b imports a) complete without error.
+
+        The indexer processes each file independently in a single parse pass
+        (AST only, no execution), so circular import chains cannot cause
+        recursion or blocking.
+        """
+        (tmp_path / "a.py").write_text("from b import something\n\ndef foo():\n    pass\n")
+        (tmp_path / "b.py").write_text("from a import foo\n\ndef something():\n    pass\n")
+
+        graph = MagicMock()
+        graph.execute_query.return_value = []
+        graph.add_nodes_bulk.return_value = 0
+        graph.add_edges_bulk.return_value = 0
+        graph.get_scope_filters.return_value = {}
+
+        indexer = CodeIndexer(graph=graph, repo="repo", repo_root=str(tmp_path))
+        result = indexer.index()
+
+        assert result.files_parsed == 2
+        assert result.errors == []
+
+    def test_empty_repo_does_not_crash(self, tmp_path):
+        """Indexing an empty directory produces an empty IndexResult without errors."""
+        graph = MagicMock()
+        graph.execute_query.return_value = []
+        graph.add_nodes_bulk.return_value = 0
+        graph.add_edges_bulk.return_value = 0
+        graph.get_scope_filters.return_value = {}
+
+        indexer = CodeIndexer(graph=graph, repo="repo", repo_root=str(tmp_path))
+        result = indexer.index()
+
+        assert result.files_parsed == 0
+        assert result.entities_created == 0
+        assert result.errors == []
+
+    def test_module_with_only_module_entity(self, tmp_path):
+        """A file containing only constants (no functions or classes) produces
+        a single module entity and no CALLS or DEFINES edges, without crashing.
+        """
+        (tmp_path / "constants.py").write_text(
+            '"""Project constants."""\n'
+            "VERSION = 1\n"
+            "MAX_RETRIES = 3\n"
+        )
+
+        graph = MagicMock()
+        graph.execute_query.return_value = []
+        graph.add_nodes_bulk.return_value = 0
+        graph.add_edges_bulk.return_value = 0
+        graph.get_scope_filters.return_value = {}
+
+        indexer = CodeIndexer(graph=graph, repo="repo", repo_root=str(tmp_path))
+        result = indexer.index()
+
+        assert result.files_parsed == 1
+        assert result.errors == []
+        # Only the module entity is written; no functions/classes to create edges for
+        bulk_nodes = graph.add_nodes_bulk.call_args[0][0]
+        assert len(bulk_nodes) == 1
+        assert bulk_nodes[0]["entity_type"] == "module"
+        bulk_edges = graph.add_edges_bulk.call_args[0][0]
+        assert bulk_edges == []

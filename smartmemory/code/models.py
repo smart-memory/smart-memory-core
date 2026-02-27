@@ -64,6 +64,33 @@ class CodeRelation:
 
 
 @dataclass
+class ImportSymbol:
+    """A single name imported into a file, used for cross-file call resolution.
+
+    Records enough information to map a local name in the importing file to
+    the ``item_id`` of the entity it refers to in the target module.
+
+    Attributes:
+        importing_file: Relative path of the file that contains the import.
+        local_name: The name as it appears in the importing file (post-alias).
+            For ``from foo import Bar as B`` this is ``"B"``.
+            For ``import foo.bar as fb`` this is ``"fb"``.
+        module_path: Dotted module name (e.g. ``"smartmemory.code.parser"``).
+        original_name: The name as it was defined in the source module.
+            For ``from foo import Bar`` this is ``"Bar"``.
+            For a plain ``import foo`` statement this equals ``module_path``.
+        is_module_import: True when the import brings in a module object rather
+            than a specific symbol (``import foo`` / ``import foo as f``).
+    """
+
+    importing_file: str
+    local_name: str
+    module_path: str
+    original_name: str
+    is_module_import: bool = False
+
+
+@dataclass
 class ParseResult:
     """Result of parsing a single Python file."""
 
@@ -71,6 +98,9 @@ class ParseResult:
     entities: list[CodeEntity] = field(default_factory=list)
     relations: list[CodeRelation] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    # Structured import data for cross-file call resolution (CODE-DEV-5).
+    # Populated by CodeParser._extract_import(); consumed by CodeIndexer.
+    import_symbols: list["ImportSymbol"] = field(default_factory=list)
 
 
 @dataclass
@@ -84,3 +114,5 @@ class IndexResult:
     edges_created: int = 0
     errors: list[str] = field(default_factory=list)
     elapsed_seconds: float = 0.0
+    entities: list["CodeEntity"] = field(default_factory=list)
+    embeddings_generated: int = 0

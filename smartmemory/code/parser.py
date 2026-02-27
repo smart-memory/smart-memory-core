@@ -8,7 +8,7 @@ import ast
 import os
 from typing import Optional
 
-from smartmemory.code.models import CodeEntity, CodeRelation, ParseResult
+from smartmemory.code.models import CodeEntity, CodeRelation, ImportSymbol, ParseResult
 
 # FastAPI router method names
 ROUTER_METHODS = {"get", "post", "put", "delete", "patch", "head", "options"}
@@ -175,48 +175,82 @@ class CodeParser:
     def _extract_import(
         self, node: ast.Import | ast.ImportFrom, module: CodeEntity, rel_path: str, result: ParseResult
     ):
-        """Extract import statements as IMPORTS edges."""
+        """Extract import statements as IMPORTS edges and ImportSymbol records.
+
+        ImportSymbol entries are used by CodeIndexer to build the cross-file
+        symbol table for CALLS edge resolution (CODE-DEV-5).
+        """
         if isinstance(node, ast.Import):
             for alias in node.names:
                 target_module = alias.name
+                local_name = alias.asname if alias.asname else alias.name
                 target_id = f"code::{self.repo}::{self._module_to_path(target_module)}::{target_module}"
                 result.relations.append(
                     CodeRelation(
                         source_id=module.item_id,
                         target_id=target_id,
                         relation_type="IMPORTS",
-                        properties={"names": alias.asname or alias.name},
+                        properties={"names": local_name},
+                    )
+                )
+                # Record module import symbol so "local_name.Foo" can be resolved.
+                result.import_symbols.append(
+                    ImportSymbol(
+                        importing_file=rel_path,
+                        local_name=local_name,
+                        module_path=target_module,
+                        original_name=target_module,
+                        is_module_import=True,
                     )
                 )
         elif isinstance(node, ast.ImportFrom) and node.module:
-            names = [a.name for a in node.names]
             target_module = node.module
             target_id = f"code::{self.repo}::{self._module_to_path(target_module)}::{target_module}"
+            names_str = ",".join(a.name for a in node.names)
             result.relations.append(
                 CodeRelation(
                     source_id=module.item_id,
                     target_id=target_id,
                     relation_type="IMPORTS",
-                    properties={"names": ",".join(names)},
+                    properties={"names": names_str},
                 )
             )
+            # Record each imported name as an ImportSymbol.
+            for alias in node.names:
+                local_name = alias.asname if alias.asname else alias.name
+                result.import_symbols.append(
+                    ImportSymbol(
+                        importing_file=rel_path,
+                        local_name=local_name,
+                        module_path=target_module,
+                        original_name=alias.name,
+                        is_module_import=False,
+                    )
+                )
 
     def _extract_calls(self, func_node: ast.AST, caller: CodeEntity, rel_path: str, result: ParseResult):
-        """Extract function calls within a function body."""
+        """Extract function calls within a function body.
+
+        Emits CALLS edges with a *same-file* target_id as an initial guess.
+        The ``callee`` property stores the raw call name so that
+        ``CodeIndexer`` can re-resolve cross-file targets using the symbol
+        table built from all files' import statements (CODE-DEV-5).
+        """
         for node in ast.walk(func_node):
             if not isinstance(node, ast.Call):
                 continue
             callee_name = self._get_call_name(node)
-            if not callee_name or callee_name.startswith("_"):
+            if not callee_name or callee_name.split(".")[-1].startswith("_"):
                 continue
-            # Only resolve same-file calls for prototype
+            # Initial same-file guess — will be overridden by the indexer's
+            # symbol-table resolution pass when the callee is imported.
             target_id = f"code::{self.repo}::{rel_path}::{callee_name}"
             result.relations.append(
                 CodeRelation(
                     source_id=caller.item_id,
                     target_id=target_id,
                     relation_type="CALLS",
-                    properties={"line": getattr(node, "lineno", 0)},
+                    properties={"line": getattr(node, "lineno", 0), "callee": callee_name},
                 )
             )
 
@@ -302,12 +336,24 @@ class CodeParser:
         return ""
 
     def _get_call_name(self, node: ast.Call) -> str:
-        """Get function name from a Call node."""
-        if isinstance(node.func, ast.Name):
-            return node.func.id
-        elif isinstance(node.func, ast.Attribute):
-            return node.func.attr
-        return ""
+        """Get function name from a Call node.
+
+        Returns the fully-qualified dotted name so that module-import style
+        calls (``import foo as f; f.Bar()``) produce ``"f.Bar"`` rather than
+        just ``"Bar"``.  This allows ``_resolve_cross_file_calls`` to match
+        against the symbol table keys registered by ``register_import`` for
+        module imports.
+        """
+
+        def _walk(n: ast.expr) -> str:
+            if isinstance(n, ast.Name):
+                return n.id
+            elif isinstance(n, ast.Attribute):
+                parent = _walk(n.value)
+                return f"{parent}.{n.attr}" if parent else n.attr
+            return ""
+
+        return _walk(node.func)
 
     def _resolve_entity_id(self, name: str, current_file: str) -> Optional[str]:
         """Try to resolve an entity name to an item_id within the same file."""
@@ -316,6 +362,31 @@ class CodeParser:
     def _module_to_path(self, module_name: str) -> str:
         """Convert a Python module name to a relative file path guess."""
         return module_name.replace(".", "/") + ".py"
+
+
+def parse_file(file_path: str, repo: str, repo_root: str) -> ParseResult:
+    """Dispatch to Python or TS/JS parser based on file extension.
+
+    Args:
+        file_path: Absolute path to the source file.
+        repo: Repository identifier (e.g., ``"smart-memory-service"``).
+        repo_root: Absolute path to the repository root, used to derive
+            relative paths stored on ``CodeEntity.file_path``.
+
+    Returns:
+        ``ParseResult`` populated by the appropriate language parser.
+    """
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext == ".py":
+        return CodeParser(repo=repo, repo_root=repo_root).parse_file(file_path)
+    elif ext in (".ts", ".tsx", ".js", ".jsx"):
+        from smartmemory.code.ts_parser import TSParser
+
+        return TSParser(repo=repo, repo_root=repo_root).parse_file(file_path)
+    else:
+        result = ParseResult(file_path=file_path)
+        result.errors.append(f"Unsupported extension: {ext}")
+        return result
 
 
 def collect_python_files(directory: str, exclude_dirs: Optional[set[str]] = None) -> list[str]:

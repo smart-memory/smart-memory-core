@@ -58,6 +58,46 @@ class PatternManager:
         with self._lock:
             return dict(self._patterns)
 
+    def add_patterns(self, patterns: Dict[str, str]) -> int:
+        """Merge additional name→type patterns into the in-memory cache.
+
+        Filters short names and common word blocklist entries before accepting.
+        Persists accepted patterns to the ontology graph (best-effort) so they
+        survive restarts.
+
+        Args:
+            patterns: Mapping of entity name to entity type label.
+
+        Returns:
+            Number of net-new patterns accepted (duplicates excluded).
+        """
+        accepted = 0
+        for name, label in patterns.items():
+            if not name or not label:
+                continue
+            key = name.lower().strip()
+            if key in COMMON_WORD_BLOCKLIST or len(key) < 2:
+                continue
+            with self._lock:
+                if key not in self._patterns:
+                    self._patterns[key] = label
+                    self._version += 1
+                    accepted += 1
+                else:
+                    continue  # already cached — skip persistence too
+            # Persist to ontology graph best-effort (outside lock to avoid I/O under lock)
+            try:
+                self._ontology.add_entity_pattern(
+                    name=key,
+                    label=label,
+                    confidence=0.9,
+                    workspace_id=self._workspace_id,
+                    source="code_index",
+                )
+            except Exception as exc:
+                logger.debug("Failed to persist code pattern '%s': %s", key, exc)
+        return accepted
+
     def _build_patterns(self) -> None:
         """Load EntityPattern nodes from ontology graph, filtered by blocklist."""
         try:

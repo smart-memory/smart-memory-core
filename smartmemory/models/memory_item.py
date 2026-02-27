@@ -332,6 +332,26 @@ class MemoryItem(MemoryBaseModel, StatusLoggerMixin):
                 d["embedding"] = d["embedding"].tolist()
         return d
 
+    @property
+    def display_text(self) -> str:
+        """Human-readable summary — guards content=None for code items.
+
+        For code memory items (``memory_type="code"``) that have no ``content``,
+        returns ``"<name> (<file_path>)"`` from the node's metadata.  Falls back
+        to just ``name`` if ``file_path`` is absent.
+
+        For all other memory types, returns ``content`` (or empty string when
+        content is None).
+        """
+        if self.memory_type == "code" and not self.content:
+            name = (self.metadata or {}).get("name", "")
+            file_path = (self.metadata or {}).get("file_path", "")
+            if name and file_path:
+                return f"{name} ({file_path})"
+            if name:
+                return name
+        return self.content or ""
+
     def __repr__(self) -> str:
         if self.valid_start_time is not None:
             valid_time_str = f"{self.valid_start_time.isoformat()}"

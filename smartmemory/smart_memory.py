@@ -1,6 +1,10 @@
 import logging
+import subprocess
 from contextlib import contextmanager
-from typing import Optional, Union, Any, Dict, List
+from typing import TYPE_CHECKING, Optional, Union, Any, Dict, List
+
+if TYPE_CHECKING:
+    from smartmemory.code.models import IndexResult
 
 from smartmemory.conversation.context import ConversationContext
 from smartmemory.memory.pipeline.config import PipelineConfigBundle
@@ -1378,3 +1382,117 @@ class SmartMemory(MemoryBase):
             Total number of entities updated
         """
         return self._graph.merge_entity_types(source_types, target_type)
+
+    # ------------------------------------------------------------------
+    # Code indexing — CODE-DEV-2/C
+    # ------------------------------------------------------------------
+
+    def ingest_code(
+        self,
+        directory: str,
+        repo: str,
+        commit_hash: Optional[str] = None,
+        exclude_dirs: Optional[List[str]] = None,
+        languages: Optional[List[str]] = None,
+    ) -> "IndexResult":
+        """Index a code repository into the SmartMemory knowledge graph.
+
+        Parses Python (and optionally TypeScript/JavaScript) files, writes code
+        entities and relationships as graph nodes/edges, and generates vector
+        embeddings so code symbols appear in ``search()`` results.
+
+        After indexing, ``seed_patterns_from_code()`` is called automatically to
+        promote class/function names into the EntityRuler pattern set, improving
+        future extraction over text that references this codebase.
+
+        Args:
+            directory: Absolute path to the repository root to index.
+            repo: Short repository identifier (e.g. ``"smart-memory-service"``).
+                Used as the namespace prefix on all generated node IDs.
+            commit_hash: Optional git commit SHA to attach to the result.
+                When ``None``, auto-detected via ``git rev-parse HEAD``.
+                Pass ``""`` to suppress auto-detection and leave the field unset.
+            exclude_dirs: Directory names to skip during file collection
+                (e.g. ``["node_modules", ".venv"]``).
+            languages: Languages to index. Defaults to ``["python"]``. Pass
+                ``["python", "typescript"]`` to also index ``.ts``/``.tsx``/
+                ``.js``/``.jsx`` files.
+
+        Returns:
+            ``IndexResult`` with counts of files parsed, entities created, edges
+            created, and embeddings generated.
+        """
+        from smartmemory.code.indexer import CodeIndexer  # local to avoid circular import
+
+        if commit_hash is None:
+            try:
+                git_result = subprocess.run(
+                    ["git", "-C", directory, "rev-parse", "HEAD"],
+                    capture_output=True,
+                    text=True,
+                )
+                if git_result.returncode == 0:
+                    commit_hash = git_result.stdout.strip()
+            except (FileNotFoundError, OSError):
+                pass  # git not on PATH — leave commit_hash as None
+
+        exclude_set: Optional[set] = set(exclude_dirs) if exclude_dirs else None
+        indexer = CodeIndexer(graph=self._graph, repo=repo, repo_root=directory, exclude_dirs=exclude_set)
+        index_result = indexer.index(languages=languages)
+
+        if index_result.entities:
+            self.seed_patterns_from_code(index_result.entities)
+
+        if commit_hash:
+            index_result.commit_hash = commit_hash  # type: ignore[attr-defined]
+
+        return index_result
+
+    def seed_patterns_from_code(self, entities: list) -> None:
+        """Seed EntityRuler patterns from indexed code entities.
+
+        Extracts ``{name: entity_type}`` pairs from the entity list and merges
+        them into the workspace's PatternManager so that future ``ingest()``
+        calls recognise code symbols as named entities.
+
+        A no-op when ontology support is disabled or when ``entities`` is empty.
+
+        Args:
+            entities: List of ``CodeEntity`` objects (as returned in
+                ``IndexResult.entities``).
+        """
+        patterns = {e.name: e.entity_type for e in entities if getattr(e, "name", None)}
+        if not patterns:
+            return
+
+        # Lazily construct the code-specific PatternManager on first call.
+        if not hasattr(self, "_code_pattern_manager") or self._code_pattern_manager is None:
+            try:
+                from smartmemory.ontology.pattern_manager import PatternManager
+                from smartmemory.graph.ontology_graph import OntologyGraph
+
+                workspace_id = "default"
+                try:
+                    scope = self.scope_provider.get_scope()
+                    workspace_id = getattr(scope, "workspace_id", None) or "default"
+                except Exception:
+                    pass
+
+                if self._enable_ontology:
+                    ontology_graph = OntologyGraph(workspace_id=workspace_id)
+                    self._code_pattern_manager: Optional[Any] = PatternManager(
+                        ontology_graph, workspace_id=workspace_id
+                    )
+                else:
+                    self._code_pattern_manager = None
+            except Exception as exc:
+                logger.debug("Could not create PatternManager for code seeding: %s", exc)
+                self._code_pattern_manager = None
+
+        if self._code_pattern_manager is not None:
+            accepted = self._code_pattern_manager.add_patterns(patterns)
+            logger.debug(
+                "seed_patterns_from_code: seeded %d patterns from %d entities",
+                accepted,
+                len(patterns),
+            )
