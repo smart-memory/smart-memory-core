@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `ClassificationConfig.content_indicators` extended with `reasoning` (13 keywords: therefore, because, conclude, inference, deduced…) and `decision` (13 keywords: decided, chose, committed, resolved…) lists. When `content_analysis_enabled=True`, classify automatically routes matching content without caller flags.
 - `_PRODUCED_ALLOWED_TARGETS: frozenset` module constant in `smart_memory.py` matching `schema_validator.py:568` allowed target types — used by the new PRODUCED edge gate.
-- 16 new unit tests in `tests/unit/test_classify_routing_sys2_1d.py`: classify keyword routing, `ReasoningDetectStage` guard activation, decision dispatch no-double-dispatch contract, PRODUCED gate membership and behavioral tests.
+- 16 new unit tests in `tests/unit/test_classify_routing_sys2_1d.py`: classify keyword routing, `ReasoningDetectStage` guard activation, decision dispatch no-double-dispatch contract (via real `ingest()` stub), PRODUCED gate membership and behavioral tests.
+- `_TYPE_PRIORITY` module constant in `classify.py`: deterministic memory_type selection when multiple types match. Previously `list(set(...))` ordering was hash-seed-dependent; `non_zettel[0]` could resolve to `semantic` or `decision` unpredictably on the same input.
 
 ### Changed
 
