@@ -528,16 +528,6 @@ class TSParser:
                     )
                 )
 
-    def _extract_call_expr(self, node, parent: CodeEntity, rel_path: str, source: bytes, result: ParseResult):
-        """Emit a CALLS edge for a top-level call_expression."""
-        callee = _child_by_field(node, "function")
-        if not callee:
-            return
-        callee_name = _node_text(callee, source).split("\n")[0][:80]
-        if callee_name:
-            target_id = f"code::{self.repo}::{rel_path}::{callee_name}"
-            result.relations.append(CodeRelation(source_id=parent.item_id, target_id=target_id, relation_type="CALLS"))
-
     # Node types that introduce a new function scope. _collect_calls stops at these
     # so that calls inside a nested function are not attributed to the outer caller.
     _FUNCTION_SCOPE_TYPES = frozenset({
