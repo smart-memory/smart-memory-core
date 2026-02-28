@@ -29,6 +29,8 @@ _CODE_FIELDS = (
     "repo",
     "http_method",
     "http_path",
+    "commit_hash",
+    "indexed_at",
 )
 
 

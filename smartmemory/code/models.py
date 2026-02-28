@@ -24,6 +24,8 @@ class CodeEntity:
     http_method: str = ""
     http_path: str = ""
     is_default_export: bool = False
+    commit_hash: str = ""
+    indexed_at: str = ""
 
     @property
     def item_id(self) -> str:
@@ -51,6 +53,10 @@ class CodeEntity:
             props["http_method"] = self.http_method
         if self.http_path:
             props["http_path"] = self.http_path
+        if self.commit_hash:
+            props["commit_hash"] = self.commit_hash
+        if self.indexed_at:
+            props["indexed_at"] = self.indexed_at
         return props
 
 
@@ -117,3 +123,4 @@ class IndexResult:
     elapsed_seconds: float = 0.0
     entities: list["CodeEntity"] = field(default_factory=list)
     embeddings_generated: int = 0
+    commit_hash: str = ""

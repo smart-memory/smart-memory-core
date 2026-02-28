@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### CODE-DEV-6 — Git-Anchored Code Memory
+
+- `CodeEntity` gains `commit_hash` and `indexed_at` fields with conditional serialization in `to_properties()`.
+- `IndexResult.commit_hash` is now a declared dataclass field (replaces dynamic attr hack).
+- `CodeIndexer` accepts `commit_hash` param, stamps it + UTC `indexed_at` on every entity during `index()`.
+- `SmartMemory.ingest_code()` forwards auto-detected or explicit `commit_hash` to `CodeIndexer` constructor.
+- `_CODE_FIELDS` in `search.py` extended with `commit_hash` and `indexed_at` for semantic search results.
+- 13 new unit tests in `test_code_dev6_git_anchor.py`; 4 existing tests updated in `test_code_dev2_embeddings.py`.
+
 #### CODE-DEV-4 — Code-Aware EntityRuler Patterns
 
 - `OntologyGraph.add_entity_pattern()` now accepts `initial_count` parameter — code-sourced patterns (from AST parsing) bypass the `count >= 2` discovery threshold by setting `initial_count=2`, making them immediately visible to the EntityRuler.

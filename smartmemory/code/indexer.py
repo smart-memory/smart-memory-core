@@ -1,5 +1,6 @@
 """Code indexer — orchestrates parsing and graph writes for a directory."""
 
+import datetime
 import logging
 import os
 import time
@@ -158,7 +159,14 @@ class SymbolTable:
 class CodeIndexer:
     """Index a Python codebase into the SmartMemory knowledge graph."""
 
-    def __init__(self, graph: Any, repo: str, repo_root: str, exclude_dirs: Optional[set[str]] = None):
+    def __init__(
+        self,
+        graph: Any,
+        repo: str,
+        repo_root: str,
+        exclude_dirs: Optional[set[str]] = None,
+        commit_hash: str = "",
+    ):
         """Initialize the indexer.
 
         Args:
@@ -166,11 +174,13 @@ class CodeIndexer:
             repo: Repository identifier (e.g., "smart-memory-service")
             repo_root: Absolute path to the repository root
             exclude_dirs: Directory names to skip during file collection
+            commit_hash: Git commit SHA to stamp on every indexed entity
         """
         self.graph = graph
         self.repo = repo
         self.repo_root = os.path.abspath(repo_root)
         self.exclude_dirs = exclude_dirs
+        self._commit_hash = commit_hash
 
     def index(self, languages: Optional[list[str]] = None) -> IndexResult:
         """Index the entire directory and write to graph.
@@ -223,6 +233,12 @@ class CodeIndexer:
         # --- Resolve cross-file CALLS edges ---
         all_relations = self._resolve_cross_file_calls(all_relations, symbol_table)
 
+        # --- Stamp git anchor fields (CODE-DEV-6) ---
+        indexed_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        for entity in all_entities:
+            entity.commit_hash = self._commit_hash
+            entity.indexed_at = indexed_at
+
         # Build entity ID set for edge validation
         entity_ids = {e.item_id for e in all_entities}
 
@@ -258,6 +274,7 @@ class CodeIndexer:
         # Expose parsed entities on result (used by CODE-DEV-4 pattern seeding
         # via SmartMemory.ingest_code() → seed_patterns_from_code()).
         result.entities = all_entities
+        result.commit_hash = self._commit_hash
 
         result.elapsed_seconds = round(time.time() - start, 2)
         logger.info(
@@ -328,6 +345,8 @@ class CodeIndexer:
                     "file_path": entity.file_path,
                     "repo": entity.repo,
                 }
+                if entity.commit_hash:
+                    metadata["commit_hash"] = entity.commit_hash
                 if workspace_id is not None:
                     metadata["workspace_id"] = workspace_id
                 vector_store.upsert(

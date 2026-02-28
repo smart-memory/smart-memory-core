@@ -334,7 +334,7 @@ class TestIngestCodeAutodetectsCommitHash:
         return sm
 
     def test_commit_hash_captured_when_git_available(self):
-        """When git returns 0, commit_hash is stored on the result."""
+        """When git returns 0, commit_hash is forwarded to CodeIndexer constructor."""
         sm = self._make_sm()
         expected_sha = "abc123def456"
         mock_result = IndexResult(repo="test-repo")
@@ -348,20 +348,20 @@ class TestIngestCodeAutodetectsCommitHash:
         git_proc.stdout = f"{expected_sha}\n"
 
         with (
-            patch("smartmemory.code.indexer.CodeIndexer", return_value=mock_indexer),
+            patch("smartmemory.code.indexer.CodeIndexer", return_value=mock_indexer) as mock_cls,
             patch("smartmemory.smart_memory.subprocess.run", return_value=git_proc) as mock_run,
         ):
-            result = sm.ingest_code(directory="/tmp/my-project", repo="test-repo")
+            sm.ingest_code(directory="/tmp/my-project", repo="test-repo")
 
         mock_run.assert_called_once_with(
             ["git", "-C", "/tmp/my-project", "rev-parse", "HEAD"],
             capture_output=True,
             text=True,
         )
-        assert getattr(result, "commit_hash", None) == expected_sha
+        assert mock_cls.call_args.kwargs["commit_hash"] == expected_sha
 
-    def test_commit_hash_none_when_git_unavailable(self):
-        """When git returns non-zero, commit_hash is not set on the result."""
+    def test_commit_hash_empty_when_git_unavailable(self):
+        """When git returns non-zero, empty commit_hash is forwarded."""
         sm = self._make_sm()
         mock_result = IndexResult(repo="test-repo")
         mock_result.entities = []
@@ -374,12 +374,12 @@ class TestIngestCodeAutodetectsCommitHash:
         git_proc.stdout = ""
 
         with (
-            patch("smartmemory.code.indexer.CodeIndexer", return_value=mock_indexer),
+            patch("smartmemory.code.indexer.CodeIndexer", return_value=mock_indexer) as mock_cls,
             patch("smartmemory.smart_memory.subprocess.run", return_value=git_proc),
         ):
-            result = sm.ingest_code(directory="/tmp/my-project", repo="test-repo")
+            sm.ingest_code(directory="/tmp/my-project", repo="test-repo")
 
-        assert getattr(result, "commit_hash", None) is None
+        assert mock_cls.call_args.kwargs["commit_hash"] == ""
 
     def test_provided_commit_hash_used_without_git_call(self):
         """When commit_hash is provided explicitly, git is not invoked."""
@@ -391,20 +391,20 @@ class TestIngestCodeAutodetectsCommitHash:
         mock_indexer.index.return_value = mock_result
 
         with (
-            patch("smartmemory.code.indexer.CodeIndexer", return_value=mock_indexer),
+            patch("smartmemory.code.indexer.CodeIndexer", return_value=mock_indexer) as mock_cls,
             patch("smartmemory.smart_memory.subprocess.run") as mock_run,
         ):
-            result = sm.ingest_code(
+            sm.ingest_code(
                 directory="/tmp/my-project",
                 repo="test-repo",
                 commit_hash="explicit-sha",
             )
 
         mock_run.assert_not_called()
-        assert getattr(result, "commit_hash", None) == "explicit-sha"
+        assert mock_cls.call_args.kwargs["commit_hash"] == "explicit-sha"
 
-    def test_commit_hash_none_when_git_not_on_path(self):
-        """When git binary is missing (FileNotFoundError), commit_hash is not set."""
+    def test_commit_hash_empty_when_git_not_on_path(self):
+        """When git binary is missing (FileNotFoundError), empty commit_hash is forwarded."""
         sm = self._make_sm()
         mock_result = IndexResult(repo="test-repo")
         mock_result.entities = []
@@ -413,12 +413,12 @@ class TestIngestCodeAutodetectsCommitHash:
         mock_indexer.index.return_value = mock_result
 
         with (
-            patch("smartmemory.code.indexer.CodeIndexer", return_value=mock_indexer),
+            patch("smartmemory.code.indexer.CodeIndexer", return_value=mock_indexer) as mock_cls,
             patch("smartmemory.smart_memory.subprocess.run", side_effect=FileNotFoundError("git not found")),
         ):
-            result = sm.ingest_code(directory="/tmp/my-project", repo="test-repo")
+            sm.ingest_code(directory="/tmp/my-project", repo="test-repo")
 
-        assert getattr(result, "commit_hash", None) is None
+        assert mock_cls.call_args.kwargs["commit_hash"] == ""
 
 
 # ---------------------------------------------------------------------------

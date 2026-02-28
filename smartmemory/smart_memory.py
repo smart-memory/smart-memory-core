@@ -1439,15 +1439,18 @@ class SmartMemory(MemoryBase):
                 pass  # git not on PATH — leave commit_hash as None
 
         exclude_set: Optional[set] = set(exclude_dirs) if exclude_dirs else None
-        indexer = CodeIndexer(graph=self._graph, repo=repo, repo_root=directory, exclude_dirs=exclude_set)
+        indexer = CodeIndexer(
+            graph=self._graph,
+            repo=repo,
+            repo_root=directory,
+            exclude_dirs=exclude_set,
+            commit_hash=commit_hash or "",
+        )
         with self._di_context():
             index_result = indexer.index(languages=languages)
 
         if index_result.entities:
             self.seed_patterns_from_code(index_result.entities)
-
-        if commit_hash:
-            index_result.commit_hash = commit_hash  # type: ignore[attr-defined]
 
         return index_result
 
