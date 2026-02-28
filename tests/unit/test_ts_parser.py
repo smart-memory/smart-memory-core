@@ -48,6 +48,7 @@ function farewell(name) { return `Goodbye, ${name}`; }
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
+
 def _parse_tsx(source: bytes, tmp_path, filename: str = "sample.tsx") -> ParseResult:
     """Write *source* to a temp file and parse it as TSX."""
     f = tmp_path / filename
@@ -370,9 +371,7 @@ class TestRelations:
         calls = [r for r in result.relations if r.relation_type == "CALLS"]
         assert calls, "Expected at least one CALLS edge"
         for edge in calls:
-            assert "callee" in (edge.properties or {}), (
-                f"CALLS edge missing 'callee' property: {edge}"
-            )
+            assert "callee" in (edge.properties or {}), f"CALLS edge missing 'callee' property: {edge}"
         # The callee value must match the called function name
         callee_names = {r.properties["callee"] for r in calls}
         assert "bar" in callee_names
@@ -601,9 +600,7 @@ class TestImportSymbols:
         sym = next((s for s in result.import_symbols if s.local_name == "add"), None)
         assert sym is not None, f"No ImportSymbol for 'add': {result.import_symbols}"
         # utils/helpers.ts → "utils.helpers"  (same dotted pattern as Python files)
-        assert sym.module_path == "utils.helpers", (
-            f"Expected module_path='utils.helpers', got '{sym.module_path}'"
-        )
+        assert sym.module_path == "utils.helpers", f"Expected module_path='utils.helpers', got '{sym.module_path}'"
 
     def test_cross_file_ts_calls_resolved_end_to_end(self, tmp_path):
         """Full end-to-end: CALLS edge from app.ts::main resolves to lib.ts::helper.
@@ -637,11 +634,7 @@ class TestImportSymbols:
             table.register_import(sym)
 
         # Locate the CALLS edge from main
-        calls_from_main = [
-            r
-            for r in app_result.relations
-            if r.relation_type == "CALLS" and "main" in r.source_id
-        ]
+        calls_from_main = [r for r in app_result.relations if r.relation_type == "CALLS" and "main" in r.source_id]
         assert calls_from_main, "Expected at least one CALLS edge from main"
 
         # Resolve target via the symbol table
@@ -654,12 +647,8 @@ class TestImportSymbols:
         )
 
         # The resolved id must point to lib.ts::helper, NOT app.ts::helper
-        assert "lib.ts" in resolved_id, (
-            f"Expected cross-file resolution to lib.ts::helper, got: {resolved_id}"
-        )
-        assert "app.ts" not in resolved_id, (
-            f"Resolved to same-file entity instead of cross-file: {resolved_id}"
-        )
+        assert "lib.ts" in resolved_id, f"Expected cross-file resolution to lib.ts::helper, got: {resolved_id}"
+        assert "app.ts" not in resolved_id, f"Resolved to same-file entity instead of cross-file: {resolved_id}"
 
 
 class TestDefaultExportImport:
@@ -716,9 +705,7 @@ class TestDefaultExportImport:
         for entity in result.entities:
             table.register_entity(entity)
 
-        assert "lib" in table._module_defaults, (
-            f"'lib' not in _module_defaults: {list(table._module_defaults.keys())}"
-        )
+        assert "lib" in table._module_defaults, f"'lib' not in _module_defaults: {list(table._module_defaults.keys())}"
 
     def test_default_import_resolves_to_exported_entity(self, tmp_path):
         """import foo from './lib' — foo resolves to lib::helper (not None)."""
@@ -739,15 +726,144 @@ class TestDefaultExportImport:
             table.register_import(sym)
 
         resolved = table.resolve("app.ts", "foo")
-        assert resolved is not None, (
-            "Default import 'foo' should resolve to lib.ts::helper but got None"
-        )
-        assert "lib.ts" in resolved, (
-            f"Expected resolution to lib.ts entity, got: {resolved}"
-        )
-        assert "helper" in resolved, (
-            f"Expected resolution to include 'helper', got: {resolved}"
-        )
+        assert resolved is not None, "Default import 'foo' should resolve to lib.ts::helper but got None"
+        assert "lib.ts" in resolved, f"Expected resolution to lib.ts entity, got: {resolved}"
+        assert "helper" in resolved, f"Expected resolution to include 'helper', got: {resolved}"
+
+    # ── Anonymous default export tests ──────────────────────────────────────
+
+    def test_anonymous_default_function_creates_entity(self, tmp_path):
+        """export default function() {} — creates a 'default' entity with is_default_export=True."""
+        f = tmp_path / "lib.ts"
+        f.write_bytes(b"export default function() { return 42; }\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(f))
+
+        defaults = [e for e in result.entities if e.name == "default"]
+        assert defaults, f"No 'default' entity found: {[e.name for e in result.entities]}"
+        assert defaults[0].entity_type == "function"
+        assert defaults[0].is_default_export is True
+
+    def test_anonymous_default_arrow_creates_entity(self, tmp_path):
+        """export default () => 42 — creates a 'default' entity."""
+        f = tmp_path / "lib.ts"
+        f.write_bytes(b"export default () => 42;\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(f))
+
+        defaults = [e for e in result.entities if e.name == "default"]
+        assert defaults, f"No 'default' entity found: {[e.name for e in result.entities]}"
+        assert defaults[0].entity_type == "function"
+        assert defaults[0].is_default_export is True
+
+    def test_anonymous_default_class_creates_entity(self, tmp_path):
+        """export default class {} — creates a 'default' class entity."""
+        f = tmp_path / "lib.ts"
+        f.write_bytes(b"export default class { foo() { return 1; } }\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(f))
+
+        defaults = [e for e in result.entities if e.name == "default"]
+        assert defaults, f"No 'default' entity found: {[e.name for e in result.entities]}"
+        assert defaults[0].entity_type == "class"
+        assert defaults[0].is_default_export is True
+
+    def test_anonymous_default_function_jsx_is_component(self, tmp_path):
+        """export default function() { return <div />; } — classified as component."""
+        f = tmp_path / "Comp.tsx"
+        f.write_bytes(b"export default function() { return <div />; }\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(f))
+
+        defaults = [e for e in result.entities if e.name == "default"]
+        assert defaults, f"No 'default' entity found: {[e.name for e in result.entities]}"
+        assert defaults[0].entity_type == "component"
+        assert defaults[0].is_default_export is True
+
+    def test_anonymous_default_symbol_table_resolves(self, tmp_path):
+        """SymbolTable._module_defaults is populated from anonymous default exports."""
+        f = tmp_path / "lib.ts"
+        f.write_bytes(b"export default function() { return 42; }\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(f))
+
+        table = SymbolTable()
+        for entity in result.entities:
+            table.register_entity(entity)
+
+        assert "lib" in table._module_defaults, f"'lib' not in _module_defaults: {list(table._module_defaults.keys())}"
+
+    def test_anonymous_default_import_resolves_end_to_end(self, tmp_path):
+        """End-to-end: import foo from './lib' resolves when lib has anonymous default.
+
+        Scenario:
+          lib.ts  — export default function() { return 42; }
+          app.ts  — import foo from './lib'; function main() { foo(); }
+
+        CALLS edge from main must resolve to lib.ts::default.
+        """
+        lib = tmp_path / "lib.ts"
+        lib.write_bytes(b"export default function() { return 42; }\n")
+
+        app = tmp_path / "app.ts"
+        app.write_bytes(b"import foo from './lib';\nfunction main() { foo(); }\n")
+
+        parser = self._make_parser(tmp_path)
+        lib_result = parser.parse_file(str(lib))
+        app_result = parser.parse_file(str(app))
+
+        table = SymbolTable()
+        for entity in lib_result.entities + app_result.entities:
+            table.register_entity(entity)
+        for sym in lib_result.import_symbols + app_result.import_symbols:
+            table.register_import(sym)
+
+        resolved = table.resolve("app.ts", "foo")
+        assert resolved is not None, "Default import 'foo' should resolve to lib.ts::default but got None"
+        assert "lib.ts" in resolved, f"Expected resolution to lib.ts entity, got: {resolved}"
+
+    def test_anonymous_default_calls_edge_resolves_end_to_end(self, tmp_path):
+        """Full pipeline: anonymous default export CALLS edge resolves cross-file.
+
+        Same as test_anonymous_default_import_resolves_end_to_end but also
+        verifies the CALLS edge target is updated after cross-file resolution.
+        """
+        lib = tmp_path / "lib.ts"
+        lib.write_bytes(b"export default function() { return 42; }\n")
+
+        app = tmp_path / "app.ts"
+        app.write_bytes(b"import foo from './lib';\nfunction main() { foo(); }\n")
+
+        parser = self._make_parser(tmp_path)
+        lib_result = parser.parse_file(str(lib))
+        app_result = parser.parse_file(str(app))
+
+        all_entities = lib_result.entities + app_result.entities
+        all_import_symbols = lib_result.import_symbols + app_result.import_symbols
+
+        table = SymbolTable()
+        for entity in all_entities:
+            table.register_entity(entity)
+        for sym in all_import_symbols:
+            table.register_import(sym)
+
+        # Find CALLS edges from main
+        calls_from_main = [r for r in app_result.relations if r.relation_type == "CALLS" and "main" in r.source_id]
+        assert calls_from_main, "Expected at least one CALLS edge from main"
+
+        callee = calls_from_main[0].properties.get("callee")
+        assert callee == "foo", f"Expected callee='foo', got '{callee}'"
+
+        resolved_id = table.resolve("app.ts", "foo")
+        assert resolved_id is not None, "Symbol table could not resolve default-import 'foo' in app.ts"
+        assert "lib.ts" in resolved_id, f"Expected cross-file resolution to lib.ts::default, got: {resolved_id}"
+
+    # ── Named default export tests (pre-existing, kept for regression) ───
 
     def test_default_import_calls_edge_resolves_end_to_end(self, tmp_path):
         """End-to-end: foo() CALLS edge in app.ts resolves to lib.ts::helper.
@@ -779,23 +895,139 @@ class TestDefaultExportImport:
             table.register_import(sym)
 
         # Find CALLS edges from main
-        calls_from_main = [
-            r
-            for r in app_result.relations
-            if r.relation_type == "CALLS" and "main" in r.source_id
-        ]
+        calls_from_main = [r for r in app_result.relations if r.relation_type == "CALLS" and "main" in r.source_id]
         assert calls_from_main, "Expected at least one CALLS edge from main"
 
         callee = calls_from_main[0].properties.get("callee")
         assert callee == "foo", f"Expected callee='foo', got '{callee}'"
 
         resolved_id = table.resolve("app.ts", "foo")
-        assert resolved_id is not None, (
-            "Symbol table could not resolve default-import 'foo' in app.ts"
-        )
-        assert "lib.ts" in resolved_id, (
-            f"Expected cross-file resolution to lib.ts::helper, got: {resolved_id}"
-        )
-        assert "helper" in resolved_id, (
-            f"Expected item_id to contain 'helper', got: {resolved_id}"
-        )
+        assert resolved_id is not None, "Symbol table could not resolve default-import 'foo' in app.ts"
+        assert "lib.ts" in resolved_id, f"Expected cross-file resolution to lib.ts::helper, got: {resolved_id}"
+        assert "helper" in resolved_id, f"Expected item_id to contain 'helper', got: {resolved_id}"
+
+    # ── Identifier default export tests (export default <identifier>) ──────
+
+    def test_export_default_identifier_marks_entity(self, tmp_path):
+        """export default foo — marks the previously declared 'foo' entity as default export."""
+        f = tmp_path / "lib.ts"
+        f.write_bytes(b"const foo = () => 42;\nexport default foo;\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(f))
+
+        foo_entities = [e for e in result.entities if e.name == "foo"]
+        assert foo_entities, f"No 'foo' entity found: {[e.name for e in result.entities]}"
+        assert foo_entities[0].is_default_export is True, "foo should be marked is_default_export=True"
+
+    def test_export_default_identifier_symbol_table_resolves(self, tmp_path):
+        """SymbolTable._module_defaults is populated from identifier default exports."""
+        f = tmp_path / "lib.ts"
+        f.write_bytes(b"function helper() { return 1; }\nexport default helper;\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(f))
+
+        table = SymbolTable()
+        for entity in result.entities:
+            table.register_entity(entity)
+
+        assert "lib" in table._module_defaults, f"'lib' not in _module_defaults: {list(table._module_defaults.keys())}"
+
+    def test_export_default_identifier_import_resolves_end_to_end(self, tmp_path):
+        """End-to-end: import bar from './lib' resolves when lib has export default foo.
+
+        Scenario:
+          lib.ts  — const foo = () => 42; export default foo;
+          app.ts  — import bar from './lib'; function main() { bar(); }
+
+        CALLS edge from main must resolve to lib.ts::foo.
+        """
+        lib = tmp_path / "lib.ts"
+        lib.write_bytes(b"const foo = () => 42;\nexport default foo;\n")
+
+        app = tmp_path / "app.ts"
+        app.write_bytes(b"import bar from './lib';\nfunction main() { bar(); }\n")
+
+        parser = self._make_parser(tmp_path)
+        lib_result = parser.parse_file(str(lib))
+        app_result = parser.parse_file(str(app))
+
+        all_entities = lib_result.entities + app_result.entities
+        all_import_symbols = lib_result.import_symbols + app_result.import_symbols
+
+        table = SymbolTable()
+        for entity in all_entities:
+            table.register_entity(entity)
+        for sym in all_import_symbols:
+            table.register_import(sym)
+
+        resolved_id = table.resolve("app.ts", "bar")
+        assert resolved_id is not None, "Default import 'bar' should resolve to lib.ts::foo but got None"
+        assert "lib.ts" in resolved_id, f"Expected cross-file resolution to lib.ts entity, got: {resolved_id}"
+        assert "foo" in resolved_id, f"Expected item_id to contain 'foo', got: {resolved_id}"
+
+    def test_export_default_identifier_class(self, tmp_path):
+        """export default MyClass — marks the class entity as default export."""
+        f = tmp_path / "service.ts"
+        f.write_bytes(b"class MyService { run() {} }\nexport default MyService;\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(f))
+
+        svc_entities = [e for e in result.entities if e.name == "MyService"]
+        assert svc_entities, f"No 'MyService' entity found: {[e.name for e in result.entities]}"
+        assert svc_entities[0].is_default_export is True, "MyService should be marked is_default_export=True"
+        assert svc_entities[0].entity_type == "class"
+
+    def test_export_default_parenthesized_identifier(self, tmp_path):
+        """export default (foo) — parenthesized form marks the entity as default export."""
+        f = tmp_path / "lib.ts"
+        f.write_bytes(b"const foo = () => 42;\nexport default (foo);\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(f))
+
+        foo_entities = [e for e in result.entities if e.name == "foo"]
+        assert foo_entities, f"No 'foo' entity found: {[e.name for e in result.entities]}"
+        assert foo_entities[0].is_default_export is True, "foo should be marked is_default_export=True"
+
+    def test_export_default_double_parenthesized_identifier(self, tmp_path):
+        """export default ((foo)) — nested parens still mark the entity."""
+        f = tmp_path / "lib.ts"
+        f.write_bytes(b"const foo = () => 42;\nexport default ((foo));\n")
+
+        parser = self._make_parser(tmp_path)
+        result = parser.parse_file(str(f))
+
+        foo_entities = [e for e in result.entities if e.name == "foo"]
+        assert foo_entities, f"No 'foo' entity found: {[e.name for e in result.entities]}"
+        assert foo_entities[0].is_default_export is True
+
+    def test_export_default_parenthesized_resolves_end_to_end(self, tmp_path):
+        """End-to-end: import bar from './lib' resolves when lib has export default (foo).
+
+        Scenario:
+          lib.ts  — const foo = () => 42; export default (foo);
+          app.ts  — import bar from './lib'; function main() { bar(); }
+        """
+        lib = tmp_path / "lib.ts"
+        lib.write_bytes(b"const foo = () => 42;\nexport default (foo);\n")
+
+        app = tmp_path / "app.ts"
+        app.write_bytes(b"import bar from './lib';\nfunction main() { bar(); }\n")
+
+        parser = self._make_parser(tmp_path)
+        lib_result = parser.parse_file(str(lib))
+        app_result = parser.parse_file(str(app))
+
+        table = SymbolTable()
+        for entity in lib_result.entities + app_result.entities:
+            table.register_entity(entity)
+        for sym in lib_result.import_symbols + app_result.import_symbols:
+            table.register_import(sym)
+
+        resolved_id = table.resolve("app.ts", "bar")
+        assert resolved_id is not None, "Default import 'bar' should resolve via parenthesized export"
+        assert "lib.ts" in resolved_id, f"Expected cross-file resolution to lib.ts, got: {resolved_id}"
+        assert "foo" in resolved_id, f"Expected item_id to contain 'foo', got: {resolved_id}"

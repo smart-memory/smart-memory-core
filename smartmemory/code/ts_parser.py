@@ -85,6 +85,28 @@ def _node_text(node, source: bytes) -> str:
     return source[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
 
 
+def _unwrap_default_identifier(export_node):
+    """Find the identifier inside ``export default <expr>``.
+
+    Handles bare identifiers (``export default foo``) and arbitrarily
+    nested parenthesized expressions (``export default ((foo))``).
+    Returns the identifier AST node or None.
+    """
+    for child in export_node.children:
+        if child.type == "identifier":
+            return child
+        if child.type == "parenthesized_expression":
+            node = child
+            while node.type == "parenthesized_expression":
+                inner = next((c for c in node.children if c.type in ("identifier", "parenthesized_expression")), None)
+                if inner is None:
+                    return None
+                if inner.type == "identifier":
+                    return inner
+                node = inner
+    return None
+
+
 def _has_jsx_descendant(node) -> bool:
     """Return True if any descendant of *node* is a JSX element or fragment."""
     stack = list(node.children)
@@ -193,6 +215,23 @@ class TSParser:
                 if is_default and len(result.entities) > entities_before:
                     # The first entity extracted inside this default export is the exported symbol.
                     result.entities[entities_before].is_default_export = True
+                elif is_default and len(result.entities) == entities_before:
+                    # Check for ``export default <identifier>`` (or wrapped
+                    # ``export default (foo)``) — a previously declared entity
+                    # re-exported as default.  Look up by name in the current
+                    # file's entities and mark it.
+                    ident_node = _unwrap_default_identifier(child)
+                    if ident_node is not None:
+                        ident_name = _node_text(ident_node, source)
+                        for entity in result.entities:
+                            if entity.name == ident_name and entity.file_path == rel_path:
+                                entity.is_default_export = True
+                                break
+                    else:
+                        # Anonymous default export — no entity was created because the
+                        # declaration has no name node.  Create a synthetic entity so that
+                        # ``import foo from './lib'; foo()`` is resolvable via the symbol table.
+                        self._extract_anonymous_default(child, parent, rel_path, source, result, depth)
 
             elif ntype == "import_statement":
                 self._extract_import_stmt(child, parent, rel_path, source, result)
@@ -387,6 +426,77 @@ class TSParser:
             # Walk nested declarations (e.g. inner functions defined inside a method body)
             self._walk(body, entity, rel_path, source, result, depth + 1)
 
+    # Anonymous function-like node types that can appear inside export default
+    _ANON_FUNC_TYPES = frozenset({"function_declaration", "function", "function_expression", "arrow_function"})
+
+    def _extract_anonymous_default(
+        self,
+        node,
+        parent: CodeEntity,
+        rel_path: str,
+        source: bytes,
+        result: ParseResult,
+        depth: int,
+    ):
+        """Extract an anonymous default export as a synthetic ``"default"`` entity.
+
+        Handles patterns where ``export default`` wraps a declaration with no
+        name: ``export default function() {}``, ``export default class {}``,
+        ``export default () => {}``.  The entity is named ``"default"`` with
+        ``is_default_export=True`` so that ``import foo from './lib'``
+        resolves correctly via the symbol table.
+        """
+        for child in node.children:
+            if child.type in self._ANON_FUNC_TYPES:
+                body = _child_by_field(child, "body")
+                has_jsx = body is not None and _has_jsx_descendant(body)
+                if not has_jsx and child.type == "arrow_function":
+                    # Concise arrow: body IS the expression, check the whole node
+                    has_jsx = _has_jsx_descendant(child)
+                entity_type = "component" if has_jsx else "function"
+
+                entity = CodeEntity(
+                    name="default",
+                    entity_type=entity_type,
+                    file_path=rel_path,
+                    line_number=child.start_point[0] + 1,
+                    repo=self.repo,
+                    is_default_export=True,
+                )
+                result.entities.append(entity)
+                result.relations.append(
+                    CodeRelation(source_id=parent.item_id, target_id=entity.item_id, relation_type="DEFINES")
+                )
+                if body:
+                    self._collect_calls(body, entity, rel_path, source, result)
+                    self._walk(body, entity, rel_path, source, result, depth + 1)
+                elif child.type == "arrow_function":
+                    self._collect_calls(child, entity, rel_path, source, result)
+                return
+
+            elif child.type in ("class_declaration", "class"):
+                # tree-sitter uses "class_declaration" for named classes and
+                # "class" for anonymous class expressions (export default class {}).
+                body = _child_by_field(child, "body")
+                if body is None:
+                    # "class" nodes nest class_body differently — search children
+                    body = next((c for c in child.children if c.type == "class_body"), None)
+                entity = CodeEntity(
+                    name="default",
+                    entity_type="class",
+                    file_path=rel_path,
+                    line_number=child.start_point[0] + 1,
+                    repo=self.repo,
+                    is_default_export=True,
+                )
+                result.entities.append(entity)
+                result.relations.append(
+                    CodeRelation(source_id=parent.item_id, target_id=entity.item_id, relation_type="DEFINES")
+                )
+                if body:
+                    self._walk(body, entity, rel_path, source, result, depth + 1)
+                return
+
     # ── Relation extractors ─────────────────────────────────────────────────
 
     def _resolve_ts_specifier(self, specifier: str, importing_file: str) -> str | None:
@@ -535,13 +645,15 @@ class TSParser:
 
     # Node types that introduce a new function scope. _collect_calls stops at these
     # so that calls inside a nested function are not attributed to the outer caller.
-    _FUNCTION_SCOPE_TYPES = frozenset({
-        "function_declaration",
-        "function",
-        "function_expression",
-        "arrow_function",
-        "method_definition",
-    })
+    _FUNCTION_SCOPE_TYPES = frozenset(
+        {
+            "function_declaration",
+            "function",
+            "function_expression",
+            "arrow_function",
+            "method_definition",
+        }
+    )
 
     def _collect_calls(self, node, caller: CodeEntity, rel_path: str, source: bytes, result: ParseResult):
         """Walk a subtree and emit CALLS edges for every call_expression found.

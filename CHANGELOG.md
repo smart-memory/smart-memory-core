@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+#### CODE-DEV-7 — Polyglot Parser Bug Fixes
+
+- `export default foo` (identifier re-export) now correctly marks the referenced entity as `is_default_export=True`, fixing cross-file default import resolution via SymbolTable.
+- `export default (foo)` and `export default ((foo))` (parenthesized identifier forms) also correctly resolved via `_unwrap_default_identifier()` helper with arbitrary nesting support.
+- 7 new tests covering identifier default exports (bare, parenthesized, double-parenthesized, class, symbol table registration, end-to-end import resolution).
+
 ### Added
 
 #### CODE-DEV-6 — Git-Anchored Code Memory
