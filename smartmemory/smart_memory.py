@@ -258,12 +258,20 @@ class SmartMemory(MemoryBase):
             except Exception:
                 pass
 
+            from smartmemory.relations.normalizer import RelationNormalizer
+            from smartmemory.relations.validator import TypePairValidator
+
+            relation_normalizer = RelationNormalizer()  # alias-only mode (no embedding_fn)
+            type_pair_validator = TypePairValidator(mode="permissive")
+
             ontology_constrain_stage = OntologyConstrainStage(
                 ontology_graph,
                 promotion_queue=promotion_queue,
                 entity_pair_cache=entity_pair_cache,
                 ontology_registry=ontology_registry,
                 ontology_model=ontology_snapshot,
+                relation_normalizer=relation_normalizer,
+                type_pair_validator=type_pair_validator,
             )
 
         # Allow injected pattern manager to override (LitePatternManager in Lite mode, where

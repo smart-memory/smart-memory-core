@@ -27,12 +27,16 @@ class OntologyConstrainStage:
         entity_pair_cache: EntityPairCache | None = None,
         ontology_registry=None,
         ontology_model=None,
+        relation_normalizer=None,
+        type_pair_validator=None,
     ):
         self._ontology = ontology_graph
         self._promotion_queue = promotion_queue
         self._entity_pair_cache = entity_pair_cache
         self._registry = ontology_registry
         self._ontology_model = ontology_model
+        self._relation_normalizer = relation_normalizer
+        self._type_pair_validator = type_pair_validator
 
     @property
     def name(self) -> str:
@@ -315,7 +319,71 @@ class OntologyConstrainStage:
                 continue
             if source in accepted_ids and target in accepted_ids:
                 valid.append(rel)
+
+        # ONTO-PUB-3: Normalize predicates, validate type-pairs, score plausibility
+        if self._relation_normalizer is not None or self._type_pair_validator is not None:
+            valid = self._normalize_and_score_relations(valid, accepted_entities)
+
         return valid
+
+    def _normalize_and_score_relations(
+        self,
+        valid: List[Dict[str, Any]],
+        accepted: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Normalize predicates, validate type-pairs, compute plausibility scores."""
+        from smartmemory.relations.scorer import PlausibilityScorer
+
+        scorer = PlausibilityScorer()
+
+        # Build ID → entity type map from accepted entities
+        id_to_type: Dict[str, str] = {}
+        for entity in accepted:
+            eid = entity.get("item_id") or entity.get("name", "").lower()
+            etype = entity.get("entity_type", "concept").lower()
+            id_to_type[eid] = etype
+
+        enriched: List[Dict] = []
+        for rel in valid:
+            raw_predicate = rel.get("raw_predicate") or rel.get("relation_type", "related_to")
+
+            # Normalize predicate
+            if self._relation_normalizer is not None:
+                canonical_type, norm_conf = self._relation_normalizer.normalize(raw_predicate)
+            else:
+                canonical_type = rel.get("relation_type", "related_to")
+                norm_conf = 1.0
+
+            # Validate type-pair
+            src_type = id_to_type.get(rel.get("source_id", ""), "concept")
+            tgt_type = id_to_type.get(rel.get("target_id", ""), "concept")
+
+            if self._type_pair_validator is not None:
+                is_valid, pair_score = self._type_pair_validator.validate(src_type, canonical_type, tgt_type)
+            else:
+                is_valid = True
+                pair_score = 1.0
+
+            # In strict mode, drop invalid relations entirely
+            if not is_valid:
+                continue
+
+            # Compute plausibility
+            plausibility = scorer.score(norm_conf, pair_score)
+
+            # Attach metadata
+            rel["canonical_type"] = canonical_type
+            if "raw_predicate" not in rel:
+                rel["raw_predicate"] = rel.get("relation_type", "related_to")
+            rel["normalization_confidence"] = norm_conf
+            rel["plausibility_score"] = plausibility
+            # Update relation_type to canonical (for FalkorDB edge label)
+            rel["relation_type"] = canonical_type
+            enriched.append(rel)
+
+        # Sort by plausibility descending (best triples survive max_relations limit)
+        enriched.sort(key=lambda r: r.get("plausibility_score", 0.0), reverse=True)
+        return enriched
 
     def _validate_constraints(self, entity: Dict, entity_type: str) -> List[Dict[str, Any]]:
         """Check property constraints for an entity. Returns violation dicts."""

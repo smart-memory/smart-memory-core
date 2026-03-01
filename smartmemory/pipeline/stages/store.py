@@ -143,11 +143,10 @@ class StoreStage:
             src_id = extraction_id_to_graph_id.get(src_hash)
             tgt_id = extraction_id_to_graph_id.get(tgt_hash)
             if src_id and tgt_id:
-                resolved.append({
-                    "source_id": src_id,
-                    "target_id": tgt_id,
-                    "relation_type": r.get("relation_type", "RELATED"),
-                })
+                resolved_rel = dict(r)
+                resolved_rel["source_id"] = src_id
+                resolved_rel["target_id"] = tgt_id
+                resolved.append(resolved_rel)
             else:
                 logger.warning("Unresolvable relation: src=%s tgt=%s", src_hash, tgt_hash)
 

@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### ONTO-PUB-3 — Relation Schema + Extraction Quality
+
+- **Canonical relation vocabulary** (`smartmemory/relations/schema.py`): 39 relation types in 8 categories with ~200 aliases, frozen dataclass definitions, module-level derived lookup tables (`ALIAS_INDEX`, `TYPE_PAIR_PRIORS`).
+- **Relation normalizer** (`smartmemory/relations/normalizer.py`): 3-step cascade — alias lookup → embedding similarity → `related_to` fallback — producing `(canonical_type, confidence)`.
+- **Type-pair validator** (`smartmemory/relations/validator.py`): validates `(source_type, relation, target_type)` triples against `TYPE_PAIR_PRIORS` with strict (drop invalid) and permissive (warn + keep) modes.
+- **Plausibility scorer** (`smartmemory/relations/scorer.py`): weighted average of normalization confidence and type-pair score, clamped [0.0, 1.0].
+- **Benchmark harness** (`smartmemory/relations/benchmark.py`): dataset-agnostic relation quality evaluation with P/R/F1 and by-type breakdown.
+- **OntologyGraph relation support**: `seed_relation_types()`, `get_relation_types()`, `add_provisional_relation_type()`, `seed_type_pair_edges()`.
+- **Pipeline integration**: `OntologyConstrainStage` normalizes, validates, and scores relations; strict mode drops structurally invalid triples. Metadata (`canonical_type`, `raw_predicate`, `normalization_confidence`, `plausibility_score`) forwarded through StoreStage → StoragePipeline → FalkorDB edge properties.
+- **Raw predicate preservation**: LLM extractor now captures the original predicate text before normalization.
+
 ### Changed
 
 #### DIST-RELEASE-1 — PyPI Package Rename

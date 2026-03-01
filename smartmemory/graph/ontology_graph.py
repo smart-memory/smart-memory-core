@@ -32,6 +32,19 @@ SEED_TYPES: List[str] = [
 VALID_STATUSES = {"seed", "provisional", "confirmed", "rejected"}
 
 
+# Seed relation types derived from canonical relation vocabulary (ONTO-PUB-3)
+def _load_seed_relation_types() -> list[str]:
+    try:
+        from smartmemory.relations.schema import CANONICAL_RELATION_TYPES
+
+        return list(CANONICAL_RELATION_TYPES.keys())
+    except ImportError:
+        return []
+
+
+SEED_RELATION_TYPES: list[str] = _load_seed_relation_types()
+
+
 class OntologyGraph:
     """Manage entity type definitions in a dedicated FalkorDB graph.
 
@@ -452,6 +465,131 @@ class OntologyGraph:
         except Exception as e:
             logger.warning("Failed to delete entity pattern '%s' -> '%s': %s", name, label, e)
             return False
+
+    # ------------------------------------------------------------------ #
+    # Relation type management (ONTO-PUB-3)
+    # ------------------------------------------------------------------ #
+
+    def seed_relation_types(self) -> int:
+        """Seed canonical relation types as RelationType nodes. Idempotent.
+
+        Returns:
+            Number of types actually created (skips existing).
+        """
+        try:
+            from smartmemory.relations.schema import CANONICAL_RELATION_TYPES
+        except ImportError:
+            logger.warning("smartmemory.relations.schema not available; skipping relation type seeding")
+            return 0
+
+        backend = self._get_backend()
+        created = 0
+
+        for name, typedef in CANONICAL_RELATION_TYPES.items():
+            try:
+                existing = backend.query(
+                    "MATCH (t:RelationType {name: $name}) RETURN t.name",
+                    params={"name": name},
+                    graph_name=self._graph_name,
+                )
+                if existing:
+                    continue
+                backend.query(
+                    "CREATE (t:RelationType {name: $name, status: 'seed', category: $category})",
+                    params={"name": name, "category": typedef.category},
+                    graph_name=self._graph_name,
+                )
+                created += 1
+            except Exception as e:
+                logger.warning("Failed to seed relation type '%s': %s", name, e)
+
+        logger.info("Seeded %d/%d relation types in %s", created, len(CANONICAL_RELATION_TYPES), self._graph_name)
+        return created
+
+    def get_relation_types(self, status: str | None = None) -> list[dict]:
+        """Return all relation types, optionally filtered by status."""
+        backend = self._get_backend()
+        try:
+            if status:
+                result = backend.query(
+                    "MATCH (t:RelationType {status: $status}) RETURN t.name AS name, t.status AS status, "
+                    "t.category AS category ORDER BY t.name",
+                    params={"status": status},
+                    graph_name=self._graph_name,
+                )
+            else:
+                result = backend.query(
+                    "MATCH (t:RelationType) RETURN t.name AS name, t.status AS status, "
+                    "t.category AS category ORDER BY t.name",
+                    graph_name=self._graph_name,
+                )
+            return [{"name": row[0], "status": row[1], "category": row[2]} for row in (result or [])]
+        except Exception as e:
+            logger.warning("Failed to query relation types: %s", e)
+            return []
+
+    def add_provisional_relation_type(self, name: str, category: str = "unknown") -> bool:
+        """Add a provisional relation type. No-op if already exists.
+
+        Returns:
+            True if created, False if already existed.
+        """
+        backend = self._get_backend()
+        try:
+            existing = backend.query(
+                "MATCH (t:RelationType {name: $name}) RETURN t.name",
+                params={"name": name},
+                graph_name=self._graph_name,
+            )
+            if existing:
+                return False
+            backend.query(
+                "CREATE (t:RelationType {name: $name, status: 'provisional', category: $category})",
+                params={"name": name, "category": category},
+                graph_name=self._graph_name,
+            )
+            return True
+        except Exception as e:
+            logger.warning("Failed to add provisional relation type '%s': %s", name, e)
+            return False
+
+    def seed_type_pair_edges(self) -> int:
+        """Ensure VALID_FOR edges exist between EntityType nodes for type-pair priors.
+
+        Graph model: EntityType -[VALID_FOR {relation: "works_at"}]-> EntityType
+        Wildcard pairs ("*", "*") are skipped — they apply universally.
+
+        Uses MERGE (idempotent) — safe to call repeatedly.
+
+        Returns:
+            Number of edges ensured (includes already-existing edges).
+        """
+        try:
+            from smartmemory.relations.schema import CANONICAL_RELATION_TYPES
+        except ImportError:
+            return 0
+
+        backend = self._get_backend()
+        ensured = 0
+
+        for name, typedef in CANONICAL_RELATION_TYPES.items():
+            for src, tgt in typedef.type_pairs:
+                if src == "*" or tgt == "*":
+                    continue  # wildcards are implicit, not stored as edges
+                try:
+                    backend.query(
+                        "MERGE (s:EntityType {name: $src}) "
+                        "MERGE (t:EntityType {name: $tgt}) "
+                        "MERGE (s)-[r:VALID_FOR {relation: $rel}]->(t)",
+                        params={"src": src.title(), "tgt": tgt.title(), "rel": name},
+                        graph_name=self._graph_name,
+                    )
+                    ensured += 1
+                except Exception as e:
+                    logger.warning("Failed to ensure VALID_FOR edge %s->%s for '%s': %s", src, tgt, name, e)
+
+        logger.info("Ensured %d type-pair edges in %s", ensured, self._graph_name)
+        return ensured
 
     # ------------------------------------------------------------------ #
     # Internal helpers

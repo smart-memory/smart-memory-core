@@ -273,10 +273,7 @@ class LLMSingleExtractor(ExtractorPlugin):
         # Use sha256 for a deterministic digest; Python's hash() is process-randomized.
         _text_digest = hashlib.sha256(text.encode()).hexdigest()[:16]
         cache_key = (
-            f"single_{self.cfg.model_name}:"
-            f"{self.cfg.extract_decisions}:"
-            f"v{EXTRACTION_SCHEMA_VERSION}:"
-            f"{_text_digest}"
+            f"single_{self.cfg.model_name}:{self.cfg.extract_decisions}:v{EXTRACTION_SCHEMA_VERSION}:{_text_digest}"
         )
 
         # Check cache
@@ -437,7 +434,8 @@ class LLMSingleExtractor(ExtractorPlugin):
                 continue
 
             subj = (r.get("subject") or "").strip()
-            pred = _normalize_predicate((r.get("predicate") or "").strip())
+            raw_pred = (r.get("predicate") or "").strip()
+            pred = _normalize_predicate(raw_pred)
             obj = (r.get("object") or "").strip()
 
             if not (subj and pred and obj):
@@ -453,7 +451,9 @@ class LLMSingleExtractor(ExtractorPlugin):
                     continue
                 seen.add(key)
 
-                valid_relations.append({"source_id": sid, "target_id": oid, "relation_type": pred})
+                valid_relations.append(
+                    {"source_id": sid, "target_id": oid, "relation_type": pred, "raw_predicate": raw_pred}
+                )
 
         return valid_relations
 
