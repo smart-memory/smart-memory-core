@@ -89,7 +89,7 @@ class AsyncFalkorDBBackend(AsyncSmartGraphBackend):
         except ImportError:
             raise ImportError(
                 "falkordb is required for server mode. "
-                "Install it with: pip install smartmemory[server]"
+                "Install it with: pip install smartmemory-core[server]"
             ) from None
         kwargs: Dict[str, Any] = {"host": self.host, "port": self.port}
         if self.max_connections is not None:

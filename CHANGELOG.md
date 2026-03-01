@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+#### DIST-RELEASE-1 — PyPI Package Rename
+
+- **Package renamed** from `smartmemory` to `smartmemory-core` on PyPI. Python import name (`import smartmemory`) is unchanged.
+- Console script entry point renamed from `smartmemory` to `smartmemory-core` to avoid collision with the distribution wrapper.
+- VERSION bumped to 0.5.0 (signals the rename).
+- Publish workflow updated for `smartmemory-core` package name (7 references).
+- All user-facing error messages updated (`pip install smartmemory-core[server]`, `pip install smartmemory-core[watch]`, etc.).
+- README install instructions and CLI examples updated to use `smartmemory-core`.
+
 ### Fixed
 
 #### CODE-DEV-7 — Polyglot Parser Bug Fixes
@@ -18,6 +29,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 7 new tests covering identifier default exports (bare, parenthesized, double-parenthesized, class, symbol table registration, end-to-end import resolution).
 
 ### Added
+
+#### ONTO-PUB-1 — Entity Foundation (Public Knowledge Grounding)
+
+- `PublicKnowledgeStore` ABC with pluggable SQLite and FalkorDB adapters for canonical entity storage.
+- `SQLitePublicKnowledgeStore`: WAL-mode local store with label-as-alias invariant, NOCASE lookup, numeric QID tie-breaking.
+- `FalkorDBPublicKnowledgeStore`: dedicated `__public_knowledge` graph with Redis version tracking for cross-process visibility.
+- `PublicKnowledgeGrounder`: two-step grounding loop (alias lookup + SPARQL fallback) replacing broken `WikipediaGrounder`. Creates `wikidata:{qid}` nodes with `GROUNDED_IN` edges.
+- `WDQSClient`: Wikidata SPARQL client with circuit breaker (CLOSED/OPEN/HALF_OPEN), 2s timeout, 1 req/s rate limit, negative cache.
+- `WIKIDATA_TYPE_MAP`: 20 Wikidata P31 QIDs mapped to SmartMemory SEED_TYPES (title case).
+- `EntityRulerStage`: three-layer pattern merge (public knowledge base, tenant future, workspace wins) with lazy version-check reload.
+- `SmartMemory.__init__`: mode-aware `_default_public_knowledge_store()` — FalkorDB in service mode (fail loud), bundled SQLite in local mode.
+- `GroundingBenchmark` harness: evaluates grounding accuracy with hit rate, disambiguation accuracy, false positive rate by domain.
+- Snapshot pipeline CLI: `python -m smartmemory.grounding.snapshot` — queries WDQS per domain, exports JSONL + pre-built SQLite.
+- 78 new tests across 5 files (unit + integration). Coverage: grounder 96%, sqlite_store 99%, models/type_map/benchmark 100%.
 
 #### CODE-DEV-6 — Git-Anchored Code Memory
 

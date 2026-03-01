@@ -505,7 +505,7 @@ class RedisStreamQueue:
             self._redis_mod = _redis
         except ImportError:
             raise ImportError(
-                "redis is required for RedisStreamQueue. Install it with: pip install smartmemory[server]"
+                "redis is required for RedisStreamQueue. Install it with: pip install smartmemory-core[server]"
             ) from None
         self.stream_name = eff_stream
         self.group = group

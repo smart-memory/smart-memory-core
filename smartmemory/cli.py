@@ -129,7 +129,7 @@ def watch(ctx, vault_path):
         from watchdog.events import FileSystemEventHandler
         from watchdog.observers import Observer
     except ImportError:
-        console.print("[red]watchdog not installed.[/red] Run: pip install smartmemory[watch]")
+        console.print("[red]watchdog not installed.[/red] Run: pip install smartmemory-core[watch]")
         raise SystemExit(1)
 
     memory = _get_memory(ctx)

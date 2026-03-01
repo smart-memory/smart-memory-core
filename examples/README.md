@@ -6,7 +6,7 @@ This directory contains example scripts demonstrating SmartMemory's features and
 
 ### Core Dependencies
 ```bash
-pip install smartmemory
+pip install smartmemory-core
 ```
 
 ### Optional Dependencies

@@ -21,7 +21,7 @@ class FalkorVectorBackend(VectorBackend):
         except ImportError:
             raise ImportError(
                 "falkordb is required for server mode. "
-                "Install it with: pip install smartmemory[server]"
+                "Install it with: pip install smartmemory-core[server]"
             ) from None
         graph_cfg = get_config("graph_db") or {}
         # graph_cfg is a ValidatedConfigDict; support dict access too for safety

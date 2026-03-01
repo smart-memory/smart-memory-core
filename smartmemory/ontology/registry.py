@@ -40,7 +40,7 @@ class OntologyRegistry:
         except ImportError:
             raise ImportError(
                 "falkordb is required for server mode. "
-                "Install it with: pip install smartmemory[server]"
+                "Install it with: pip install smartmemory-core[server]"
             ) from None
         try:
             host = self.config.graph_db.get("host", "localhost")

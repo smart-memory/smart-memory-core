@@ -12,7 +12,7 @@ def _get_version() -> str:
     try:
         # For installed package, read from metadata
         from importlib.metadata import version
-        return version("smartmemory")
+        return version("smartmemory-core")
     except Exception:
         # For development, read from VERSION file
         try:

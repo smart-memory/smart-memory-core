@@ -55,6 +55,7 @@ dependencies = [
 server = [
     "falkordb>=1.0.0",
     "redis>=4.0.0",
+    "requests>=2.28.0",
 ]
 
 # Optional dependencies for specific extractors
@@ -138,7 +139,7 @@ Repository = "https://github.com/smart-memory/smart-memory"
 # External plugins can register here
 
 [project.scripts]
-smartmemory = "smartmemory.cli:main"
+smartmemory-core = "smartmemory.cli:main"
 
 [tool.setuptools]
 packages = {find = {}}  # Auto-discover all packages
@@ -150,8 +151,10 @@ version = {file = "VERSION"}
 smartmemory = [
     "py.typed",
     "**/*.json",
+    "**/*.jsonl",
     "**/*.yaml",
-    "**/*.yml"
+    "**/*.yml",
+    "**/*.sqlite"
 ]
 
 [tool.ruff]

@@ -1,4 +1,4 @@
-name: Publish to PyPI
+name: Publish smartmemory-core to PyPI
 
 on:
   push:
@@ -36,7 +36,7 @@ jobs:
         echo "📦 Local version: $VERSION"
         
         # Check if version exists on PyPI
-        if pip index versions smartmemory 2>/dev/null | grep -q "($VERSION)"; then
+        if pip index versions smartmemory-core 2>/dev/null | grep -q "($VERSION)"; then
           echo "⏭️  Version $VERSION already exists on PyPI, skipping..."
           echo "skip=true" >> $GITHUB_OUTPUT
         else
@@ -94,12 +94,14 @@ jobs:
         python -m venv test-env
         source test-env/bin/activate
         
-        # Install from PyPI
-        pip install smartmemory --no-cache-dir
-        
-        # Test import
+        # Test base install (import only — CLI deps are in [cli] extra)
+        pip install smartmemory-core --no-cache-dir
         python -c "from smartmemory import SmartMemory; print('✅ Package installed successfully from PyPI!')"
         python -c "from smartmemory import __version__; print(f'📦 Version: {__version__}')"
+
+        # Test console script entry point (requires [cli] extra for click/rich)
+        pip install smartmemory-core[cli] --no-cache-dir
+        smartmemory-core --help
         
         deactivate
     
@@ -107,15 +109,15 @@ jobs:
       if: steps.check_version.outputs.skip != 'true'
       run: |
         VERSION=$(cat VERSION | tr -d '\n')
-        echo "## 🎉 SmartMemory v$VERSION Published to PyPI" >> $GITHUB_STEP_SUMMARY
+        echo "## 🎉 smartmemory-core v$VERSION Published to PyPI" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Installation" >> $GITHUB_STEP_SUMMARY
         echo '```bash' >> $GITHUB_STEP_SUMMARY
-        echo "pip install smartmemory==$VERSION" >> $GITHUB_STEP_SUMMARY
+        echo "pip install smartmemory-core==$VERSION" >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Links" >> $GITHUB_STEP_SUMMARY
-        echo "- 📦 [PyPI Package](https://pypi.org/project/smartmemory/$VERSION/)" >> $GITHUB_STEP_SUMMARY
+        echo "- 📦 [PyPI Package](https://pypi.org/project/smartmemory-core/$VERSION/)" >> $GITHUB_STEP_SUMMARY
         echo "- 📚 [Documentation](https://docs.smartmemory.ai)" >> $GITHUB_STEP_SUMMARY
         echo "- 🐙 [GitHub Repository](https://github.com/smart-memory/smart-memory)" >> $GITHUB_STEP_SUMMARY
 

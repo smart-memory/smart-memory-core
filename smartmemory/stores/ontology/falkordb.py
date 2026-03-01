@@ -35,7 +35,7 @@ class FalkorDBGraphService:
         except ImportError:
             raise ImportError(
                 "falkordb is required for server mode. "
-                "Install it with: pip install smartmemory[server]"
+                "Install it with: pip install smartmemory-core[server]"
             ) from None
         try:
             self.client = _falkordb.FalkorDB(host=host, port=port)

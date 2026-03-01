@@ -37,7 +37,7 @@ class RedisCache:
             import redis as _redis
         except ImportError:
             raise ImportError(
-                "redis is required for caching. Install it with: pip install smartmemory[server]"
+                "redis is required for caching. Install it with: pip install smartmemory-core[server]"
             ) from None
 
         self.prefix = prefix

@@ -72,7 +72,7 @@ class FalkorDBBackend(SmartGraphBackend):
         except ImportError:
             raise ImportError(
                 "falkordb is required for server mode. "
-                "Install it with: pip install smartmemory[server]"
+                "Install it with: pip install smartmemory-core[server]"
             ) from None
         self.db = _FalkorDB(host=self.host, port=self.port)
         self.graph = self.db.select_graph(self.graph_name)

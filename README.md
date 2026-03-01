@@ -1,7 +1,7 @@
 # SmartMemory - Multi-Layered AI Memory System
 
 [![Docs](https://img.shields.io/badge/docs-smartmemory.ai-blue)](https://docs.smartmemory.ai/smartmemory/intro)
-[![PyPI version](https://badge.fury.io/py/smartmemory.svg)](https://pypi.org/project/smartmemory/)
+[![PyPI version](https://badge.fury.io/py/smartmemory-core.svg)](https://pypi.org/project/smartmemory-core/)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
@@ -12,10 +12,12 @@ SmartMemory is a comprehensive AI memory system that provides persistent, multi-
 ## 🚀 Quick Install
 
 ```bash
-pip install smartmemory             # Full platform (requires Docker — FalkorDB + Redis)
-pip install smartmemory[lite]       # Zero-infra local mode (SQLite + usearch, no Docker)
-pip install smartmemory[lite,watch] # + vault watcher for auto-ingesting markdown files
+pip install smartmemory-core             # Core library (requires Docker — FalkorDB + Redis)
+pip install smartmemory-core[lite]       # Zero-infra local mode (SQLite + usearch, no Docker)
+pip install smartmemory-core[lite,watch] # + vault watcher for auto-ingesting markdown files
 ```
+
+> **End users:** Install `pip install smartmemory` for the distribution package with MCP server, viewer, and CLI. This package (`smartmemory-core`) is the core library for developers building on top of SmartMemory.
 
 ### SmartMemory Lite — No Docker Required
 
@@ -39,10 +41,10 @@ memory = create_lite_memory(pipeline_profile=PipelineConfig.lite())
 
 Or via CLI:
 ```bash
-smartmemory add "Alice leads Project Atlas"
-smartmemory search "who leads Atlas"
-smartmemory rebuild       # Reindex vector store from graph data
-smartmemory watch /path/to/vault  # Auto-ingest new/changed .md files
+smartmemory-core add "Alice leads Project Atlas"
+smartmemory-core search "who leads Atlas"
+smartmemory-core rebuild       # Reindex vector store from graph data
+smartmemory-core watch /path/to/vault  # Auto-ingest new/changed .md files
 ```
 
 ## Architecture Overview
@@ -105,17 +107,17 @@ The memory ingestion flow processes data through several stages:
 
 ```bash
 # Core package (zero infra — SQLite + usearch, no Docker required)
-pip install smartmemory
+pip install smartmemory-core
 
 # With FalkorDB + Redis server backends
-pip install smartmemory[server]        # FalkorDB graph DB + Redis cache
+pip install smartmemory-core[server]        # FalkorDB graph DB + Redis cache
 
 # With optional features
-pip install smartmemory[cli]           # CLI tools
-pip install smartmemory[rebel]         # REBEL relation extractor
-pip install smartmemory[relik]         # ReliK relation extractor
-pip install smartmemory[wikipedia]     # Wikipedia enrichment
-pip install smartmemory[all]           # All optional features
+pip install smartmemory-core[cli]           # CLI tools
+pip install smartmemory-core[rebel]         # REBEL relation extractor
+pip install smartmemory-core[relik]         # ReliK relation extractor
+pip install smartmemory-core[wikipedia]     # Wikipedia enrichment
+pip install smartmemory-core[all]           # All optional features
 ```
 
 ### From Source (Development)
@@ -261,20 +263,20 @@ memory.add(zettel_item)
 
 ```bash
 # Install CLI tools
-pip install smartmemory[cli]
+pip install smartmemory-core[cli]
 
 # Add a memory
-smartmemory add "Python is great for AI" --memory-type semantic
+smartmemory-core add "Python is great for AI" --memory-type semantic
 
 # Search memories
-smartmemory search "Python programming" --top-k 5
+smartmemory-core search "Python programming" --top-k 5
 
 # Rebuild the vector index from graph data
-smartmemory rebuild
+smartmemory-core rebuild
 
 # Auto-ingest new/changed Markdown files from a vault directory
-pip install smartmemory[watch]
-smartmemory watch /path/to/vault
+pip install smartmemory-core[watch]
+smartmemory-core watch /path/to/vault
 ```
 
 ## Use Cases
@@ -565,21 +567,21 @@ Install additional features as needed:
 
 ```bash
 # Specific extractors
-pip install smartmemory[rebel]     # REBEL relation extraction
-pip install smartmemory[relik]     # ReliK relation extraction
+pip install smartmemory-core[rebel]     # REBEL relation extraction
+pip install smartmemory-core[relik]     # ReliK relation extraction
 
 # Integrations
-pip install smartmemory[slack]     # Slack integration
-pip install smartmemory[aws]       # AWS integration
-pip install smartmemory[wikipedia] # Wikipedia enrichment
+pip install smartmemory-core[slack]     # Slack integration
+pip install smartmemory-core[aws]       # AWS integration
+pip install smartmemory-core[wikipedia] # Wikipedia enrichment
 
 # Tools
-pip install smartmemory[cli]       # Command-line interface (add, search, rebuild)
-pip install smartmemory[lite]      # Zero-infra local mode (SQLite + usearch, no Docker)
-pip install smartmemory[watch]     # Vault watcher for auto-ingesting Markdown files
+pip install smartmemory-core[cli]       # Command-line interface (add, search, rebuild)
+pip install smartmemory-core[lite]      # Zero-infra local mode (SQLite + usearch, no Docker)
+pip install smartmemory-core[watch]     # Vault watcher for auto-ingesting Markdown files
 
 # Everything
-pip install smartmemory[all]       # All optional features
+pip install smartmemory-core[all]       # All optional features
 ```
 
 ## Contributing
@@ -611,7 +613,7 @@ External plugins use the `standard` security profile by default. See `docs/PLUGI
 
 ## 🔗 Links
 
-- **📦 PyPI Package**: https://pypi.org/project/smartmemory/
+- **📦 PyPI Package**: https://pypi.org/project/smartmemory-core/
 - **📚 Documentation**: https://docs.smartmemory.ai
 - **🐙 GitHub Repository**: https://github.com/smart-memory/smart-memory
 - **🐛 Issue Tracker**: https://github.com/smart-memory/smart-memory/issues
@@ -623,7 +625,7 @@ External plugins use the `standard` security profile by default. See `docs/PLUGI
 **Get started with SmartMemory today!**
 
 ```bash
-pip install smartmemory
+pip install smartmemory-core
 ```
 
 Explore the [examples](examples/) directory for complete demonstrations and use cases.

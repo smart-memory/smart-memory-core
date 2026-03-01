@@ -12,7 +12,7 @@ def _default_data_dir() -> Path:
 def _ensure_spacy_model(model: str = "en_core_web_sm") -> None:
     """Auto-download spaCy model on first use if not already installed.
 
-    Uses rich for progress output when available (pip install smartmemory[lite]).
+    Uses rich for progress output when available (pip install smartmemory-core[lite]).
     Falls back to plain print on a base install without rich.
     """
     import spacy
