@@ -13,7 +13,13 @@ class GlobalClustering:
 
     def __init__(self, memory_instance):
         self.memory = memory_instance
-        self.vector_store = VectorStore()
+        self._vector_store = None  # Lazy: created on first use inside _di_context()
+
+    @property
+    def vector_store(self):
+        if self._vector_store is None:
+            self._vector_store = VectorStore()
+        return self._vector_store
 
     def run(self, use_semhash: bool = True, semhash_threshold: float = 0.95) -> Dict[str, Any]:
         """
