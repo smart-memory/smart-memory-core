@@ -71,8 +71,7 @@ class FalkorDBBackend(SmartGraphBackend):
             from falkordb import FalkorDB as _FalkorDB
         except ImportError:
             raise ImportError(
-                "falkordb is required for server mode. "
-                "Install it with: pip install smartmemory-core[server]"
+                "falkordb is required for server mode. Install it with: pip install smartmemory-core[server]"
             ) from None
         self.db = _FalkorDB(host=self.host, port=self.port)
         self.graph = self.db.select_graph(self.graph_name)
@@ -443,12 +442,17 @@ class FalkorDBBackend(SmartGraphBackend):
         item_id: str,
         edge_type: Optional[str] = None,
         as_of_time: Optional[str] = None,
+        direction: str = "both",
     ):
-        # Use WHERE clause for better FalkorDB compatibility
-        if edge_type:
-            query = f"MATCH (n)-[r:{edge_type.upper()}]-(m) WHERE n.item_id = $item_id RETURN m, type(r) as link_type"
-        else:
-            query = "MATCH (n)-[r]-(m) WHERE n.item_id = $item_id RETURN m, type(r) as link_type"
+        # Build relationship pattern with optional direction
+        rel = f"[r:{edge_type.upper()}]" if edge_type else "[r]"
+        if direction == "outgoing":
+            pattern = f"-{rel}->"
+        elif direction == "incoming":
+            pattern = f"<-{rel}-"
+        else:  # "both" — backward-compatible undirected traversal
+            pattern = f"-{rel}-"
+        query = f"MATCH (n){pattern}(m) WHERE n.item_id = $item_id RETURN m, type(r) as link_type"
         res = self._query(query, {"item_id": item_id})
         out = []
         for record in res:

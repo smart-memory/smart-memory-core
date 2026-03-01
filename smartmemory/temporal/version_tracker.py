@@ -101,10 +101,13 @@ class VersionTracker:
         """Initialize version tracker.
 
         Args:
-            graph_backend: Graph database backend for storage
+            graph_backend: Graph database backend (SmartGraph or SmartGraphBackend).
+                If a SmartGraph facade is passed, the raw backend is extracted
+                automatically so version queries can use backend-agnostic methods.
             scope_provider: Optional ScopeProvider for tenant isolation filtering
         """
         self.graph = graph_backend
+        self.backend = graph_backend.backend if hasattr(graph_backend, "backend") else graph_backend
         self.scope_provider = scope_provider
         self._version_cache: Dict[str, List[Version]] = {}
 
@@ -297,7 +300,7 @@ class VersionTracker:
         self._update_version(version)
 
     def _store_version(self, version: Version):
-        """Store version in graph database."""
+        """Store version in graph database using backend-agnostic methods."""
         try:
             # Store as a Version node in the graph
             properties = version.to_dict()
@@ -315,43 +318,43 @@ class VersionTracker:
                     if k not in properties:
                         properties[k] = v
 
-            # VersionTracker uses 'Version' as the type/label
-
-            # Use graph backend to store
-            # Note: self.graph is expected to be SmartGraphNodes or compatible interface
-            # add_node(item_id, properties, memory_type=...)
             self.graph.add_node(
                 item_id=f"version_{version.item_id}_{version.version_number}",
                 properties=properties,
                 memory_type="Version",
             )
 
-            # Ensure main node exists before creating edge
-            # Scope the existence check and placeholder creation to the tenant
-            scope_clause = ""
-            check_params: Dict[str, Any] = {"id": version.item_id}
-            create_set_extra = ""
-            if self.scope_provider:
-                scope_filters = self.scope_provider.get_isolation_filters()
-                if "workspace_id" in scope_filters:
-                    scope_clause = " AND m.workspace_id = $workspace_id"
-                    check_params["workspace_id"] = scope_filters["workspace_id"]
-                    create_set_extra = ", m.workspace_id = $workspace_id"
-
-            check_query = f"MATCH (m {{item_id: $id}}) WHERE true{scope_clause} RETURN COUNT(m) as count"
-            result = list(self.graph.execute_query(check_query, check_params))
-            node_exists = result[0][0] > 0 if result else False
-
-            if not node_exists:
-                create_query = f"""
-                MERGE (m {{item_id: $id}})
-                ON CREATE SET m:Memory, m:semantic, m.item_id = $id{create_set_extra}
-                """
-                self.graph.execute_query(create_query, check_params)
+            # Ensure main node exists before creating the HAS_VERSION edge.
+            existing = self.backend.get_node(version.item_id)
+            if existing is None:
+                # No node at all — create a placeholder so the edge FK is satisfied.
+                placeholder_props: Dict[str, Any] = {"item_id": version.item_id}
+                if self.scope_provider:
+                    write_ctx = self.scope_provider.get_write_context()
+                    if "workspace_id" in write_ctx:
+                        placeholder_props["workspace_id"] = write_ctx["workspace_id"]
+                self.graph.add_node(
+                    item_id=version.item_id,
+                    properties=placeholder_props,
+                    memory_type="semantic",
+                )
                 logger.debug(f"Created placeholder main node for {version.item_id}")
+            else:
+                # Node exists — verify it belongs to the same workspace.
+                if self.scope_provider:
+                    write_ctx = self.scope_provider.get_write_context()
+                    existing_ws = existing.get("workspace_id")
+                    our_ws = write_ctx.get("workspace_id")
+                    if existing_ws and our_ws and existing_ws != our_ws:
+                        logger.warning(
+                            "Node %s belongs to different workspace (%s vs %s), skipping placeholder overwrite",
+                            version.item_id,
+                            existing_ws,
+                            our_ws,
+                        )
 
-            # Now create the edge
-            self.graph.backend.add_edge(
+            # Create the HAS_VERSION edge
+            self.backend.add_edge(
                 source_id=version.item_id,
                 target_id=f"version_{version.item_id}_{version.version_number}",
                 edge_type="HAS_VERSION",
@@ -389,75 +392,41 @@ class VersionTracker:
     def _query_versions(
         self, item_id: str, start_time: Optional[datetime], end_time: Optional[datetime], include_closed: bool
     ) -> List[Version]:
-        """Query versions from graph database."""
+        """Query versions from graph database using backend-agnostic methods."""
         try:
-            # Build scope filter clause
-            scope_clause = ""
-            params: Dict[str, Any] = {"item_id": item_id}
+            # Resolve workspace_id for post-filtering
+            ws_id: Optional[str] = None
             if self.scope_provider:
                 filters = self.scope_provider.get_isolation_filters()
-                if "workspace_id" in filters:
-                    scope_clause = " AND m.workspace_id = $workspace_id"
-                    params["workspace_id"] = filters["workspace_id"]
+                ws_id = filters.get("workspace_id")
 
-            # First try to query via HAS_VERSION relationship
-            query = f"""
-            MATCH (m {{item_id: $item_id}})-[:HAS_VERSION]->(v:Version)
-            WHERE true{scope_clause}
-            RETURN v
-            ORDER BY v.version_number DESC
-            """
+            # Primary: traverse HAS_VERSION edges from the item node (outgoing only)
+            neighbors = self.backend.get_neighbors(item_id, edge_type="HAS_VERSION", direction="outgoing")
 
-            result = self.graph.execute_query(query, params)
-            result_list = list(result)
+            # Fallback: if no edges found, search version nodes by ref_item_id property
+            if not neighbors:
+                neighbors = self.backend.search_nodes({"ref_item_id": item_id, "memory_type": "Version"})
 
-            # If no results via relationship, try querying version nodes directly by item_id property
-            if not result_list:
-                # For direct version query, filter on the version's ref_item_id
-                fallback_params: Dict[str, Any] = {"item_id": item_id}
-                fallback_scope = ""
-                if self.scope_provider:
-                    filters = self.scope_provider.get_isolation_filters()
-                    if "workspace_id" in filters:
-                        fallback_scope = " AND v.workspace_id = $workspace_id"
-                        fallback_params["workspace_id"] = filters["workspace_id"]
-
-                query = f"""
-                MATCH (v:Version)
-                WHERE v.item_id = $item_id{fallback_scope}
-                RETURN v
-                ORDER BY v.version_number DESC
-                """
-                result = self.graph.execute_query(query, fallback_params)
-                result_list = list(result)
-
-            versions = []
-            for row in result_list:
-                # FalkorDB returns results as a list, not dict
-                # Each row is a list with values corresponding to RETURN clause
-                node = row[0]  # RETURN v
-
-                # Convert node object to dict
-                if hasattr(node, "properties"):
-                    version_data = dict(node.properties)
+            versions: List[Version] = []
+            for item in neighbors:
+                # Handle both tuple (FalkorDB: (dict, str)) and plain dict (SQLite) return formats
+                if isinstance(item, tuple) and len(item) == 2:
+                    version_data = item[0]
                 else:
-                    version_data = {k: v for k, v in vars(node).items() if not k.startswith("_")}
+                    version_data = item
 
-                # Remove internal properties that shouldn't be exposed
+                # Workspace post-filter — strict match only
+                if ws_id and version_data.get("workspace_id") != ws_id:
+                    continue
+
                 version_data.pop("is_global", None)
-
-                # Unflatten the dict to restore nested structure (e.g., metadata__version -> metadata: {version: ...})
                 version_data = unflatten_dict(version_data)
-
                 version = Version.from_dict(version_data)
 
-                # Apply filters
                 if not include_closed and not version.is_current():
                     continue
-
                 if start_time and version.transaction_time_start < start_time:
                     continue
-
                 if end_time and version.transaction_time_start > end_time:
                     continue
 

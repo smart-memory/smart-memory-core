@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### DIST-LITE-DEGRADE-1a — VersionTracker on SQLite
+
+- **`direction` parameter** on `SmartGraphBackend.get_neighbors()`: supports `"outgoing"`, `"incoming"`, `"both"` (default, backward-compatible) across SQLiteBackend and FalkorDBBackend. Threaded through `SmartGraphNodes` and `SmartGraph` facades.
+- **VersionTracker refactored** to use backend-agnostic interface methods (`get_node`, `get_neighbors`, `search_nodes`, `add_edge`) instead of raw Cypher `execute_query()`. Version history now works on SQLiteBackend.
+- **`_NoOpVersionTracker` eliminated** from `create_lite_memory()`. Lite mode now constructs a real `VersionTracker` — version history is no longer silently dropped.
+- **Bug fix**: `_query_versions` fallback query now correctly searches `ref_item_id` (was querying `item_id`, which doesn't exist on version nodes).
+- **7 new SQLite direction tests** (`TestGetNeighborsDirection` in `test_sqlite_backend.py`).
+- **7 new VersionTracker SQLite integration tests** (`TestVersionTrackerSQLite` in `test_version_tracker.py`) covering create/get, temporal queries, comparison, placeholder creation, fallback search, and cross-workspace isolation.
+
 #### ONTO-PUB-3 — Relation Schema + Extraction Quality
 
 - **Canonical relation vocabulary** (`smartmemory/relations/schema.py`): 39 relation types in 8 categories with ~200 aliases, frozen dataclass definitions, module-level derived lookup tables (`ALIAS_INDEX`, `TYPE_PAIR_PRIORS`).

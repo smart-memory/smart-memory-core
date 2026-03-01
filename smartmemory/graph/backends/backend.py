@@ -45,9 +45,22 @@ class SmartGraphBackend(ABC):
 
     @abstractmethod
     def get_neighbors(
-        self, item_id: str, edge_type: Optional[str] = None, as_of_time: Optional[str] = None
+        self,
+        item_id: str,
+        edge_type: Optional[str] = None,
+        as_of_time: Optional[str] = None,
+        direction: str = "both",
     ) -> List[Dict[str, Any]]:
-        """Get neighboring nodes, optionally filtered by edge type and time."""
+        """Get neighboring nodes, optionally filtered by edge type, time, and direction.
+
+        Args:
+            item_id: The node to find neighbors for.
+            edge_type: Optional edge type filter.
+            as_of_time: Optional temporal filter.
+            direction: Edge traversal direction — ``"both"`` (default, backward-compatible),
+                ``"outgoing"`` (edges where item_id is the source), or ``"incoming"``
+                (edges where item_id is the target).
+        """
         ...
 
     @abstractmethod

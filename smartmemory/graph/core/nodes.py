@@ -180,9 +180,11 @@ class SmartGraphNodes:
             return result
         return None
 
-    def get_neighbors(self, item_id: str, edge_type: Optional[str] = None, as_of_time: Optional[str] = None):
+    def get_neighbors(
+        self, item_id: str, edge_type: Optional[str] = None, as_of_time: Optional[str] = None, direction: str = "both"
+    ):
         """Get neighbors of a node."""
-        neighbors = self.backend.get_neighbors(item_id, edge_type, as_of_time)
+        neighbors = self.backend.get_neighbors(item_id, edge_type, as_of_time, direction=direction)
         # Backend returns [(neighbor_dict, link_type), ...] tuples
         result = []
         for item in neighbors:

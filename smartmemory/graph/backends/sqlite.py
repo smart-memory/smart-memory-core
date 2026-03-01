@@ -7,6 +7,7 @@ Implements SmartGraphBackend using an adjacency-list model:
 Intended for SmartMemory Lite (DIST-LITE-1). Does not support Cypher queries,
 temporal time-travel, or graph analytics. Use FalkorDB for those features.
 """
+
 import json
 import logging
 import sqlite3
@@ -221,42 +222,46 @@ class SQLiteBackend(SmartGraphBackend):
     def get_node(self, item_id: str, as_of_time: Optional[str] = None) -> Optional[Dict[str, Any]]:
         with self._lock:
             row = self._conn.execute(
-                "SELECT item_id, memory_type, valid_from, valid_to, created_at, properties "
-                "FROM nodes WHERE item_id=?",
+                "SELECT item_id, memory_type, valid_from, valid_to, created_at, properties FROM nodes WHERE item_id=?",
                 (item_id,),
             ).fetchone()
         return self._row_to_node(row) if row else None
 
     def get_neighbors(
-        self, item_id: str, edge_type: Optional[str] = None, as_of_time: Optional[str] = None
+        self,
+        item_id: str,
+        edge_type: Optional[str] = None,
+        as_of_time: Optional[str] = None,
+        direction: str = "both",
     ) -> List[Dict[str, Any]]:
-        """Return all neighboring nodes in either direction, matching FalkorDB's undirected semantics.
+        """Return neighboring nodes, optionally filtered by edge direction.
 
-        FalkorDB uses MATCH (n)-[r]-(m) (no arrow) which traverses both outgoing and incoming
-        edges. SQLite stores directed edges, so bidirectionality is implemented via UNION of
-        outgoing (source_id=?) and incoming (target_id=?) legs.
+        Args:
+            direction: ``"both"`` (default) — UNION of outgoing and incoming legs,
+                ``"outgoing"`` — only targets of edges where item_id is source,
+                ``"incoming"`` — only sources of edges where item_id is target.
         """
-        _select = (
-            "SELECT n.item_id, n.memory_type, n.valid_from, n.valid_to, n.created_at, n.properties "
-            "FROM nodes n"
-        )
+        _select = "SELECT n.item_id, n.memory_type, n.valid_from, n.valid_to, n.created_at, n.properties FROM nodes n"
+        # Build directional legs
+        if edge_type:
+            outgoing = f"{_select} JOIN edges e ON n.item_id = e.target_id WHERE e.source_id=? AND e.edge_type=?"
+            incoming = f"{_select} JOIN edges e ON n.item_id = e.source_id WHERE e.target_id=? AND e.edge_type=?"
+            out_params: tuple = (item_id, edge_type)
+            in_params: tuple = (item_id, edge_type)
+        else:
+            outgoing = f"{_select} JOIN edges e ON n.item_id = e.target_id WHERE e.source_id=?"
+            incoming = f"{_select} JOIN edges e ON n.item_id = e.source_id WHERE e.target_id=?"
+            out_params = (item_id,)
+            in_params = (item_id,)
+
         with self._lock:
-            if edge_type:
-                sql = (
-                    f"{_select} JOIN edges e ON n.item_id = e.target_id "
-                    "WHERE e.source_id=? AND e.edge_type=? "
-                    "UNION "
-                    f"{_select} JOIN edges e ON n.item_id = e.source_id "
-                    "WHERE e.target_id=? AND e.edge_type=?"
-                )
-                rows = self._conn.execute(sql, (item_id, edge_type, item_id, edge_type)).fetchall()
-            else:
-                sql = (
-                    f"{_select} JOIN edges e ON n.item_id = e.target_id WHERE e.source_id=? "
-                    "UNION "
-                    f"{_select} JOIN edges e ON n.item_id = e.source_id WHERE e.target_id=?"
-                )
-                rows = self._conn.execute(sql, (item_id, item_id)).fetchall()
+            if direction == "outgoing":
+                rows = self._conn.execute(outgoing, out_params).fetchall()
+            elif direction == "incoming":
+                rows = self._conn.execute(incoming, in_params).fetchall()
+            else:  # "both" — backward-compatible default
+                sql = f"{outgoing} UNION {incoming}"
+                rows = self._conn.execute(sql, out_params + in_params).fetchall()
         return [self._row_to_node(r) for r in rows]
 
     def remove_node(self, item_id: str) -> bool:
@@ -359,9 +364,14 @@ class SQLiteBackend(SmartGraphBackend):
             ).fetchall()
         return [
             {
-                "source_id": r[0], "target_id": r[1], "edge_type": r[2],
-                "memory_type": r[3], "valid_from": r[4], "valid_to": r[5],
-                "created_at": r[6], "properties": json.loads(r[7]),
+                "source_id": r[0],
+                "target_id": r[1],
+                "edge_type": r[2],
+                "memory_type": r[3],
+                "valid_from": r[4],
+                "valid_to": r[5],
+                "created_at": r[6],
+                "properties": json.loads(r[7]),
             }
             for r in rows
         ]
@@ -377,9 +387,14 @@ class SQLiteBackend(SmartGraphBackend):
             ).fetchall()
         return [
             {
-                "source_id": r[0], "target_id": r[1], "edge_type": r[2],
-                "memory_type": r[3], "valid_from": r[4], "valid_to": r[5],
-                "created_at": r[6], "properties": json.loads(r[7]),
+                "source_id": r[0],
+                "target_id": r[1],
+                "edge_type": r[2],
+                "memory_type": r[3],
+                "valid_from": r[4],
+                "valid_to": r[5],
+                "created_at": r[6],
+                "properties": json.loads(r[7]),
             }
             for r in rows
         ]

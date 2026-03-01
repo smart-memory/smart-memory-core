@@ -12,6 +12,7 @@ Covers:
 - serialize/deserialize: full round-trip including edges
 - Foreign key enforcement
 """
+
 import threading
 import pytest
 
@@ -19,6 +20,7 @@ from smartmemory.graph.backends.sqlite import SQLiteBackend
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def backend(tmp_path):
@@ -33,6 +35,7 @@ def mem_backend():
 
 
 # ── Core round-trips ─────────────────────────────────────────────────────────
+
 
 def test_add_and_get_node(backend):
     """add_node → get_node round-trip with memory_type in properties."""
@@ -108,6 +111,7 @@ def test_get_neighbors_filtered_by_edge_type(backend):
 
 # ── Remove operations ────────────────────────────────────────────────────────
 
+
 def test_remove_node_returns_true(backend):
     """remove_node returns True for an existing node."""
     backend.add_node("x", {"content": "X", "memory_type": "episodic"})
@@ -159,6 +163,7 @@ def test_remove_edge_without_type(backend):
 
 # ── Search ───────────────────────────────────────────────────────────────────
 
+
 def test_search_nodes_by_memory_type(backend):
     """search_nodes({'memory_type': 'semantic'}) returns only semantic nodes."""
     backend.add_node("s1", {"content": "S1", "memory_type": "semantic"})
@@ -203,6 +208,7 @@ def test_search_nodes_empty_query_returns_all(backend):
 
 # ── Serialize / deserialize ──────────────────────────────────────────────────
 
+
 def test_serialize_clear_deserialize_preserves_nodes(backend):
     """serialize → clear → deserialize: nodes restored."""
     backend.add_node("persist", {"content": "keep me", "memory_type": "semantic"})
@@ -242,6 +248,7 @@ def test_clear_idempotent(backend):
 
 # ── Properties ───────────────────────────────────────────────────────────────
 
+
 def test_properties_complex_json(backend):
     """Properties with nested dicts and lists round-trip correctly."""
     props = {
@@ -271,6 +278,7 @@ def test_properties_special_characters(backend):
 
 # ── valid_time handling ──────────────────────────────────────────────────────
 
+
 def test_valid_time_tuple_stored_and_retrieved(backend):
     """valid_time as a tuple has its first element stored as valid_from."""
     backend.add_node("t1", {"content": "timed", "memory_type": "episodic"}, valid_time=("2026-01-01", "2026-12-31"))
@@ -281,15 +289,18 @@ def test_valid_time_tuple_stored_and_retrieved(backend):
 
 # ── Cascade and FK enforcement ───────────────────────────────────────────────
 
+
 def test_add_edge_fk_violation_raises(backend):
     """add_edge with a non-existent source_id raises IntegrityError (FK ON)."""
     import sqlite3 as _sqlite3
+
     backend.add_node("exists", {"content": "E", "memory_type": "working"})
     with pytest.raises(_sqlite3.IntegrityError):
         backend.add_edge("nonexistent", "exists", "linked", {})
 
 
 # ── Bulk operations (inherited from ABC) ─────────────────────────────────────
+
 
 def test_add_nodes_bulk(backend):
     """add_nodes_bulk inserts all nodes correctly."""
@@ -303,6 +314,7 @@ def test_add_nodes_bulk(backend):
 
 
 # ── WAL and persistence ──────────────────────────────────────────────────────
+
 
 def test_wal_mode_file_backend(backend):
     """File-based backend uses WAL journal mode."""
@@ -330,6 +342,7 @@ def test_persistence_across_instances(tmp_path):
 
 # ── Thread safety ─────────────────────────────────────────────────────────────
 
+
 def test_concurrent_writes_no_corruption(tmp_path):
     """Concurrent add_node calls from multiple threads produce consistent state."""
     db_path = str(tmp_path / "threaded.db")
@@ -355,6 +368,7 @@ def test_concurrent_writes_no_corruption(tmp_path):
 
 # ── execute_query guard ──────────────────────────────────────────────────────
 
+
 def test_execute_query_raises_not_implemented(backend):
     """execute_query raises NotImplementedError with helpful message."""
     with pytest.raises(NotImplementedError, match="FalkorDB"):
@@ -363,6 +377,7 @@ def test_execute_query_raises_not_implemented(backend):
 
 # ── valid_to storage and upsert ──────────────────────────────────────────────
 
+
 def test_valid_to_stored_and_retrieved(backend):
     """valid_time tuple's second element is stored as valid_to."""
     backend.add_node(
@@ -370,9 +385,7 @@ def test_valid_to_stored_and_retrieved(backend):
         {"content": "expiring", "memory_type": "episodic"},
         valid_time=("2026-01-01", "2026-12-31"),
     )
-    row = backend._conn.execute(
-        "SELECT valid_from, valid_to FROM nodes WHERE item_id='timed2'"
-    ).fetchone()
+    row = backend._conn.execute("SELECT valid_from, valid_to FROM nodes WHERE item_id='timed2'").fetchone()
     assert row[0] == "2026-01-01"
     assert row[1] == "2026-12-31"
 
@@ -390,9 +403,7 @@ def test_add_node_upsert_preserves_valid_to(backend):
         {"content": "updated", "memory_type": "semantic"},
         valid_time=("2026-01-01", "2026-12-31"),
     )
-    row = backend._conn.execute(
-        "SELECT valid_to FROM nodes WHERE item_id='expiring'"
-    ).fetchone()
+    row = backend._conn.execute("SELECT valid_to FROM nodes WHERE item_id='expiring'").fetchone()
     assert row[0] == "2026-12-31", "valid_to was wiped by upsert"
 
 
@@ -400,10 +411,7 @@ def test_deserialize_bad_edge_skipped_not_rolled_back(backend):
     """If deserialize encounters an edge with a non-existent node, nodes are still committed."""
     data = {
         "nodes": [{"item_id": "good_node", "memory_type": "working", "properties": {}}],
-        "edges": [
-            {"source_id": "nonexistent", "target_id": "good_node",
-             "edge_type": "broken", "properties": {}}
-        ],
+        "edges": [{"source_id": "nonexistent", "target_id": "good_node", "edge_type": "broken", "properties": {}}],
     }
     backend.deserialize(data)  # must not raise
     # The good node must be committed even though the edge failed
@@ -411,6 +419,7 @@ def test_deserialize_bad_edge_skipped_not_rolled_back(backend):
 
 
 # ── Fix 1: _row_to_node returns temporal fields ──────────────────────────────
+
 
 def test_get_node_returns_temporal_fields(backend):
     """get_node() includes valid_from, valid_to, created_at in the returned dict."""
@@ -429,6 +438,7 @@ def test_get_node_returns_temporal_fields(backend):
 
 # ── Fix 3: search_nodes content filter targets value, not JSON key names ─────
 
+
 def test_search_nodes_content_filter_no_false_positives(backend):
     """search_nodes content filter targets the 'content' field value, not JSON key names."""
     backend.add_node("fp", {"content": "", "content_type": "text", "memory_type": "semantic"})
@@ -439,6 +449,7 @@ def test_search_nodes_content_filter_no_false_positives(backend):
 
 
 # ── Fix 4: add_edge upsert preserves existing memory_type when None passed ───
+
 
 def test_add_edge_upsert_preserves_existing_memory_type(backend):
     """Re-adding an edge with memory_type=None does not wipe the stored memory_type."""
@@ -454,6 +465,7 @@ def test_add_edge_upsert_preserves_existing_memory_type(backend):
 
 
 # ── Fix 2: close() and __del__ ───────────────────────────────────────────────
+
 
 def test_close_does_not_raise(backend):
     """close() can be called without raising."""
@@ -530,8 +542,16 @@ class TestGetAllEdges:
         edges = mem_backend.get_all_edges()
         assert len(edges) == 1
         e = edges[0]
-        for key in ("source_id", "target_id", "edge_type", "memory_type",
-                    "valid_from", "valid_to", "created_at", "properties"):
+        for key in (
+            "source_id",
+            "target_id",
+            "edge_type",
+            "memory_type",
+            "valid_from",
+            "valid_to",
+            "created_at",
+            "properties",
+        ):
             assert key in e, f"missing key: {key}"
         assert e["properties"]["weight"] == 0.9
 
@@ -570,3 +590,63 @@ class TestGetCounts:
         counts = mem_backend.get_counts()
         assert counts["node_count"] == 2
         assert counts["edge_count"] == 1
+
+
+# ── DIST-LITE-DEGRADE-1a: direction parameter ────────────────────────────────
+
+
+class TestGetNeighborsDirection:
+    """Tests for get_neighbors(direction=...) — DIST-LITE-DEGRADE-1a."""
+
+    @pytest.fixture(autouse=True)
+    def setup_triangle(self, mem_backend):
+        """Create a→b→c graph for directional queries."""
+        self.backend = mem_backend
+        mem_backend.add_node("a", {"content": "A", "memory_type": "working"})
+        mem_backend.add_node("b", {"content": "B", "memory_type": "working"})
+        mem_backend.add_node("c", {"content": "C", "memory_type": "working"})
+        mem_backend.add_edge("a", "b", "LINKS", {})
+        mem_backend.add_edge("b", "c", "LINKS", {})
+
+    def test_outgoing_returns_only_targets(self):
+        # a→b: outgoing from a should be [b]
+        result = self.backend.get_neighbors("a", direction="outgoing")
+        ids = [n["item_id"] for n in result]
+        assert ids == ["b"]
+
+    def test_incoming_returns_only_sources(self):
+        # a→b: incoming to b should be [a]
+        result = self.backend.get_neighbors("b", direction="incoming")
+        ids = [n["item_id"] for n in result]
+        assert "a" in ids
+        assert "c" not in ids
+
+    def test_both_returns_union(self):
+        # b has outgoing to c and incoming from a
+        result = self.backend.get_neighbors("b", direction="both")
+        ids = {n["item_id"] for n in result}
+        assert ids == {"a", "c"}
+
+    def test_outgoing_with_edge_type_filter(self):
+        self.backend.add_node("d", {"content": "D", "memory_type": "working"})
+        self.backend.add_edge("a", "d", "OTHER", {})
+        result = self.backend.get_neighbors("a", edge_type="LINKS", direction="outgoing")
+        ids = [n["item_id"] for n in result]
+        assert "b" in ids
+        assert "d" not in ids
+
+    def test_outgoing_empty_when_no_outgoing_edges(self):
+        # c has no outgoing edges
+        result = self.backend.get_neighbors("c", direction="outgoing")
+        assert result == []
+
+    def test_incoming_empty_when_no_incoming_edges(self):
+        # a has no incoming edges
+        result = self.backend.get_neighbors("a", direction="incoming")
+        assert result == []
+
+    def test_default_direction_is_both(self):
+        """Omitting direction behaves the same as direction='both'."""
+        explicit = self.backend.get_neighbors("b", direction="both")
+        default = self.backend.get_neighbors("b")
+        assert {n["item_id"] for n in explicit} == {n["item_id"] for n in default}

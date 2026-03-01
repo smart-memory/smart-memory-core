@@ -9,18 +9,9 @@ def _default_data_dir() -> Path:
     return Path.home() / ".smartmemory"
 
 
-class _NoOpVersionTracker:
-    """No-op version tracker for lite mode (SQLiteBackend doesn't support Cypher)."""
-
-    def create_version(self, **kwargs):
-        return None
-
-    def get_versions(self, item_id, **kwargs):
-        return []
-
-
 class _NoOpTemporalQueries:
     """No-op temporal queries for lite mode (SQLiteBackend doesn't support Cypher)."""
+
     pass
 
 
@@ -102,7 +93,6 @@ def create_lite_memory(
         pipeline_profile=pipeline_profile,
         entity_ruler_patterns=entity_ruler_patterns,
         event_sink=event_sink,  # DIST-LITE-3
-        version_tracker=_NoOpVersionTracker(),
         temporal=_NoOpTemporalQueries(),
     )
 

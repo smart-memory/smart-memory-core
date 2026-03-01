@@ -136,12 +136,15 @@ class SmartGraph:
         is_global: bool = False,
     ):
         """Add a node to the graph."""
-        with trace_span("graph.add_node", {
-            "memory_id": item_id,
-            "memory_type": memory_type or properties.get("memory_type", ""),
-            "label": properties.get("title", properties.get("content", ""))[:40] if properties else "",
-            "content": properties.get("content", "")[:200] if properties else "",
-        }):
+        with trace_span(
+            "graph.add_node",
+            {
+                "memory_id": item_id,
+                "memory_type": memory_type or properties.get("memory_type", ""),
+                "label": properties.get("title", properties.get("content", ""))[:40] if properties else "",
+                "content": properties.get("content", "")[:200] if properties else "",
+            },
+        ):
             result = self.nodes.add_node(item_id, properties, valid_time, transaction_time, memory_type, is_global)
         return result
 
@@ -160,27 +163,35 @@ class SmartGraph:
         so that real-time UI consumers (viewer WebSocket) can display
         them progressively via the WebSocket relay.
         """
-        with trace_span("graph.add_dual_node", {
-            "memory_id": item_id,
-            "memory_type": memory_type or "",
-            "label": memory_properties.get("title", memory_properties.get("content", ""))[:40]
-            if memory_properties else "",
-            "content": memory_properties.get("content", "")[:200] if memory_properties else "",
-            "entity_count": len(entity_nodes) if entity_nodes else 0,
-        }) as span:
+        with trace_span(
+            "graph.add_dual_node",
+            {
+                "memory_id": item_id,
+                "memory_type": memory_type or "",
+                "label": memory_properties.get("title", memory_properties.get("content", ""))[:40]
+                if memory_properties
+                else "",
+                "content": memory_properties.get("content", "")[:200] if memory_properties else "",
+                "entity_count": len(entity_nodes) if entity_nodes else 0,
+            },
+        ) as span:
             result = self.nodes.add_dual_node(item_id, memory_properties, memory_type, entity_nodes, is_global)
 
             # Emit memory node event so the viewer shows it during streaming
             memory_label = (
                 (memory_properties.get("title") or memory_properties.get("content", "")[:40] or item_id[:12])
-                if memory_properties else item_id[:12]
+                if memory_properties
+                else item_id[:12]
             )
-            span.emit_event("graph.add_node", {
-                "memory_id": item_id,
-                "memory_type": memory_type or "semantic",
-                "label": memory_label,
-                "content": memory_properties.get("content", "")[:200] if memory_properties else "",
-            })
+            span.emit_event(
+                "graph.add_node",
+                {
+                    "memory_id": item_id,
+                    "memory_type": memory_type or "semantic",
+                    "label": memory_label,
+                    "content": memory_properties.get("content", "")[:200] if memory_properties else "",
+                },
+            )
 
             # Emit per-entity and per-edge events attached to this span so they
             # carry trace_id/span_id and can be correlated to the pipeline stage.
@@ -198,24 +209,33 @@ class SmartGraph:
                         props = entity_node.get("properties") or {}
                         label = props.get("name") or props.get("content", entity_id)[:40]
 
-                        span.emit_event("graph.add_node", {
-                            "memory_id": entity_id,
-                            "memory_type": entity_type.lower(),
-                            "label": label[:40],
-                            "content": props.get("content", label)[:200],
-                            "parent_memory_id": item_id,
-                            "resolved": resolved_map.get(i, {}).get("resolved", False),
-                        })
-                        span.emit_event("graph.add_edge", {
-                            "source_id": item_id,
-                            "target_id": entity_id,
-                            "edge_type": "CONTAINS_ENTITY",
-                        })
-                        span.emit_event("graph.add_edge", {
-                            "source_id": entity_id,
-                            "target_id": item_id,
-                            "edge_type": "MENTIONED_IN",
-                        })
+                        span.emit_event(
+                            "graph.add_node",
+                            {
+                                "memory_id": entity_id,
+                                "memory_type": entity_type.lower(),
+                                "label": label[:40],
+                                "content": props.get("content", label)[:200],
+                                "parent_memory_id": item_id,
+                                "resolved": resolved_map.get(i, {}).get("resolved", False),
+                            },
+                        )
+                        span.emit_event(
+                            "graph.add_edge",
+                            {
+                                "source_id": item_id,
+                                "target_id": entity_id,
+                                "edge_type": "CONTAINS_ENTITY",
+                            },
+                        )
+                        span.emit_event(
+                            "graph.add_edge",
+                            {
+                                "source_id": entity_id,
+                                "target_id": item_id,
+                                "edge_type": "MENTIONED_IN",
+                            },
+                        )
 
                     for i, entity_node in enumerate(entity_nodes):
                         idx = entity_node.get("_index", i)
@@ -223,11 +243,14 @@ class SmartGraph:
                         for rel in entity_node.get("relations", []):
                             target_idx = rel.get("target_index")
                             if target_idx is not None and target_idx < len(entity_ids) and source_id:
-                                span.emit_event("graph.add_edge", {
-                                    "source_id": source_id,
-                                    "target_id": entity_ids[target_idx],
-                                    "edge_type": rel.get("relation_type", "RELATED"),
-                                })
+                                span.emit_event(
+                                    "graph.add_edge",
+                                    {
+                                        "source_id": source_id,
+                                        "target_id": entity_ids[target_idx],
+                                        "edge_type": rel.get("relation_type", "RELATED"),
+                                    },
+                                )
                 except Exception as e:
                     logger.warning("add_dual_node entity event emission failed: %s", e, exc_info=True)
 
@@ -261,11 +284,14 @@ class SmartGraph:
         is_global: bool = False,
     ):
         """Add an edge to the graph."""
-        with trace_span("graph.add_edge", {
-            "source_id": source_id,
-            "target_id": target_id,
-            "edge_type": edge_type,
-        }):
+        with trace_span(
+            "graph.add_edge",
+            {
+                "source_id": source_id,
+                "target_id": target_id,
+                "edge_type": edge_type,
+            },
+        ):
             result = self.edges.add_edge(
                 source_id,
                 target_id,
@@ -341,9 +367,11 @@ class SmartGraph:
         """Get a node by ID."""
         return self.nodes.get_node(item_id, as_of_time)
 
-    def get_neighbors(self, item_id: str, edge_type: Optional[str] = None, as_of_time: Optional[str] = None):
+    def get_neighbors(
+        self, item_id: str, edge_type: Optional[str] = None, as_of_time: Optional[str] = None, direction: str = "both"
+    ):
         """Get neighbors of a node."""
-        return self.nodes.get_neighbors(item_id, edge_type, as_of_time)
+        return self.nodes.get_neighbors(item_id, edge_type, as_of_time, direction=direction)
 
     def get_edges_for_node(self, item_id: str):
         """Get all edges (relationships) involving a specific node."""
