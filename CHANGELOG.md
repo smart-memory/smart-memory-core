@@ -42,7 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SmartMemory.__init__`: mode-aware `_default_public_knowledge_store()` — FalkorDB in service mode (fail loud), bundled SQLite in local mode.
 - `GroundingBenchmark` harness: evaluates grounding accuracy with hit rate, disambiguation accuracy, false positive rate by domain.
 - Snapshot pipeline CLI: `python -m smartmemory.grounding.snapshot` — queries WDQS per domain, exports JSONL + pre-built SQLite.
-- 78 new tests across 5 files (unit + integration). Coverage: grounder 96%, sqlite_store 99%, models/type_map/benchmark 100%.
+- `type_to_p31_qids()` reverse mapper for type-filtered SPARQL queries — narrows WDQS results to relevant P31 classes.
+- 93 new tests across 5 files (unit + integration). Coverage: grounder 96%, sqlite_store 99%, falkordb_store ~70% (mock-based), models/type_map/benchmark 100%.
 
 #### CODE-DEV-6 — Git-Anchored Code Memory
 

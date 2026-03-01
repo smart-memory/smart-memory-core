@@ -70,7 +70,7 @@ Each stage implements the `StageCommand` protocol (`execute(state, config) → s
 Plugins in `smartmemory/plugins/`:
 - **Extractors** (4): LLMExtractor (+ LLMSingleExtractor/GroqExtractor variants), ReasoningExtractor, ConversationAwareLLMExtractor, SpacyExtractor (fallback)
 - **Enrichers** (7): BasicEnricher, LinkExpansionEnricher, SentimentEnricher, TemporalEnricher, TopicEnricher, ExtractSkillsToolsEnricher, WikipediaEnricher
-- **Grounders** (1): WikipediaGrounder
+- **Grounders** (2): PublicKnowledgeGrounder (primary, Wikidata QIDs), WikipediaGrounder (legacy fallback)
 - **Evolvers** (9): WorkingToEpisodicEvolver, EpisodicToSemanticEvolver, WorkingToProceduralEvolver, EpisodicToZettelEvolver, EpisodicDecayEvolver, OpinionSynthesisEvolver, ObservationSynthesisEvolver, OpinionReinforcementEvolver, DecisionConfidenceEvolver
 
 Custom plugins extend base classes in `smartmemory/plugins/base.py`.
@@ -92,9 +92,30 @@ with trace_span("pipeline.classify", {"memory_type": "semantic"}):
 - Enabled by default; disable via `SMARTMEMORY_OBSERVABILITY=false`
 - **Deprecated:** `emit_ctx()`, `make_emitter()`, `emit_after()` — use `trace_span()` instead
 
+### Entity Grounding (ONTO-PUB-1)
+
+Entity grounding links extracted mentions to canonical Wikidata entities via QIDs. Key components in `smartmemory/grounding/`:
+
+- **`PublicKnowledgeStore`** (ABC): pluggable store with `SQLitePublicKnowledgeStore` (local) and `FalkorDBPublicKnowledgeStore` (service)
+- **`PublicKnowledgeGrounder`**: two-step loop — alias lookup → SPARQL fallback → absorb. Creates `wikidata:{qid}` nodes with `GROUNDED_IN` edges
+- **`WDQSClient`**: Wikidata SPARQL client with circuit breaker, rate limiting, negative cache
+- **`WIKIDATA_TYPE_MAP`**: maps Wikidata P31 QIDs to SmartMemory SEED_TYPES
+- **`EntityRulerStage`**: merges public knowledge patterns (base layer) with workspace patterns (wins on collision)
+- **Mode-aware bootstrap**: `SmartMemory._default_public_knowledge_store()` uses FalkorDB in service mode, bundled SQLite locally
+
+```python
+# Explicit injection (tests, overrides)
+store = SQLitePublicKnowledgeStore("snapshot.sqlite")
+memory = SmartMemory(public_knowledge_store=store)
+
+# Auto-bootstrap (production) — detects FalkorDB vs SQLite from graph backend
+memory = SmartMemory()  # _default_public_knowledge_store() handles it
+```
+
 ### Key Directories
 
 - `smartmemory/memory/pipeline/`: Processing stages (classification, extraction, enrichment, linking, grounding)
+- `smartmemory/grounding/`: Entity grounding (PublicKnowledgeStore, SPARQL client, grounder, type map, benchmark)
 - `smartmemory/observability/`: Tracing (`trace_span`), events (Redis Stream), logging filter, instrumentation (deprecated)
 - `smartmemory/stores/`: Storage backends (vector, persistence)
 - `smartmemory/models/`: Data models (MemoryItem, Entity, Opinion, Reasoning)

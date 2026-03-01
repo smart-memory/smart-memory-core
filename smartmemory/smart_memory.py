@@ -95,6 +95,7 @@ class SmartMemory(MemoryBase):
         pipeline_profile: Optional[Any] = None,
         entity_ruler_patterns=None,
         event_sink=None,  # DIST-LITE-3: InProcessQueueSink or None
+        public_knowledge_store=None,  # ONTO-PUB-1: PublicKnowledgeStore or None
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -116,6 +117,12 @@ class SmartMemory(MemoryBase):
 
         self.scope_provider = scope_provider  # Store for use in filtering methods
         self._graph = graph or SmartGraph(scope_provider=scope_provider)
+
+        # ONTO-PUB-1: Public knowledge store — mode-aware bootstrap
+        if public_knowledge_store is not None:
+            self._public_knowledge_store = public_knowledge_store
+        else:
+            self._public_knowledge_store = self._default_public_knowledge_store()
 
         # Initialize stages with proper delegation (use injected or create defaults)
         self._graph_ops = GraphOperations(self._graph)
@@ -270,7 +277,7 @@ class SmartMemory(MemoryBase):
             ClassifyStage(self._ingestion_flow),
             CoreferenceStageCommand(),
             SimplifyStage(),
-            EntityRulerStage(pattern_manager=pattern_manager),
+            EntityRulerStage(pattern_manager=pattern_manager, public_knowledge_store=self._public_knowledge_store),
             LLMExtractStage(),
             ReasoningDetectStage(),  # CORE-SYS2-1c
         ]
@@ -280,7 +287,7 @@ class SmartMemory(MemoryBase):
             StoreStage(self),
             LinkStage(self._linking),
             EnrichStage(enrichment_pipeline),
-            GroundStage(self),
+            GroundStage(self, public_knowledge_store=self._public_knowledge_store),
             EvolveStage(self),
         ]
 
@@ -345,6 +352,37 @@ class SmartMemory(MemoryBase):
         if self._pipeline_runner is None:
             self._pipeline_runner = self._create_pipeline_runner()
         return self._pipeline_runner
+
+    def _default_public_knowledge_store(self):
+        """Auto-bootstrap the appropriate PublicKnowledgeStore based on available infra.
+
+        Mode detection uses self._graph (already constructed) — NOT an independent
+        FalkorDB probe. If the graph is FalkorDB-backed, we're in service mode and
+        MUST use FalkorDBPublicKnowledgeStore. No silent fallback to SQLite in
+        service mode — that would create split-brain absorptions.
+        """
+        from smartmemory.graph.backends.falkordb import FalkorDBBackend
+
+        is_service_mode = isinstance(getattr(self._graph, "backend", None), FalkorDBBackend)
+
+        if is_service_mode:
+            from smartmemory.grounding.falkordb_store import FalkorDBPublicKnowledgeStore
+
+            return FalkorDBPublicKnowledgeStore()
+
+        # Local mode — bundled SQLite snapshot
+        try:
+            from importlib.resources import files
+
+            snapshot_path = files("smartmemory.data.public_knowledge") / "public_entities.sqlite"
+            if snapshot_path.is_file():
+                from smartmemory.grounding.sqlite_store import SQLitePublicKnowledgeStore
+
+                return SQLitePublicKnowledgeStore(str(snapshot_path))
+        except Exception:
+            pass
+
+        return None
 
     def _build_pipeline_config(
         self,
@@ -422,6 +460,9 @@ class SmartMemory(MemoryBase):
 
             from smartmemory.observability.events import _current_sink
             resets.append((_current_sink, _current_sink.set(self._event_sink)))
+
+            from smartmemory.grounding.store import _public_knowledge_ctx
+            resets.append((_public_knowledge_ctx, _public_knowledge_ctx.set(getattr(self, "_public_knowledge_store", None))))
 
             yield
         finally:

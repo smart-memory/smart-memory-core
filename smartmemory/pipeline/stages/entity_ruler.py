@@ -88,13 +88,17 @@ def _ngram_scan(text: str, patterns: Dict[str, str]) -> List[tuple[str, str]]:
 class EntityRulerStage:
     """Extract entities using spaCy NER with rule-based patterns."""
 
-    def __init__(self, nlp=None, pattern_manager=None):
+    def __init__(self, nlp=None, pattern_manager=None, public_knowledge_store=None):
         """Args:
         nlp: Optional pre-loaded spaCy Language (for testing).
         pattern_manager: Optional PatternManager for learned pattern dictionary scan.
+        public_knowledge_store: Optional PublicKnowledgeStore for Wikidata entity patterns.
         """
         self._nlp = nlp
         self._pattern_manager = pattern_manager
+        self._public_knowledge_store = public_knowledge_store
+        self._public_patterns: dict[str, str] = {}
+        self._public_version: int = -1
 
     @property
     def name(self) -> str:
@@ -152,22 +156,44 @@ class EntityRulerStage:
                     }
                 )
 
-            # Dictionary scan against learned patterns
+            # Lazy version check — refresh public patterns if store version changed
+            if self._public_knowledge_store:
+                try:
+                    current_version = self._public_knowledge_store.version
+                    if current_version > self._public_version:
+                        self._public_patterns = self._public_knowledge_store.get_ruler_patterns()
+                        self._public_version = current_version
+                except Exception as e:
+                    logger.debug("Failed to refresh public knowledge patterns: %s", e)
+
+            # Three-layer precedence: workspace > tenant (future) > public
+            merged_patterns: dict[str, str] = {}
+            if self._public_patterns:
+                merged_patterns.update(self._public_patterns)  # base layer
             if self._pattern_manager:
                 learned = self._pattern_manager.get_patterns()
                 if learned:
-                    for span_text, entity_type in _ngram_scan(text, learned):
-                        key = (span_text.lower(), entity_type)
-                        if key not in seen:
-                            seen.add(key)
-                            entities.append(
-                                {
-                                    "name": span_text,
-                                    "entity_type": entity_type,
-                                    "confidence": 0.85,
-                                    "source": "entity_ruler_learned",
-                                }
+                    for key, ws_type in learned.items():
+                        if key in merged_patterns and merged_patterns[key] != ws_type:
+                            logger.debug(
+                                "Pattern collision '%s': public=%s, workspace=%s (workspace wins)",
+                                key, merged_patterns[key], ws_type,
                             )
+                    merged_patterns.update(learned)  # workspace wins
+
+            if merged_patterns:
+                for span_text, entity_type in _ngram_scan(text, merged_patterns):
+                    key = (span_text.lower(), entity_type)
+                    if key not in seen:
+                        seen.add(key)
+                        entities.append(
+                            {
+                                "name": span_text,
+                                "entity_type": entity_type,
+                                "confidence": 0.85,
+                                "source": "entity_ruler_learned",
+                            }
+                        )
 
             return replace(state, ruler_entities=entities)
         except Exception as e:
