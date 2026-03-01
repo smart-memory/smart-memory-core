@@ -12,8 +12,6 @@ from smartmemory.evolution.models import (
     MatchStatsSnapshot,
 )
 from smartmemory.evolution.diff_engine import ProcedureDiffEngine
-from smartmemory.evolution.store import EvolutionEventStore
-from smartmemory.evolution.tracker import EvolutionTracker
 
 # Existing exports
 from smartmemory.evolution.cycle import run_evolution_cycle
@@ -26,6 +24,18 @@ from smartmemory.evolution.registry import (
     list_evolver_specs,
     register_builtin_evolvers,
 )
+
+# EvolutionEventStore and EvolutionTracker require pymongo (service-mode only).
+# Lazy import so `import smartmemory` works without pymongo installed.
+_LAZY_IMPORTS = {"EvolutionEventStore": "store", "EvolutionTracker": "tracker"}
+
+
+def __getattr__(name: str):
+    if name in _LAZY_IMPORTS:
+        import importlib
+        mod = importlib.import_module(f"smartmemory.evolution.{_LAZY_IMPORTS[name]}")
+        return getattr(mod, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     # New evolution timeline exports
