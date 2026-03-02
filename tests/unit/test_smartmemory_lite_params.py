@@ -177,12 +177,12 @@ def test_pipeline_profile_applied_in_build():
     """SmartMemory(pipeline_profile=PipelineConfig.lite()) applies all 7 lite flags."""
     from smartmemory.pipeline.config import PipelineConfig
 
-    profile = PipelineConfig.lite()
+    profile = PipelineConfig.lite(llm_enabled=False)
     with ExitStack() as stack:
         mem = _make_sm(stack, pipeline_profile=profile)
         config = mem._build_pipeline_config()
         assert config.coreference.enabled is False
-        assert config.extraction.llm_extract.enabled is False
+        assert config.extraction.llm_extract.enabled is False  # llm_enabled=False overrides auto-detect
         assert config.enrich.enricher_names == [
             "basic_enricher",
             "sentiment_enricher",

@@ -96,13 +96,15 @@ def test_apply_lite_pipeline_profile_disables_coreference(tmp_path):
 
 
 def test_apply_lite_pipeline_profile_disables_llm_extract(tmp_path):
-    """The patched _build_pipeline_config sets extraction.llm_extract.enabled=False."""
+    """The patched _build_pipeline_config disables llm_extract when no API key (DEGRADE-1d)."""
+    from smartmemory.pipeline.config import PipelineConfig
     from smartmemory.stores.vector.vector_store import VectorStore
 
     try:
-        memory = create_lite_memory(str(tmp_path))
+        # DEGRADE-1d: lite() auto-detects API keys; force off for deterministic test
+        memory = create_lite_memory(str(tmp_path), pipeline_profile=PipelineConfig.lite(llm_enabled=False))
         config = memory._build_pipeline_config()
-        assert config.extraction.llm_extract.enabled is False, "llm_extract must be disabled in lite pipeline profile"
+        assert config.extraction.llm_extract.enabled is False, "llm_extract must be disabled when llm_enabled=False"
     finally:
         VectorStore.set_default_backend(None)
 

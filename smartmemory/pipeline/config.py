@@ -7,6 +7,7 @@ until Phase 3 when old orchestrators are deleted.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -283,16 +284,22 @@ class PipelineConfig(MemoryBaseModel):
         )
 
     @classmethod
-    def lite(cls, workspace_id: Optional[str] = None) -> "PipelineConfig":
+    def lite(cls, workspace_id: Optional[str] = None, llm_enabled: Optional[bool] = None) -> "PipelineConfig":
         """Lite mode — maximum quality with zero external dependencies.
 
         Disables only stages that require network access or LLM API calls.
         All local processing (spaCy NER, EntityRuler, sentiment, temporal,
         topic enrichment) runs at full quality.
 
+        Args:
+            workspace_id: Optional workspace for scoping.
+            llm_enabled: LLM extraction toggle. None = auto-detect from
+                OPENAI_API_KEY / GROQ_API_KEY env vars. True = force on.
+                False = force off (original lite behavior).
+
         Disabled (external dependencies):
         - coreference: fastcoref downloads models on first use
-        - llm_extract: requires LLM API key (OpenAI, Groq, etc.)
+        - llm_extract: disabled unless LLM API key detected (DEGRADE-1d)
         - wikipedia_enricher / link_expansion_enricher: HTTP calls
         - wikidata grounding: HTTP calls to Wikidata REST + SPARQL
 
@@ -303,11 +310,13 @@ class PipelineConfig(MemoryBaseModel):
         - store, link stages
         - evolution/clustering: disabled (HebbianCoRetrievalEvolver uses raw Cypher)
         """
+        if llm_enabled is None:
+            llm_enabled = bool(os.getenv("OPENAI_API_KEY") or os.getenv("GROQ_API_KEY"))
         return cls(
             workspace_id=workspace_id,
             coreference=CoreferenceConfig(enabled=False),
             extraction=ExtractionConfig(
-                llm_extract=LLMExtractConfig(enabled=False),
+                llm_extract=LLMExtractConfig(enabled=llm_enabled),
             ),
             enrich=EnrichConfig(
                 enricher_names=["basic_enricher", "sentiment_enricher", "temporal_enricher", "topic_enricher"],

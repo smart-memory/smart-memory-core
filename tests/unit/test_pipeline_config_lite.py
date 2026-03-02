@@ -1,5 +1,7 @@
 """Tests for PipelineConfig.lite() classmethod."""
 
+from unittest.mock import patch
+
 from smartmemory.pipeline.config import PipelineConfig
 
 
@@ -9,10 +11,37 @@ def test_lite_coreference_disabled():
     assert config.coreference.enabled is False, "lite mode must disable coreference (may download models)"
 
 
-def test_lite_llm_extract_disabled():
-    """PipelineConfig.lite() disables LLM entity/relation extraction."""
+def test_lite_llm_extract_disabled_when_forced():
+    """PipelineConfig.lite(llm_enabled=False) disables LLM extraction."""
+    config = PipelineConfig.lite(llm_enabled=False)
+    assert config.extraction.llm_extract.enabled is False
+
+
+def test_lite_llm_extract_enabled_when_forced():
+    """PipelineConfig.lite(llm_enabled=True) enables LLM extraction."""
+    config = PipelineConfig.lite(llm_enabled=True)
+    assert config.extraction.llm_extract.enabled is True
+
+
+@patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"}, clear=False)
+def test_lite_llm_autodetect_openai():
+    """PipelineConfig.lite() auto-detects OPENAI_API_KEY and enables LLM extraction."""
     config = PipelineConfig.lite()
-    assert config.extraction.llm_extract.enabled is False, "lite mode must disable llm_extract (makes LLM API calls)"
+    assert config.extraction.llm_extract.enabled is True
+
+
+@patch.dict("os.environ", {"GROQ_API_KEY": "gsk-test"}, clear=False)
+def test_lite_llm_autodetect_groq():
+    """PipelineConfig.lite() auto-detects GROQ_API_KEY and enables LLM extraction."""
+    config = PipelineConfig.lite()
+    assert config.extraction.llm_extract.enabled is True
+
+
+@patch.dict("os.environ", {}, clear=True)
+def test_lite_llm_autodetect_no_key():
+    """PipelineConfig.lite() disables LLM extraction when no API key is set."""
+    config = PipelineConfig.lite()
+    assert config.extraction.llm_extract.enabled is False
 
 
 def test_lite_enrichers_basic_only():
