@@ -159,9 +159,9 @@ memory = SmartMemory(
 - `vector_backend`: Any `VectorStoreBackend` instance; `None` leaves default behaviour.
 - `cache`: Any cache-compatible object (e.g. `NoOpCache()`); `None` leaves default behaviour.
 - `observability`: If `False`, disables all Redis Streams emission and metrics. Defaults to `True`.
-- `pipeline_profile`: A `PipelineConfig` instance; its 4 lite flags override the built config. `None` leaves default behaviour.
+- `pipeline_profile`: A `PipelineConfig` instance; its 7 lite flags override the built config. `None` leaves default behaviour.
 - `entity_ruler_patterns`: Any object with `get_patterns() → dict[str, str]` interface. Duck-types `PatternManager`. When non-None, overrides the post-ontology-block `pattern_manager` variable passed to `EntityRulerStage`. Used by `smartmemory-cc` to inject `LitePatternManager` (JSONL-backed, zero Docker). `None` leaves default behaviour.
-- `PipelineConfig.lite()`: Pre-built profile disabling coreference, LLM extraction, non-basic enrichers, and Wikidata grounding.
+- `PipelineConfig.lite()`: Pre-built profile disabling coreference, LLM extraction, non-basic enrichers, SPARQL HTTP, and evolution/clustering. Wikidata stays enabled for SQLite alias lookup.
 
 ## Multi-Tenancy
 

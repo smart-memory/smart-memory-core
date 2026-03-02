@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### DIST-LITE-DEGRADE-1 (b/c/e/f) — Graceful Degradation for Lite Mode
+
+- **Temporal queries on SQLite (1b)**: replaced raw Cypher in `TemporalQueries.at_time()`, `TemporalRelationshipQueries._query_relationships()`, `at_time()`, and `get_relationship_history()` with backend-agnostic `search_nodes`/`get_edges_for_node`/`get_all_edges`. Added abstract methods to `SmartGraphBackend` ABC. Normalized FalkorDB edge keys. Deleted `_NoOpTemporalQueries` stub.
+- **Grounding with SQLite store (1c)**: added `sparql_enabled` config flag to `WikidataConfig`. `PipelineConfig.lite()` keeps `wikidata.enabled=True` (SQLite alias lookup) but sets `sparql_enabled=False` (no HTTP). `GroundStage` three-way branch: store+SPARQL, store-only, WikipediaGrounder.
+- **Evolution disabled in lite mode (1e)**: `PipelineConfig.lite()` sets `run_evolution=False` and `run_clustering=False`. `_apply_pipeline_profile()` propagates 7 fields (was 4).
+- **Silence noisy config warnings (1f)**: expected-missing-config logs demoted from WARNING to DEBUG. `ConfigManager` uses conditional log level via `_is_explicit_path`. `factory_memory_creator.py` splits `except Exception` into `FileNotFoundError/OSError` (debug) + `Exception` (warning).
+- **58 tests** across 6 files covering all 4 sub-features.
+
 #### DIST-LITE-DEGRADE-1a — VersionTracker on SQLite
 
 - **`direction` parameter** on `SmartGraphBackend.get_neighbors()`: supports `"outgoing"`, `"incoming"`, `"both"` (default, backward-compatible) across SQLiteBackend and FalkorDBBackend. Threaded through `SmartGraphNodes` and `SmartGraph` facades.
