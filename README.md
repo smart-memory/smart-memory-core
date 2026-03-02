@@ -12,12 +12,15 @@ SmartMemory is a comprehensive AI memory system that provides persistent, multi-
 ## 🚀 Quick Install
 
 ```bash
-pip install smartmemory-core[lite]       # Zero-infra local mode (SQLite + usearch, no Docker)
-pip install smartmemory-core[lite,watch] # + vault watcher for auto-ingesting markdown files
-pip install smartmemory-core[server]     # Server mode (FalkorDB + Redis, requires Docker)
+pip install smartmemory[local]           # Local memory + MCP server + viewer + CLI (recommended)
+pip install smartmemory                  # Remote client only (connects to a SmartMemory service)
+pip install smartmemory-core[lite]       # Core library only, local mode (for developers)
+pip install smartmemory-core[server]     # Core library only, server mode (FalkorDB + Redis)
 ```
 
-> **End users:** Install `pip install smartmemory` for the distribution package with MCP server, viewer, and CLI. This package (`smartmemory-core`) is the core library for developers building on top of SmartMemory.
+> **`smartmemory`** is the distribution package — MCP server, graph viewer, and CLI.
+> **`smartmemory-core`** is the core library for developers building on top of SmartMemory.
+> `smartmemory[local]` bundles `smartmemory-core[lite]` for local SQLite storage. Without `[local]`, it's a remote client only.
 
 ### SmartMemory Lite — No Docker Required
 
@@ -597,7 +600,7 @@ External plugins use the `standard` security profile by default. See `docs/PLUGI
 **Get started with SmartMemory today!**
 
 ```bash
-pip install smartmemory-core[lite]
+pip install smartmemory[local]
 ```
 
 Explore the [examples](examples/) directory for complete demonstrations and use cases.
