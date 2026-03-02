@@ -141,10 +141,12 @@ class TemporalRelationshipQueries:
                 # Relationship type filter
                 if relationship_type and edge["edge_type"] != relationship_type:
                     continue
-                # Workspace isolation: check target node's workspace
+                # Workspace isolation: check target node's workspace.
+                # Nodes with missing workspace_id are rejected (matches Cypher WHERE behavior).
                 if allowed_workspace:
                     partner_node = self.graph.backend.get_node(target_id) if hasattr(self.graph, "backend") else None
-                    if partner_node and partner_node.get("workspace_id") and partner_node.get("workspace_id") != allowed_workspace:
+                    partner_ws = partner_node.get("workspace_id") if partner_node else None
+                    if partner_ws != allowed_workspace:
                         continue
 
                 rel = TemporalRelationship(
@@ -160,7 +162,9 @@ class TemporalRelationshipQueries:
                 relationships.append(rel)
 
             # Sort by transaction_time_start descending (matches original Cypher ORDER BY)
-            relationships.sort(key=lambda r: r.transaction_time_start or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+            relationships.sort(
+                key=lambda r: r.transaction_time_start or datetime.min.replace(tzinfo=timezone.utc), reverse=True
+            )
             return relationships
 
         except Exception as e:
@@ -382,13 +386,14 @@ class TemporalRelationshipQueries:
                 if relationship_type and edge["edge_type"] != relationship_type:
                     continue
 
-                # Workspace isolation: check source node's workspace
+                # Workspace isolation: check source node's workspace.
+                # Nodes with missing workspace_id are rejected (matches Cypher WHERE behavior).
                 if allowed_workspace:
                     src_id = edge["source_id"]
                     if src_id not in _node_ws_cache:
                         src_node = self.graph.backend.get_node(src_id) if hasattr(self.graph, "backend") else None
                         _node_ws_cache[src_id] = src_node.get("workspace_id") if src_node else None
-                    if _node_ws_cache[src_id] and _node_ws_cache[src_id] != allowed_workspace:
+                    if _node_ws_cache[src_id] != allowed_workspace:
                         continue
 
                 rel = TemporalRelationship(
@@ -440,13 +445,16 @@ class TemporalRelationshipQueries:
                 if relationship_type and edge["edge_type"] != relationship_type:
                     continue
 
-                # Workspace isolation: check partner node's workspace
+                # Workspace isolation: check partner node's workspace.
+                # Nodes with missing workspace_id are rejected (matches Cypher WHERE behavior).
                 if allowed_workspace:
                     partner_id = edge["target_id"] if edge["source_id"] == item_id else edge["source_id"]
                     if partner_id not in _node_ws_cache:
-                        partner_node = self.graph.backend.get_node(partner_id) if hasattr(self.graph, "backend") else None
+                        partner_node = (
+                            self.graph.backend.get_node(partner_id) if hasattr(self.graph, "backend") else None
+                        )
                         _node_ws_cache[partner_id] = partner_node.get("workspace_id") if partner_node else None
-                    if _node_ws_cache[partner_id] and _node_ws_cache[partner_id] != allowed_workspace:
+                    if _node_ws_cache[partner_id] != allowed_workspace:
                         continue
 
                 rel = TemporalRelationship(

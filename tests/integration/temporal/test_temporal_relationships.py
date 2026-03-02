@@ -1,25 +1,38 @@
 """
 Integration tests for temporal relationship queries.
 
-Tests TemporalRelationshipQueries interactions with graph backend (FalkorDB).
-Uses mocked graph to simulate FalkorDB query/response patterns.
+Tests TemporalRelationshipQueries interactions with graph backend.
+Uses mocked graph to simulate backend query/response patterns via the
+backend-agnostic edge API (get_edges_for_node, get_all_edges).
 
-Relocated from tests/unit/temporal/ because these tests verify behavior
-that depends on FalkorDB graph query patterns and temporal relationship
-tracking across graph edges.
+Updated for DEGRADE-1b: replaced execute_query mocks with edge API mocks.
 """
 
-import pytest
-
-
-pytestmark = [pytest.mark.integration]
 from datetime import datetime, timezone, timedelta
 from unittest.mock import Mock
 
+import pytest
+
 from smartmemory.temporal.relationships import (
     TemporalRelationshipQueries,
-    TemporalRelationship
+    TemporalRelationship,
 )
+
+pytestmark = [pytest.mark.integration]
+
+
+def _make_edge(source, target, rel_type="RELATED_TO", properties=None, valid_from=None, valid_to=None, created_at=None):
+    """Build a normalized edge dict matching the backend-agnostic contract."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    return {
+        "source_id": source,
+        "target_id": target,
+        "edge_type": rel_type,
+        "properties": properties or {},
+        "valid_from": valid_from or now_iso,
+        "valid_to": valid_to,
+        "created_at": created_at or now_iso,
+    }
 
 
 class TestTemporalRelationship:
@@ -33,7 +46,7 @@ class TestTemporalRelationship:
             target_id="item2",
             relationship_type="RELATED_TO",
             properties={"strength": 0.9},
-            valid_time_start=now
+            valid_time_start=now,
         )
 
         assert rel.source_id == "item1"
@@ -50,7 +63,7 @@ class TestTemporalRelationship:
             target_id="item2",
             relationship_type="RELATED_TO",
             valid_time_start=now,
-            valid_time_end=now + timedelta(days=1)
+            valid_time_end=now + timedelta(days=1),
         )
 
         # Before valid time
@@ -71,7 +84,7 @@ class TestTemporalRelationship:
             target_id="item2",
             relationship_type="RELATED_TO",
             valid_time_start=now,
-            valid_time_end=now + timedelta(days=5)
+            valid_time_end=now + timedelta(days=5),
         )
 
         # Overlapping relationship
@@ -80,7 +93,7 @@ class TestTemporalRelationship:
             target_id="item3",
             relationship_type="RELATED_TO",
             valid_time_start=now + timedelta(days=3),
-            valid_time_end=now + timedelta(days=7)
+            valid_time_end=now + timedelta(days=7),
         )
 
         assert rel1.overlaps_with(rel2) is True
@@ -92,7 +105,7 @@ class TestTemporalRelationship:
             target_id="item4",
             relationship_type="RELATED_TO",
             valid_time_start=now + timedelta(days=10),
-            valid_time_end=now + timedelta(days=15)
+            valid_time_end=now + timedelta(days=15),
         )
 
         assert rel1.overlaps_with(rel3) is False
@@ -104,9 +117,10 @@ class TestTemporalRelationshipQueries:
 
     @pytest.fixture
     def mock_graph(self):
-        """Create mock graph backend."""
+        """Create mock graph backend with edge API methods."""
         graph = Mock()
-        graph.execute_query = Mock(return_value=[])
+        graph.get_edges_for_node = Mock(return_value=[])
+        graph.get_all_edges = Mock(return_value=[])
         return graph
 
     @pytest.fixture
@@ -123,26 +137,19 @@ class TestTemporalRelationshipQueries:
         """Test getting relationships at a specific time."""
         now = datetime.now(timezone.utc)
 
-        # Mock relationships
-        mock_graph.execute_query.return_value = [
-            {
-                'source': 'item1',
-                'target': 'item2',
-                'rel_type': 'RELATED_TO',
-                'r': {
-                    'properties': {},
-                    'valid_time_start': (now - timedelta(days=10)).isoformat(),
-                    'valid_time_end': (now + timedelta(days=10)).isoformat(),
-                    'transaction_time_start': (now - timedelta(days=10)).isoformat(),
-                    'transaction_time_end': None
-                }
-            }
+        # Mock edges via get_edges_for_node (used by _query_relationships)
+        mock_graph.get_edges_for_node.return_value = [
+            _make_edge(
+                source="item1",
+                target="item2",
+                rel_type="RELATED_TO",
+                valid_from=(now - timedelta(days=10)).isoformat(),
+                valid_to=(now + timedelta(days=10)).isoformat(),
+                created_at=(now - timedelta(days=10)).isoformat(),
+            )
         ]
 
-        rels = rel_queries.get_relationships_at_time(
-            "item1",
-            now
-        )
+        rels = rel_queries.get_relationships_at_time("item1", now)
 
         assert isinstance(rels, list)
         assert len(rels) == 1
@@ -153,38 +160,34 @@ class TestTemporalRelationshipQueries:
         """Test getting relationship history."""
         now = datetime.now(timezone.utc)
 
-        mock_graph.execute_query.return_value = [
-            {
-                'rel_type': 'RELATED_TO',
-                'r': {
-                    'properties': {'version': 1},
-                    'valid_time_start': (now - timedelta(days=10)).isoformat(),
-                    'valid_time_end': (now - timedelta(days=5)).isoformat(),
-                    'transaction_time_start': (now - timedelta(days=10)).isoformat(),
-                    'transaction_time_end': (now - timedelta(days=5)).isoformat()
-                }
-            },
-            {
-                'rel_type': 'RELATED_TO',
-                'r': {
-                    'properties': {'version': 2},
-                    'valid_time_start': (now - timedelta(days=5)).isoformat(),
-                    'valid_time_end': None,
-                    'transaction_time_start': (now - timedelta(days=5)).isoformat(),
-                    'transaction_time_end': None
-                }
-            }
+        mock_graph.get_edges_for_node.return_value = [
+            _make_edge(
+                source="item1",
+                target="item2",
+                rel_type="RELATED_TO",
+                properties={"version": 1},
+                valid_from=(now - timedelta(days=10)).isoformat(),
+                valid_to=(now - timedelta(days=5)).isoformat(),
+                created_at=(now - timedelta(days=10)).isoformat(),
+            ),
+            _make_edge(
+                source="item1",
+                target="item2",
+                rel_type="RELATED_TO",
+                properties={"version": 2},
+                valid_from=(now - timedelta(days=5)).isoformat(),
+                valid_to=None,
+                created_at=(now - timedelta(days=5)).isoformat(),
+            ),
         ]
 
-        history = rel_queries.get_relationship_history(
-            "item1",
-            "item2"
-        )
+        history = rel_queries.get_relationship_history("item1", "item2")
 
         assert isinstance(history, list)
         assert len(history) == 2
-        assert history[0].properties['version'] == 1
-        assert history[1].properties['version'] == 2
+        # Sorted by transaction_time_start descending
+        assert history[0].properties["version"] == 2
+        assert history[1].properties["version"] == 1
 
     def test_find_temporal_patterns(self, rel_queries, mock_graph):
         """Test finding temporal patterns."""
@@ -192,88 +195,66 @@ class TestTemporalRelationshipQueries:
         start = now - timedelta(days=30)
         end = now
 
-        # Mock relationships with various patterns
-        mock_graph.execute_query.return_value = [
-            {
-                'source': 'item1',
-                'target': 'item2',
-                'rel_type': 'RELATED_TO',
-                'r': {
-                    'properties': {},
-                    'valid_time_start': (start + timedelta(days=5)).isoformat(),
-                    'valid_time_end': None,
-                    'transaction_time_start': (start + timedelta(days=5)).isoformat(),
-                    'transaction_time_end': None
-                }
-            },
-            {
-                'source': 'item1',
-                'target': 'item3',
-                'rel_type': 'MENTIONS',
-                'r': {
-                    'properties': {},
-                    'valid_time_start': (start + timedelta(days=10)).isoformat(),
-                    'valid_time_end': (start + timedelta(days=20)).isoformat(),
-                    'transaction_time_start': (start + timedelta(days=10)).isoformat(),
-                    'transaction_time_end': None
-                }
-            }
+        # Mock edges via get_edges_for_node (used by _query_relationships)
+        mock_graph.get_edges_for_node.return_value = [
+            _make_edge(
+                source="item1",
+                target="item2",
+                rel_type="RELATED_TO",
+                valid_from=(start + timedelta(days=5)).isoformat(),
+                valid_to=None,
+                created_at=(start + timedelta(days=5)).isoformat(),
+            ),
+            _make_edge(
+                source="item1",
+                target="item3",
+                rel_type="MENTIONS",
+                valid_from=(start + timedelta(days=10)).isoformat(),
+                valid_to=(start + timedelta(days=20)).isoformat(),
+                created_at=(start + timedelta(days=10)).isoformat(),
+            ),
         ]
 
-        patterns = rel_queries.find_temporal_patterns(
-            "item1",
-            start,
-            end
-        )
+        patterns = rel_queries.find_temporal_patterns("item1", start, end)
 
         assert isinstance(patterns, dict)
-        assert 'total_relationships' in patterns
-        assert 'relationship_types' in patterns
-        assert patterns['total_relationships'] == 2
+        assert "total_relationships" in patterns
+        assert "relationship_types" in patterns
+        assert patterns["total_relationships"] == 2
 
     def test_temporal_join_overlap(self, rel_queries, mock_graph):
         """Test temporal join with overlap."""
         now = datetime.now(timezone.utc)
 
-        # Mock relationships for different items
-        def mock_query(_query, params):
-            item_id = params.get('item_id')
-            if item_id == 'item1':
-                return [{
-                    'source': 'item1',
-                    'target': 'item2',
-                    'rel_type': 'RELATED_TO',
-                    'r': {
-                        'properties': {},
-                        'valid_time_start': now.isoformat(),
-                        'valid_time_end': (now + timedelta(days=5)).isoformat(),
-                        'transaction_time_start': now.isoformat(),
-                        'transaction_time_end': None
-                    }
-                }]
-            elif item_id == 'item3':
-                return [{
-                    'source': 'item3',
-                    'target': 'item4',
-                    'rel_type': 'MENTIONS',
-                    'r': {
-                        'properties': {},
-                        'valid_time_start': (now + timedelta(days=3)).isoformat(),
-                        'valid_time_end': (now + timedelta(days=7)).isoformat(),
-                        'transaction_time_start': now.isoformat(),
-                        'transaction_time_end': None
-                    }
-                }]
+        # Mock get_edges_for_node to return different edges per item_id
+        def mock_edges(item_id):
+            if item_id == "item1":
+                return [
+                    _make_edge(
+                        source="item1",
+                        target="item2",
+                        rel_type="RELATED_TO",
+                        valid_from=now.isoformat(),
+                        valid_to=(now + timedelta(days=5)).isoformat(),
+                        created_at=now.isoformat(),
+                    )
+                ]
+            elif item_id == "item3":
+                return [
+                    _make_edge(
+                        source="item3",
+                        target="item4",
+                        rel_type="MENTIONS",
+                        valid_from=(now + timedelta(days=3)).isoformat(),
+                        valid_to=(now + timedelta(days=7)).isoformat(),
+                        created_at=now.isoformat(),
+                    )
+                ]
             return []
 
-        mock_graph.execute_query.side_effect = mock_query
+        mock_graph.get_edges_for_node.side_effect = mock_edges
 
-        results = rel_queries.temporal_join(
-            ['item1', 'item3'],
-            now,
-            now + timedelta(days=10),
-            join_type='overlap'
-        )
+        results = rel_queries.temporal_join(["item1", "item3"], now, now + timedelta(days=10), join_type="overlap")
 
         assert isinstance(results, list)
         # Should find overlapping relationships
@@ -282,43 +263,30 @@ class TestTemporalRelationshipQueries:
         """Test finding co-occurring relationships."""
         now = datetime.now(timezone.utc)
 
-        # Mock relationships created close together
-        mock_graph.execute_query.return_value = [
-            {
-                'source': 'item1',
-                'target': 'item2',
-                'rel_type': 'RELATED_TO',
-                'r': {
-                    'properties': {},
-                    'valid_time_start': now.isoformat(),
-                    'valid_time_end': None,
-                    'transaction_time_start': now.isoformat(),
-                    'transaction_time_end': None
-                }
-            },
-            {
-                'source': 'item1',
-                'target': 'item3',
-                'rel_type': 'MENTIONS',
-                'r': {
-                    'properties': {},
-                    'valid_time_start': (now + timedelta(minutes=30)).isoformat(),
-                    'valid_time_end': None,
-                    'transaction_time_start': (now + timedelta(minutes=30)).isoformat(),
-                    'transaction_time_end': None
-                }
-            }
+        # Mock edges created close together
+        mock_graph.get_edges_for_node.return_value = [
+            _make_edge(
+                source="item1",
+                target="item2",
+                rel_type="RELATED_TO",
+                valid_from=now.isoformat(),
+                created_at=now.isoformat(),
+            ),
+            _make_edge(
+                source="item1",
+                target="item3",
+                rel_type="MENTIONS",
+                valid_from=(now + timedelta(minutes=30)).isoformat(),
+                created_at=(now + timedelta(minutes=30)).isoformat(),
+            ),
         ]
 
-        groups = rel_queries.find_co_occurring_relationships(
-            "item1",
-            time_window=3600  # 1 hour
-        )
+        groups = rel_queries.find_co_occurring_relationships("item1", time_window=3600)
 
         assert isinstance(groups, list)
         # Should find relationships created within 1 hour
         if groups:
-            assert groups[0]['count'] == 2
+            assert groups[0]["count"] == 2
 
 
 class TestTemporalRelationshipIntegration:
@@ -326,9 +294,10 @@ class TestTemporalRelationshipIntegration:
 
     @pytest.fixture
     def mock_graph(self):
-        """Create mock graph backend."""
+        """Create mock graph backend with edge API methods."""
         graph = Mock()
-        graph.execute_query = Mock(return_value=[])
+        graph.get_edges_for_node = Mock(return_value=[])
+        graph.get_all_edges = Mock(return_value=[])
         return graph
 
     @pytest.fixture
@@ -340,59 +309,53 @@ class TestTemporalRelationshipIntegration:
         """Test complete relationship tracking workflow."""
         now = datetime.now(timezone.utc)
 
-        # Mock a relationship that changes over time
-        mock_graph.execute_query.return_value = [
-            {
-                'rel_type': 'RELATED_TO',
-                'r': {
-                    'properties': {'strength': 0.5},
-                    'valid_time_start': (now - timedelta(days=10)).isoformat(),
-                    'valid_time_end': (now - timedelta(days=5)).isoformat(),
-                    'transaction_time_start': (now - timedelta(days=10)).isoformat(),
-                    'transaction_time_end': (now - timedelta(days=5)).isoformat()
-                }
-            },
-            {
-                'rel_type': 'RELATED_TO',
-                'r': {
-                    'properties': {'strength': 0.9},
-                    'valid_time_start': (now - timedelta(days=5)).isoformat(),
-                    'valid_time_end': None,
-                    'transaction_time_start': (now - timedelta(days=5)).isoformat(),
-                    'transaction_time_end': None
-                }
-            }
+        # Mock edges for get_relationship_history (get_edges_for_node)
+        history_edges = [
+            _make_edge(
+                source="item1",
+                target="item2",
+                rel_type="RELATED_TO",
+                properties={"strength": 0.5},
+                valid_from=(now - timedelta(days=10)).isoformat(),
+                valid_to=(now - timedelta(days=5)).isoformat(),
+                created_at=(now - timedelta(days=10)).isoformat(),
+            ),
+            _make_edge(
+                source="item1",
+                target="item2",
+                rel_type="RELATED_TO",
+                properties={"strength": 0.9},
+                valid_from=(now - timedelta(days=5)).isoformat(),
+                valid_to=None,
+                created_at=(now - timedelta(days=5)).isoformat(),
+            ),
         ]
+        mock_graph.get_edges_for_node.return_value = history_edges
 
         # Get history
         history = rel_queries.get_relationship_history("item1", "item2")
 
         assert len(history) == 2
-        assert history[0].properties['strength'] == 0.5
-        assert history[1].properties['strength'] == 0.9
+        # Sorted by transaction_time_start descending (newer first)
+        assert history[0].properties["strength"] == 0.9
+        assert history[1].properties["strength"] == 0.5
 
-        # Get relationship at specific time (should be first version)
-        # Need to mock the query for get_relationships_at_time separately
-        mock_graph.execute_query.return_value = [
-            {
-                'source': 'item1',
-                'target': 'item2',
-                'rel_type': 'RELATED_TO',
-                'r': {
-                    'properties': {'strength': 0.5},
-                    'valid_time_start': (now - timedelta(days=10)).isoformat(),
-                    'valid_time_end': (now - timedelta(days=5)).isoformat(),
-                    'transaction_time_start': (now - timedelta(days=10)).isoformat(),
-                    'transaction_time_end': (now - timedelta(days=5)).isoformat()
-                }
-            }
+        # Get relationships at a time in the first version's range
+        # _query_relationships also uses get_edges_for_node
+        mock_graph.get_edges_for_node.return_value = [
+            _make_edge(
+                source="item1",
+                target="item2",
+                rel_type="RELATED_TO",
+                properties={"strength": 0.5},
+                valid_from=(now - timedelta(days=10)).isoformat(),
+                valid_to=(now - timedelta(days=5)).isoformat(),
+                created_at=(now - timedelta(days=10)).isoformat(),
+            ),
         ]
 
-        rels_at_old_time = rel_queries.get_relationships_at_time(
-            "item1",
-            now - timedelta(days=7)
-        )
+        rels_at_old_time = rel_queries.get_relationships_at_time("item1", now - timedelta(days=7))
 
-        # Should find the old relationship
+        # Should find the old relationship (valid from -10d to -5d, querying at -7d)
         assert len(rels_at_old_time) == 1
-        assert rels_at_old_time[0].properties['strength'] == 0.5
+        assert rels_at_old_time[0].properties["strength"] == 0.5

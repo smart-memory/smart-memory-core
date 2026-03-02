@@ -190,6 +190,57 @@ class TestTemporalRelationshipQueries:
         assert len(result) == 1
         assert result[0].target_id == "item2"
 
+    def test_query_relationships_rejects_nodes_without_workspace(self):
+        """_query_relationships() rejects partner nodes with missing workspace_id (P1 regression)."""
+        edges = [
+            self._make_edge(source="item1", target="item2"),
+            self._make_edge(source="item1", target="item3"),  # item3 has no workspace_id
+        ]
+        scope_provider = MagicMock()
+        scope_provider.get_isolation_filters.return_value = {"workspace_id": "ws1"}
+
+        graph = MagicMock()
+        graph.get_edges_for_node.return_value = edges
+        graph.backend.get_node.side_effect = lambda nid: {
+            "item2": {"item_id": "item2", "workspace_id": "ws1"},
+            "item3": {"item_id": "item3"},  # no workspace_id key
+        }.get(nid, {})
+
+        from smartmemory.temporal.relationships import TemporalRelationshipQueries
+
+        trq = TemporalRelationshipQueries(graph, scope_provider=scope_provider)
+        result = trq._query_relationships("item1")
+
+        # item3 has no workspace_id — must be rejected (matches Cypher WHERE behavior)
+        assert len(result) == 1
+        assert result[0].target_id == "item2"
+
+    def test_at_time_rejects_nodes_without_workspace(self):
+        """at_time() rejects source nodes with missing workspace_id (P1 regression)."""
+        now = datetime.now(timezone.utc)
+        edges = [
+            self._make_edge(source="s1", target="t1", valid_from=(now - timedelta(hours=1)).isoformat()),
+            self._make_edge(source="s_unscoped", target="t2", valid_from=(now - timedelta(hours=1)).isoformat()),
+        ]
+        scope_provider = MagicMock()
+        scope_provider.get_isolation_filters.return_value = {"workspace_id": "ws1"}
+
+        graph = MagicMock()
+        graph.get_all_edges.return_value = edges
+        graph.backend.get_node.side_effect = lambda nid: {
+            "s1": {"item_id": "s1", "workspace_id": "ws1"},
+            "s_unscoped": {"item_id": "s_unscoped"},  # no workspace_id
+        }.get(nid, {})
+
+        from smartmemory.temporal.relationships import TemporalRelationshipQueries
+
+        trq = TemporalRelationshipQueries(graph, scope_provider=scope_provider)
+        result = trq.at_time(now)
+
+        # s_unscoped has no workspace_id — must be rejected
+        assert len(result) == 1
+        assert result[0].source_id == "s1"
+
     def test_relationship_at_time_uses_get_all_edges(self):
         """Global at_time() calls get_all_edges() and filters by is_valid_at."""
         now = datetime.now(timezone.utc)
