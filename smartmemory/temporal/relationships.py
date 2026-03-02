@@ -133,6 +133,14 @@ class TemporalRelationshipQueries:
 
             edges = self.graph.get_edges_for_node(source_id)
 
+            # Workspace isolation: check target node's workspace once (same target for all edges).
+            # Nodes with missing workspace_id are rejected (matches Cypher WHERE behavior).
+            if allowed_workspace:
+                partner_node = self.graph.backend.get_node(target_id) if hasattr(self.graph, "backend") else None
+                partner_ws = partner_node.get("workspace_id") if partner_node else None
+                if partner_ws != allowed_workspace:
+                    return []
+
             relationships = []
             for edge in edges:
                 # Filter for edges to the specific target
@@ -141,20 +149,13 @@ class TemporalRelationshipQueries:
                 # Relationship type filter
                 if relationship_type and edge["edge_type"] != relationship_type:
                     continue
-                # Workspace isolation: check target node's workspace.
-                # Nodes with missing workspace_id are rejected (matches Cypher WHERE behavior).
-                if allowed_workspace:
-                    partner_node = self.graph.backend.get_node(target_id) if hasattr(self.graph, "backend") else None
-                    partner_ws = partner_node.get("workspace_id") if partner_node else None
-                    if partner_ws != allowed_workspace:
-                        continue
 
                 rel = TemporalRelationship(
                     source_id=edge["source_id"],
                     target_id=edge["target_id"],
                     relationship_type=edge["edge_type"],
                     properties=edge.get("properties", {}),
-                    valid_time_start=self._parse_time(edge.get("valid_from")),
+                    valid_time_start=self._parse_time(edge.get("valid_from")) or datetime.now(timezone.utc),
                     valid_time_end=self._parse_time(edge.get("valid_to")),
                     transaction_time_start=self._parse_time(edge.get("created_at")),
                     transaction_time_end=None,
@@ -401,7 +402,7 @@ class TemporalRelationshipQueries:
                     target_id=edge["target_id"],
                     relationship_type=edge["edge_type"],
                     properties=edge.get("properties", {}),
-                    valid_time_start=self._parse_time(edge.get("valid_from")),
+                    valid_time_start=self._parse_time(edge.get("valid_from")) or datetime.now(timezone.utc),
                     valid_time_end=self._parse_time(edge.get("valid_to")),
                     transaction_time_start=self._parse_time(edge.get("created_at")),
                     transaction_time_end=None,
@@ -462,7 +463,7 @@ class TemporalRelationshipQueries:
                     target_id=edge["target_id"],
                     relationship_type=edge["edge_type"],
                     properties=edge.get("properties", {}),
-                    valid_time_start=self._parse_time(edge.get("valid_from")),
+                    valid_time_start=self._parse_time(edge.get("valid_from")) or datetime.now(timezone.utc),
                     valid_time_end=self._parse_time(edge.get("valid_to")),
                     transaction_time_start=self._parse_time(edge.get("created_at")),
                     transaction_time_end=None,
@@ -524,14 +525,15 @@ class TemporalRelationshipQueries:
         return []
 
     def _parse_time(self, time_str: Optional[str]) -> Optional[datetime]:
-        """Parse time string to datetime."""
+        """Parse time string to datetime, ensuring timezone awareness."""
         if not time_str:
             return None
 
         try:
             if isinstance(time_str, datetime):
-                return time_str
-            return datetime.fromisoformat(time_str)
+                return time_str if time_str.tzinfo else time_str.replace(tzinfo=timezone.utc)
+            dt = datetime.fromisoformat(time_str.replace("Z", "+00:00"))
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
         except Exception:
             logger.warning(f"Could not parse time: {time_str}")
             return None

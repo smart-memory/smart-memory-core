@@ -241,6 +241,32 @@ class TestTemporalRelationshipQueries:
         assert len(result) == 1
         assert result[0].source_id == "s1"
 
+    def test_get_relationship_history_rejects_nodes_without_workspace(self):
+        """get_relationship_history() rejects target nodes with missing workspace_id (P1 regression)."""
+        now = datetime.now(timezone.utc)
+        edges = [
+            self._make_edge(
+                source="item1",
+                target="item2",
+                valid_from=(now - timedelta(days=5)).isoformat(),
+                created_at=(now - timedelta(days=5)).isoformat(),
+            ),
+        ]
+        scope_provider = MagicMock()
+        scope_provider.get_isolation_filters.return_value = {"workspace_id": "ws1"}
+
+        graph = MagicMock()
+        graph.get_edges_for_node.return_value = edges
+        # item2 has no workspace_id — must be rejected
+        graph.backend.get_node.return_value = {"item_id": "item2"}
+
+        from smartmemory.temporal.relationships import TemporalRelationshipQueries
+
+        trq = TemporalRelationshipQueries(graph, scope_provider=scope_provider)
+        result = trq.get_relationship_history("item1", "item2")
+
+        assert len(result) == 0
+
     def test_relationship_at_time_uses_get_all_edges(self):
         """Global at_time() calls get_all_edges() and filters by is_valid_at."""
         now = datetime.now(timezone.utc)
