@@ -125,39 +125,42 @@ class TemporalRelationshipQueries:
             )
         """
         try:
-            scope_clause = ""
-            params: Dict[str, Any] = {"source_id": source_id, "target_id": target_id, "rel_type": relationship_type}
-
+            # Workspace scope filter
+            allowed_workspace = None
             if self.scope_provider:
                 filters = self.scope_provider.get_isolation_filters()
-                if "workspace_id" in filters:
-                    scope_clause = " AND s.workspace_id = $workspace_id"
-                    params["workspace_id"] = filters["workspace_id"]
+                allowed_workspace = filters.get("workspace_id")
 
-            query = f"""
-            MATCH (s {{item_id: $source_id}})-[r]->(t {{item_id: $target_id}})
-            WHERE ($rel_type IS NULL OR type(r) = $rel_type){scope_clause}
-            RETURN r, type(r) as rel_type
-            ORDER BY r.transaction_time_start DESC
-            """
-
-            result = self.graph.execute_query(query, params)
+            edges = self.graph.get_edges_for_node(source_id)
 
             relationships = []
-            for row in result:
-                rel_data = row["r"]
+            for edge in edges:
+                # Filter for edges to the specific target
+                if edge["target_id"] != target_id:
+                    continue
+                # Relationship type filter
+                if relationship_type and edge["edge_type"] != relationship_type:
+                    continue
+                # Workspace isolation: check target node's workspace
+                if allowed_workspace:
+                    partner_node = self.graph.backend.get_node(target_id) if hasattr(self.graph, "backend") else None
+                    if partner_node and partner_node.get("workspace_id") and partner_node.get("workspace_id") != allowed_workspace:
+                        continue
+
                 rel = TemporalRelationship(
-                    source_id=source_id,
-                    target_id=target_id,
-                    relationship_type=row["rel_type"],
-                    properties=rel_data.get("properties", {}),
-                    valid_time_start=self._parse_time(rel_data.get("valid_time_start")),
-                    valid_time_end=self._parse_time(rel_data.get("valid_time_end")),
-                    transaction_time_start=self._parse_time(rel_data.get("transaction_time_start")),
-                    transaction_time_end=self._parse_time(rel_data.get("transaction_time_end")),
+                    source_id=edge["source_id"],
+                    target_id=edge["target_id"],
+                    relationship_type=edge["edge_type"],
+                    properties=edge.get("properties", {}),
+                    valid_time_start=self._parse_time(edge.get("valid_from")),
+                    valid_time_end=self._parse_time(edge.get("valid_to")),
+                    transaction_time_start=self._parse_time(edge.get("created_at")),
+                    transaction_time_end=None,
                 )
                 relationships.append(rel)
 
+            # Sort by transaction_time_start descending (matches original Cypher ORDER BY)
+            relationships.sort(key=lambda r: r.transaction_time_start or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
             return relationships
 
         except Exception as e:
@@ -364,43 +367,44 @@ class TemporalRelationshipQueries:
             List of relationships valid at that time
         """
         try:
-            scope_clause = ""
-            params: Dict[str, Any] = {}
+            # Workspace scope filter (replaces Cypher WHERE s.workspace_id = $workspace_id)
+            allowed_workspace = None
             if self.scope_provider:
                 filters = self.scope_provider.get_isolation_filters()
-                if "workspace_id" in filters:
-                    scope_clause = " AND s.workspace_id = $workspace_id"
-                    params["workspace_id"] = filters["workspace_id"]
+                allowed_workspace = filters.get("workspace_id")
 
-            rel_filter = ""
-            if relationship_type:
-                rel_filter = " AND type(r) = $rel_type"
-                params["rel_type"] = relationship_type
-
-            query = f"""
-            MATCH (s)-[r]->(t)
-            WHERE true{scope_clause}{rel_filter}
-            RETURN s.item_id as source, t.item_id as target, r, type(r) as rel_type
-            LIMIT {limit}
-            """
-
-            result = self.graph.execute_query(query, params)
+            edges = self.graph.get_all_edges()
+            _node_ws_cache: Dict[str, Any] = {}  # Cache to avoid N+1 node lookups
 
             relationships = []
-            for row in result:
-                rel_data = row["r"]
+            for edge in edges:
+                # Relationship type filter
+                if relationship_type and edge["edge_type"] != relationship_type:
+                    continue
+
+                # Workspace isolation: check source node's workspace
+                if allowed_workspace:
+                    src_id = edge["source_id"]
+                    if src_id not in _node_ws_cache:
+                        src_node = self.graph.backend.get_node(src_id) if hasattr(self.graph, "backend") else None
+                        _node_ws_cache[src_id] = src_node.get("workspace_id") if src_node else None
+                    if _node_ws_cache[src_id] and _node_ws_cache[src_id] != allowed_workspace:
+                        continue
+
                 rel = TemporalRelationship(
-                    source_id=row["source"],
-                    target_id=row["target"],
-                    relationship_type=row["rel_type"],
-                    properties=rel_data.get("properties", {}),
-                    valid_time_start=self._parse_time(rel_data.get("valid_time_start")),
-                    valid_time_end=self._parse_time(rel_data.get("valid_time_end")),
-                    transaction_time_start=self._parse_time(rel_data.get("transaction_time_start")),
-                    transaction_time_end=self._parse_time(rel_data.get("transaction_time_end")),
+                    source_id=edge["source_id"],
+                    target_id=edge["target_id"],
+                    relationship_type=edge["edge_type"],
+                    properties=edge.get("properties", {}),
+                    valid_time_start=self._parse_time(edge.get("valid_from")),
+                    valid_time_end=self._parse_time(edge.get("valid_to")),
+                    transaction_time_start=self._parse_time(edge.get("created_at")),
+                    transaction_time_end=None,
                 )
                 if rel.is_valid_at(time):
                     relationships.append(rel)
+                    if len(relationships) >= limit:
+                        break
 
             return relationships
 
@@ -413,60 +417,47 @@ class TemporalRelationshipQueries:
     def _query_relationships(
         self, item_id: str, relationship_type: Optional[str] = None, direction: str = "both"
     ) -> List[TemporalRelationship]:
-        """Query all relationships for an item."""
+        """Query all relationships for an item using backend-agnostic edge API."""
         try:
-            # Build scope filter clause
-            scope_clause = ""
-            scope_params: Dict[str, Any] = {}
+            edges = self.graph.get_edges_for_node(item_id)
+
+            # Workspace scope filter (replaces Cypher WHERE s/t.workspace_id = $workspace_id)
+            allowed_workspace = None
             if self.scope_provider:
                 filters = self.scope_provider.get_isolation_filters()
-                if "workspace_id" in filters:
-                    scope_clause = " AND s.workspace_id = $workspace_id"
-                    scope_params["workspace_id"] = filters["workspace_id"]
-
-            # For incoming direction, scope filter targets the `t` node (which has item_id)
-            if direction == "incoming" and scope_params:
-                scope_clause = " AND t.workspace_id = $workspace_id"
-
-            if direction == "outgoing":
-                query = f"""
-                MATCH (s {{item_id: $item_id}})-[r]->(t)
-                WHERE ($rel_type IS NULL OR type(r) = $rel_type){scope_clause}
-                RETURN s.item_id as source, t.item_id as target, r, type(r) as rel_type
-                """
-            elif direction == "incoming":
-                query = f"""
-                MATCH (s)-[r]->(t {{item_id: $item_id}})
-                WHERE ($rel_type IS NULL OR type(r) = $rel_type){scope_clause}
-                RETURN s.item_id as source, t.item_id as target, r, type(r) as rel_type
-                """
-            else:  # both
-                query = f"""
-                MATCH (s {{item_id: $item_id}})-[r]-(t)
-                WHERE ($rel_type IS NULL OR type(r) = $rel_type){scope_clause}
-                RETURN s.item_id as source, t.item_id as target, r, type(r) as rel_type
-                """
-
-            params = {
-                "item_id": item_id,
-                "rel_type": relationship_type,
-                **scope_params,
-            }
-
-            result = self.graph.execute_query(query, params)
+                allowed_workspace = filters.get("workspace_id")
 
             relationships = []
-            for row in result:
-                rel_data = row["r"]
+            _node_ws_cache: Dict[str, Any] = {}  # Cache node workspace lookups
+            for edge in edges:
+                # Direction filtering
+                if direction == "outgoing" and edge["source_id"] != item_id:
+                    continue
+                if direction == "incoming" and edge["target_id"] != item_id:
+                    continue
+
+                # Relationship type filter
+                if relationship_type and edge["edge_type"] != relationship_type:
+                    continue
+
+                # Workspace isolation: check partner node's workspace
+                if allowed_workspace:
+                    partner_id = edge["target_id"] if edge["source_id"] == item_id else edge["source_id"]
+                    if partner_id not in _node_ws_cache:
+                        partner_node = self.graph.backend.get_node(partner_id) if hasattr(self.graph, "backend") else None
+                        _node_ws_cache[partner_id] = partner_node.get("workspace_id") if partner_node else None
+                    if _node_ws_cache[partner_id] and _node_ws_cache[partner_id] != allowed_workspace:
+                        continue
+
                 rel = TemporalRelationship(
-                    source_id=row["source"],
-                    target_id=row["target"],
-                    relationship_type=row["rel_type"],
-                    properties=rel_data.get("properties", {}),
-                    valid_time_start=self._parse_time(rel_data.get("valid_time_start")),
-                    valid_time_end=self._parse_time(rel_data.get("valid_time_end")),
-                    transaction_time_start=self._parse_time(rel_data.get("transaction_time_start")),
-                    transaction_time_end=self._parse_time(rel_data.get("transaction_time_end")),
+                    source_id=edge["source_id"],
+                    target_id=edge["target_id"],
+                    relationship_type=edge["edge_type"],
+                    properties=edge.get("properties", {}),
+                    valid_time_start=self._parse_time(edge.get("valid_from")),
+                    valid_time_end=self._parse_time(edge.get("valid_to")),
+                    transaction_time_start=self._parse_time(edge.get("created_at")),
+                    transaction_time_end=None,
                 )
                 relationships.append(rel)
 

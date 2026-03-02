@@ -65,7 +65,7 @@ def load_config(config_path: Optional[Path] = None) -> dict:
     """Load config.json structural defaults. No interpolation."""
     config_path = config_path or _find_config_json()
     if config_path is None or not config_path.exists():
-        logger.warning("Config file not found: %s", config_path)
+        logger.debug("Config file not found: %s", config_path)
         return {}
     with open(config_path) as f:
         return json.load(f)

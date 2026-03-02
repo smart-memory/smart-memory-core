@@ -79,6 +79,24 @@ class SmartGraphBackend(ABC):
         ...
 
     @abstractmethod
+    def get_edges_for_node(self, node_id: str) -> List[Dict[str, Any]]:
+        """Get all edges involving a specific node.
+
+        Returns list of dicts with normalized keys:
+        {source_id, target_id, edge_type, valid_from, valid_to, created_at, properties}
+        """
+        ...
+
+    @abstractmethod
+    def get_all_edges(self) -> List[Dict[str, Any]]:
+        """Get all edges in the graph.
+
+        Returns list of dicts with normalized keys:
+        {source_id, target_id, edge_type, valid_from, valid_to, created_at, properties}
+        """
+        ...
+
+    @abstractmethod
     def serialize(self) -> Any:
         """Serialize the graph (for export, backup, or test snapshot)."""
         ...

@@ -500,6 +500,9 @@ class FalkorDBBackend(SmartGraphBackend):
                         "source_id": source_id,
                         "target_id": target_id,
                         "edge_type": edge_type,
+                        "valid_from": edge_props.get("valid_from"),
+                        "valid_to": edge_props.get("valid_to"),
+                        "created_at": edge_props.get("created_at"),
                         "properties": edge_props,
                     }
                     edges.append(edge_info)
@@ -796,26 +799,39 @@ class FalkorDBBackend(SmartGraphBackend):
         return nodes
 
     def get_edges_for_node(self, item_id: str) -> List[Dict[str, Any]]:
-        """Get all edges (relationships) involving a specific node.
+        """Get all edges involving a specific node.
 
-        Returns a list of edge dictionaries with 'source', 'target', and 'type' keys.
+        Returns list of dicts with normalized keys:
+        {source_id, target_id, edge_type, valid_from, valid_to, created_at, properties}
         """
         query = """
         MATCH (n {item_id: $item_id})-[r]-(m)
-        RETURN n.item_id as source, type(r) as rel_type, m.item_id as target, 
-               startNode(r).item_id as start_node, endNode(r).item_id as end_node
+        RETURN startNode(r).item_id as source_id, endNode(r).item_id as target_id,
+               type(r) as edge_type, r
         """
         result = self._query(query, {"item_id": item_id})
 
         edges = []
         for record in result:
-            if record and len(record) >= 5:
-                # Use the actual start/end node info to determine direction
-                start_node = record[3]
-                end_node = record[4]
-                rel_type = record[1]
+            if record and len(record) >= 4:
+                source_id = record[0] if record[0] else "unknown"
+                target_id = record[1] if record[1] else "unknown"
+                edge_type = record[2] if record[2] else "unknown"
+                edge_obj = record[3]
 
-                edges.append({"source": start_node, "target": end_node, "type": rel_type})
+                edge_props = {}
+                if hasattr(edge_obj, "properties"):
+                    edge_props = dict(edge_obj.properties)
+
+                edges.append({
+                    "source_id": source_id,
+                    "target_id": target_id,
+                    "edge_type": edge_type,
+                    "valid_from": edge_props.get("valid_from"),
+                    "valid_to": edge_props.get("valid_to"),
+                    "created_at": edge_props.get("created_at"),
+                    "properties": edge_props,
+                })
 
         return edges
 

@@ -187,29 +187,27 @@ class TemporalQueries:
                 logger.warning("Version tracker not available")
                 return []
 
-            # Query all memory items and get their version at the specified time
-            # This requires querying the graph for all items
+            # Query all memory items via backend-agnostic search_nodes
             try:
-                # Build scope filter for tenant isolation
-                scope_clause = ""
-                params = {}
+                # Workspace scope filter (replaces Cypher WHERE clause)
+                scope_workspace = None
                 if self.scope_provider:
                     scope_filters = self.scope_provider.get_isolation_filters()
-                    if "workspace_id" in scope_filters:
-                        scope_clause = " AND m.workspace_id = $workspace_id"
-                        params["workspace_id"] = scope_filters["workspace_id"]
+                    scope_workspace = scope_filters.get("workspace_id")
 
-                query = f"""
-                MATCH (m)
-                WHERE m.item_id IS NOT NULL{scope_clause}
-                RETURN DISTINCT m.item_id as item_id
-                """
-                result = self.memory.graph.execute_query(query, params)
+                all_nodes = self.memory.graph.search_nodes({})
 
                 memories_at_time = []
-                for row in result:
-                    # FalkorDB returns results as a list, not dict
-                    item_id = row[0]  # RETURN m.item_id as item_id
+                seen_ids: set = set()
+                for node in all_nodes:
+                    item_id = node.get("item_id")
+                    if not item_id or item_id in seen_ids:
+                        continue
+                    # Workspace isolation filter
+                    if scope_workspace and node.get("workspace_id") != scope_workspace:
+                        continue
+                    seen_ids.add(item_id)
+
                     logger.debug(f"Checking item_id: {item_id} at time {dt.isoformat()}")
                     version = self.version_tracker.get_version_at_time(item_id, dt)
                     if version:

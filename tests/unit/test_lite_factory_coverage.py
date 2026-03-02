@@ -9,6 +9,7 @@ Focuses on:
   llm_extract.enabled=False, and enricher_names=["basic_enricher"] via pipeline_profile
 - SmartMemory constructor (via create_lite_memory) stores NoOpCache in _cache without global mutation
 """
+
 import os
 import pytest
 from unittest.mock import MagicMock, patch
@@ -17,6 +18,7 @@ from unittest.mock import MagicMock, patch
 # Ensure the factory module can be imported (requires smartmemory_lite installed)
 try:
     from smartmemory.tools.factory import create_lite_memory, lite_context
+
     _LITE_AVAILABLE = True
 except ImportError:
     _LITE_AVAILABLE = False
@@ -25,6 +27,7 @@ pytestmark = pytest.mark.skipif(not _LITE_AVAILABLE, reason="smartmemory-lite no
 
 
 # ── lite_context ContextVar isolation contract (CORE-DI-1) ───────────────────
+
 
 def test_lite_context_vector_backend_ctx_cleared_on_exit(tmp_path):
     """lite_context() does NOT call set_default_backend(None); _vector_backend_ctx is None outside."""
@@ -35,9 +38,7 @@ def test_lite_context_vector_backend_ctx_cleared_on_exit(tmp_path):
             assert memory is not None
         mock_set.assert_not_called()
 
-    assert _vector_backend_ctx.get() is None, (
-        "_vector_backend_ctx must not leak outside lite_context"
-    )
+    assert _vector_backend_ctx.get() is None, "_vector_backend_ctx must not leak outside lite_context"
 
 
 def test_lite_context_vector_backend_ctx_cleared_on_exception(tmp_path):
@@ -48,16 +49,16 @@ def test_lite_context_vector_backend_ctx_cleared_on_exception(tmp_path):
         with lite_context(str(tmp_path)):
             raise RuntimeError("intentional test error")
 
-    assert _vector_backend_ctx.get() is None, (
-        "_vector_backend_ctx must not leak even on exception"
-    )
+    assert _vector_backend_ctx.get() is None, "_vector_backend_ctx must not leak even on exception"
 
 
 # ── create_lite_memory creates data directory ─────────────────────────────────
 
+
 def test_create_lite_memory_creates_data_dir(tmp_path):
     """create_lite_memory() creates the data directory if it doesn't exist."""
     from smartmemory.stores.vector.vector_store import VectorStore
+
     nested_dir = tmp_path / "nested" / "subdir"
     assert not nested_dir.exists()
     try:
@@ -70,6 +71,7 @@ def test_create_lite_memory_creates_data_dir(tmp_path):
 def test_create_lite_memory_creates_db_file(tmp_path):
     """create_lite_memory() creates memory.db inside data_dir."""
     from smartmemory.stores.vector.vector_store import VectorStore
+
     try:
         memory = create_lite_memory(str(tmp_path))
         db_path = tmp_path / "memory.db"
@@ -80,15 +82,15 @@ def test_create_lite_memory_creates_db_file(tmp_path):
 
 # ── _apply_lite_pipeline_profile correctness ──────────────────────────────────
 
+
 def test_apply_lite_pipeline_profile_disables_coreference(tmp_path):
     """The patched _build_pipeline_config sets coreference.enabled=False."""
     from smartmemory.stores.vector.vector_store import VectorStore
+
     try:
         memory = create_lite_memory(str(tmp_path))
         config = memory._build_pipeline_config()
-        assert config.coreference.enabled is False, (
-            "coreference must be disabled in lite pipeline profile"
-        )
+        assert config.coreference.enabled is False, "coreference must be disabled in lite pipeline profile"
     finally:
         VectorStore.set_default_backend(None)
 
@@ -96,12 +98,11 @@ def test_apply_lite_pipeline_profile_disables_coreference(tmp_path):
 def test_apply_lite_pipeline_profile_disables_llm_extract(tmp_path):
     """The patched _build_pipeline_config sets extraction.llm_extract.enabled=False."""
     from smartmemory.stores.vector.vector_store import VectorStore
+
     try:
         memory = create_lite_memory(str(tmp_path))
         config = memory._build_pipeline_config()
-        assert config.extraction.llm_extract.enabled is False, (
-            "llm_extract must be disabled in lite pipeline profile"
-        )
+        assert config.extraction.llm_extract.enabled is False, "llm_extract must be disabled in lite pipeline profile"
     finally:
         VectorStore.set_default_backend(None)
 
@@ -109,35 +110,45 @@ def test_apply_lite_pipeline_profile_disables_llm_extract(tmp_path):
 def test_apply_lite_pipeline_profile_limits_enrichers(tmp_path):
     """The patched _build_pipeline_config limits enrichers to local-only enrichers (no HTTP)."""
     from smartmemory.stores.vector.vector_store import VectorStore
+
     try:
         memory = create_lite_memory(str(tmp_path))
         config = memory._build_pipeline_config()
         # Lite mode runs all local enrichers; HTTP-dependent ones (wikipedia, link_expansion) are excluded.
         assert config.enrich.enricher_names == [
-            "basic_enricher", "sentiment_enricher", "temporal_enricher", "topic_enricher"
+            "basic_enricher",
+            "sentiment_enricher",
+            "temporal_enricher",
+            "topic_enricher",
         ], "lite mode must exclude HTTP enrichers (wikipedia, link_expansion) but keep local ones"
     finally:
         VectorStore.set_default_backend(None)
 
 
 def test_apply_lite_pipeline_profile_disables_wikidata(tmp_path):
-    """The patched _build_pipeline_config disables wikidata grounding."""
+    """The patched _build_pipeline_config keeps wikidata enabled but disables SPARQL HTTP."""
     from smartmemory.stores.vector.vector_store import VectorStore
+
     try:
         memory = create_lite_memory(str(tmp_path))
         config = memory._build_pipeline_config()
-        assert config.enrich.wikidata.enabled is False, (
-            "wikidata grounding must be disabled in lite mode"
+        # DEGRADE-1c: wikidata.enabled stays True (SQLite alias lookup still works),
+        # but sparql_enabled is False (no HTTP calls to Wikidata SPARQL endpoint).
+        assert config.enrich.wikidata.enabled is True, (
+            "wikidata must stay enabled in lite mode (SQLite alias lookup works without HTTP)"
         )
+        assert config.enrich.wikidata.sparql_enabled is False, "SPARQL must be disabled in lite mode (no HTTP calls)"
     finally:
         VectorStore.set_default_backend(None)
 
 
 # ── cache override set by create_lite_memory ─────────────────────────────────
 
+
 def test_create_lite_memory_uses_noop_cache(tmp_path):
     """create_lite_memory() wires a NoOpCache via SmartMemory(cache=...) constructor."""
     from smartmemory.utils.cache import NoOpCache
+
     memory = create_lite_memory(str(tmp_path))
     # Constructor stores NoOpCache in _cache without calling set_cache_override (CORE-DI-1)
     assert isinstance(memory._cache, NoOpCache), (
@@ -147,6 +158,7 @@ def test_create_lite_memory_uses_noop_cache(tmp_path):
 
 
 # ── lite_context observability restore (P2) ───────────────────────────────────
+
 
 def test_lite_context_restores_observability_env_on_exit(tmp_path):
     """lite_context() restores SMARTMEMORY_OBSERVABILITY to its pre-context value on exit."""
@@ -191,6 +203,7 @@ def test_lite_context_removes_observability_env_if_unset_before(tmp_path):
 
 # ── lite_context SQLite backend close (P3) ────────────────────────────────────
 
+
 def test_lite_context_closes_sqlite_backend_on_exit(tmp_path):
     """lite_context() calls close() on the SQLite backend in the finally block."""
 
@@ -231,6 +244,7 @@ def test_lite_context_closes_sqlite_backend_on_exception(tmp_path):
 
 
 # ── lite_context cleanup on construction failure (P2) ────────────────────────
+
 
 def test_lite_context_no_ctx_leak_if_create_lite_memory_raises(tmp_path):
     """lite_context() leaves no ContextVar values set when create_lite_memory() raises (memory is None)."""

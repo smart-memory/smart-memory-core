@@ -196,6 +196,7 @@ class WikidataConfig(MemoryBaseModel):
     """Wikipedia/Wikidata grounding configuration."""
 
     enabled: bool = True
+    sparql_enabled: bool = True  # When False, only SQLite alias lookup; no HTTP
     confidence_threshold: float = 0.7
     max_grounding_depth: int = 3
 
@@ -299,7 +300,8 @@ class PipelineConfig(MemoryBaseModel):
         - simplify: clause splitting, passive→active (pure spaCy)
         - entity_ruler: pattern-matched NER at ~4ms (no network)
         - basic_enricher, sentiment_enricher, temporal_enricher, topic_enricher
-        - store, link, evolve stages
+        - store, link stages
+        - evolution/clustering: disabled (HebbianCoRetrievalEvolver uses raw Cypher)
         """
         return cls(
             workspace_id=workspace_id,
@@ -309,8 +311,9 @@ class PipelineConfig(MemoryBaseModel):
             ),
             enrich=EnrichConfig(
                 enricher_names=["basic_enricher", "sentiment_enricher", "temporal_enricher", "topic_enricher"],
-                wikidata=WikidataConfig(enabled=False),
+                wikidata=WikidataConfig(sparql_enabled=False),
             ),
+            evolve=EvolveConfig(run_evolution=False, run_clustering=False),
         )
 
     @classmethod

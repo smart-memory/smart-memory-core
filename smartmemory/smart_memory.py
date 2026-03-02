@@ -45,14 +45,18 @@ _PRODUCED_ALLOWED_TARGETS: frozenset = frozenset({"decision", "semantic", "episo
 def _apply_pipeline_profile(config: Any, profile: Any) -> None:
     """Copy lite-mode flags from a PipelineConfig profile onto a freshly-built config.
 
-    Copies exactly the four fields that SmartMemory Lite needs to override:
+    Copies the 7 fields that SmartMemory Lite needs to override:
     coreference.enabled, extraction.llm_extract.enabled, enrich.enricher_names,
-    enrich.wikidata.enabled.
+    enrich.wikidata.enabled, enrich.wikidata.sparql_enabled,
+    evolve.run_evolution, evolve.run_clustering.
     """
     config.coreference.enabled = profile.coreference.enabled
     config.extraction.llm_extract.enabled = profile.extraction.llm_extract.enabled
     config.enrich.enricher_names = profile.enrich.enricher_names
     config.enrich.wikidata.enabled = profile.enrich.wikidata.enabled
+    config.enrich.wikidata.sparql_enabled = profile.enrich.wikidata.sparql_enabled
+    config.evolve.run_evolution = profile.evolve.run_evolution
+    config.evolve.run_clustering = profile.evolve.run_clustering
 
 
 class SmartMemory(MemoryBase):

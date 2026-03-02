@@ -135,3 +135,126 @@ class TestGroundStage:
 
         assert "provenance_candidates" not in result._context
         assert result._context["other"] == "data"
+
+    # -------------------------------------------------------------------
+    # DEGRADE-1c: sparql_enabled tests
+    # -------------------------------------------------------------------
+
+    def _make_stage_with_store(self, store=None):
+        """Build a GroundStage with a mocked SmartMemory and optional store."""
+        memory = MagicMock()
+        memory._graph = MagicMock()
+        memory._grounding = MagicMock()
+        if store is None:
+            store = MagicMock()  # non-None store
+        return GroundStage(memory, public_knowledge_store=store), memory
+
+    def test_ground_sparql_disabled_with_store_uses_sqlite_only(self):
+        """sparql_enabled=False + store present → PublicKnowledgeGrounder with sparql_client=None."""
+        mock_store = MagicMock()
+        stage, memory = self._make_stage_with_store(store=mock_store)
+
+        state = PipelineState(
+            text="Python is great.",
+            entities=[{"name": "Python"}],
+            entity_ids={"Python": "e1"},
+            item_id="item_1",
+        )
+        config = PipelineConfig.default()
+        config.enrich = EnrichConfig(wikidata=WikidataConfig(sparql_enabled=False))
+
+        mock_grounder_instance = MagicMock()
+        mock_grounder_instance.ground.return_value = []
+
+        with patch(
+            "smartmemory.pipeline.stages.ground.PublicKnowledgeGrounder",
+            return_value=mock_grounder_instance,
+            create=True,
+        ) as mock_pkg_cls:
+            # Patch the import path used by GroundStage
+            with patch.dict(
+                "sys.modules",
+                {
+                    "smartmemory.grounding.public_knowledge_grounder": MagicMock(PublicKnowledgeGrounder=mock_pkg_cls),
+                },
+            ):
+                stage.execute(state, config)
+
+            # PublicKnowledgeGrounder was called with sparql_client=None
+            mock_pkg_cls.assert_called_once_with(mock_store, sparql_client=None)
+
+    def test_ground_sparql_disabled_no_store_skips_grounding(self):
+        """sparql_enabled=False + no store → returns state unchanged (zero HTTP)."""
+        stage, memory = self._make_stage()  # no store
+        state = PipelineState(
+            text="Python is great.",
+            entities=[{"name": "Python"}],
+            item_id="item_1",
+        )
+        config = PipelineConfig.default()
+        config.enrich = EnrichConfig(wikidata=WikidataConfig(sparql_enabled=False))
+
+        result = stage.execute(state, config)
+
+        assert result is state
+        assert "provenance_candidates" not in result._context
+
+    def test_ground_sparql_enabled_no_store_falls_back_to_wikipedia(self):
+        """sparql_enabled=True (default) + no store → WikipediaGrounder used."""
+        stage, memory = self._make_stage()  # no store
+
+        mock_grounder_instance = MagicMock()
+        mock_grounder_instance.ground.return_value = [{"entity": "Test"}]
+        mock_grounder_cls = MagicMock(return_value=mock_grounder_instance)
+
+        state = PipelineState(
+            text="Python is great.",
+            entities=[{"name": "Python"}],
+            entity_ids={"Python": "e1"},
+            item_id="item_1",
+        )
+        config = PipelineConfig.default()
+        # sparql_enabled defaults to True
+
+        with self._patch_ground_imports(grounder_mock=mock_grounder_cls):
+            stage.execute(state, config)
+
+        mock_grounder_cls.assert_called_once()  # WikipediaGrounder was instantiated
+
+    def test_ground_sparql_enabled_with_store_creates_sparql_client(self):
+        """sparql_enabled=True + store present → PublicKnowledgeGrounder with WDQSClient."""
+        mock_store = MagicMock()
+        stage, memory = self._make_stage_with_store(store=mock_store)
+
+        state = PipelineState(
+            text="Python is great.",
+            entities=[{"name": "Python"}],
+            entity_ids={"Python": "e1"},
+            item_id="item_1",
+        )
+        config = PipelineConfig.default()
+        # sparql_enabled defaults to True
+
+        mock_grounder_instance = MagicMock()
+        mock_grounder_instance.ground.return_value = []
+        mock_wdqs = MagicMock()
+
+        with patch(
+            "smartmemory.pipeline.stages.ground.PublicKnowledgeGrounder",
+            return_value=mock_grounder_instance,
+            create=True,
+        ) as mock_pkg_cls:
+            with patch.dict(
+                "sys.modules",
+                {
+                    "smartmemory.grounding.public_knowledge_grounder": MagicMock(PublicKnowledgeGrounder=mock_pkg_cls),
+                    "smartmemory.grounding.sparql_client": MagicMock(WDQSClient=MagicMock(return_value=mock_wdqs)),
+                },
+            ):
+                stage.execute(state, config)
+
+            # PublicKnowledgeGrounder was called with a sparql_client (not None)
+            mock_pkg_cls.assert_called_once()
+            call_kwargs = mock_pkg_cls.call_args
+            assert call_kwargs[0][0] is mock_store
+            assert call_kwargs[1]["sparql_client"] is not None

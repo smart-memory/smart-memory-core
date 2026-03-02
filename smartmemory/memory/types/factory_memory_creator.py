@@ -35,6 +35,9 @@ def create_memory_system(config: Optional[Any] = None) -> Dict[str, MemoryBase]:
         try:
             config = MemoryConfig()
             logger.info("Loaded default memory configuration")
+        except (FileNotFoundError, OSError) as e:
+            logger.debug(f"Could not load default config: {e}")
+            config = None
         except Exception as e:
             logger.warning(f"Could not load default config: {e}")
             config = None
@@ -64,6 +67,9 @@ def create_smart_memory(config: Optional[Any] = None) -> MemoryBase:
     if config is None:
         try:
             config = MemoryConfig()
+        except (FileNotFoundError, OSError) as e:
+            logger.debug(f"Could not load config for SmartMemory: {e}")
+            config = None
         except Exception as e:
             logger.warning(f"Could not load config for SmartMemory: {e}")
             config = None
@@ -118,6 +124,9 @@ def create_memory_by_type(memory_type: str, config: Optional[Any] = None) -> Mem
     if config is None:
         try:
             config = MemoryConfig()
+        except (FileNotFoundError, OSError) as e:
+            logger.debug(f"Could not load config: {e}")
+            config = None
         except Exception as e:
             logger.warning(f"Could not load config: {e}")
             config = None
@@ -155,6 +164,9 @@ def create_store_system(config: Optional[Any] = None) -> Dict[str, Any]:
     if config is None:
         try:
             config = MemoryConfig()
+        except (FileNotFoundError, OSError) as e:
+            logger.debug(f"Could not load config: {e}")
+            config = None
         except Exception as e:
             logger.warning(f"Could not load config: {e}")
             config = None

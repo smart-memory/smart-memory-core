@@ -79,17 +79,27 @@ class GroundStage:
                     else:
                         entity.item_id = entity_ids[ename]
 
-            # Select grounder: PublicKnowledgeGrounder if store available, else WikipediaGrounder
+            # Select grounder based on sparql_enabled and store availability
+            sparql_enabled = config.enrich.wikidata.sparql_enabled
+
             if self._public_knowledge_store:
                 from smartmemory.grounding.public_knowledge_grounder import PublicKnowledgeGrounder
-                from smartmemory.grounding.sparql_client import WDQSClient
 
-                sparql_client = WDQSClient()
+                sparql_client = None
+                if sparql_enabled:
+                    from smartmemory.grounding.sparql_client import WDQSClient
+
+                    sparql_client = WDQSClient()
                 grounder = PublicKnowledgeGrounder(self._public_knowledge_store, sparql_client=sparql_client)
-            else:
+            elif sparql_enabled:
+                # Fallback to Wikipedia only when SPARQL/HTTP is allowed
                 from smartmemory.plugins.grounders import WikipediaGrounder
 
                 grounder = WikipediaGrounder()
+            else:
+                # sparql_enabled=False and no store — skip grounding entirely (zero HTTP)
+                logger.debug("Grounding skipped: no public_knowledge_store and sparql_enabled=False")
+                return state
 
             # Count entities before grounding to detect graph-gated skips
             entity_count = len(

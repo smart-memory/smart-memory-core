@@ -74,7 +74,7 @@ class EnvironmentHandler:
         if os.path.exists(parent_path):
             return os.path.abspath(parent_path)
 
-        logger.warning(
+        logger.debug(
             f"Could not find config file at {primary}, {current_path}, or {parent_path}. Using empty config."
         )
         return os.path.abspath(primary)

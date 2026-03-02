@@ -9,12 +9,6 @@ def _default_data_dir() -> Path:
     return Path.home() / ".smartmemory"
 
 
-class _NoOpTemporalQueries:
-    """No-op temporal queries for lite mode (SQLiteBackend doesn't support Cypher)."""
-
-    pass
-
-
 def _ensure_spacy_model(model: str = "en_core_web_sm") -> None:
     """Auto-download spaCy model on first use if not already installed.
 
@@ -93,7 +87,6 @@ def create_lite_memory(
         pipeline_profile=pipeline_profile,
         entity_ruler_patterns=entity_ruler_patterns,
         event_sink=event_sink,  # DIST-LITE-3
-        temporal=_NoOpTemporalQueries(),
     )
 
 

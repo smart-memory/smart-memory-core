@@ -2,6 +2,7 @@
 
 All tests use heavy mocking to avoid requiring live infrastructure.
 """
+
 import os
 from contextlib import ExitStack
 from unittest.mock import MagicMock, patch
@@ -10,6 +11,7 @@ from unittest.mock import MagicMock, patch
 # ---------------------------------------------------------------------------
 # Shared SmartMemory mock factory
 # ---------------------------------------------------------------------------
+
 
 def _make_mock_graph():
     """Return a minimal SmartGraph mock so SmartMemory.__init__ can run."""
@@ -38,6 +40,7 @@ def _make_sm(stack, **kwargs):
     for target in _CONSTRUCTOR_PATCHES:
         stack.enter_context(patch(target))
     from smartmemory.smart_memory import SmartMemory
+
     return SmartMemory(graph=_make_mock_graph(), **kwargs)
 
 
@@ -56,11 +59,10 @@ def test_observability_false_no_env_mutation():
 
         # Inside _di_context(), _observability_ctx is False; outside, it resets to None
         from smartmemory.observability.tracing import _observability_ctx
+
         with mem._di_context():
             assert _observability_ctx.get() is False
-        assert _observability_ctx.get() is None, (
-            "_observability_ctx must reset to None after _di_context exits"
-        )
+        assert _observability_ctx.get() is None, "_observability_ctx must reset to None after _di_context exits"
     finally:
         if old is None:
             os.environ.pop("SMARTMEMORY_OBSERVABILITY", None)
@@ -78,9 +80,7 @@ def test_observability_ctx_resets_on_exit():
     # Normal exit
     with mem._di_context():
         assert _observability_ctx.get() is False
-    assert _observability_ctx.get() is None, (
-        "_observability_ctx must reset to None after _di_context exits cleanly"
-    )
+    assert _observability_ctx.get() is None, "_observability_ctx must reset to None after _di_context exits cleanly"
 
     # Exception path — ContextVar must still reset
     try:
@@ -124,6 +124,7 @@ def test_observability_ctx_isolation_across_instances():
 # vector_backend
 # ---------------------------------------------------------------------------
 
+
 def test_vector_backend_stored_not_global():
     """SmartMemory(vector_backend=x) stores x in _vector_backend; set_default_backend is NOT called."""
     from smartmemory.stores.vector.vector_store import _vector_backend_ctx
@@ -146,6 +147,7 @@ def test_vector_backend_stored_not_global():
 # ---------------------------------------------------------------------------
 # cache
 # ---------------------------------------------------------------------------
+
 
 def test_cache_stored_not_global():
     """SmartMemory(cache=x) stores x in _cache; set_cache_override is NOT called."""
@@ -170,8 +172,9 @@ def test_cache_stored_not_global():
 # pipeline_profile applied in _build_pipeline_config
 # ---------------------------------------------------------------------------
 
+
 def test_pipeline_profile_applied_in_build():
-    """SmartMemory(pipeline_profile=PipelineConfig.lite()) applies all 4 lite flags."""
+    """SmartMemory(pipeline_profile=PipelineConfig.lite()) applies all 7 lite flags."""
     from smartmemory.pipeline.config import PipelineConfig
 
     profile = PipelineConfig.lite()
@@ -181,14 +184,53 @@ def test_pipeline_profile_applied_in_build():
         assert config.coreference.enabled is False
         assert config.extraction.llm_extract.enabled is False
         assert config.enrich.enricher_names == [
-            "basic_enricher", "sentiment_enricher", "temporal_enricher", "topic_enricher"
+            "basic_enricher",
+            "sentiment_enricher",
+            "temporal_enricher",
+            "topic_enricher",
         ]
-        assert config.enrich.wikidata.enabled is False
+        # 1c: wikidata enabled but sparql disabled
+        assert config.enrich.wikidata.enabled is True
+        assert config.enrich.wikidata.sparql_enabled is False
+        # 1e: evolution disabled
+        assert config.evolve.run_evolution is False
+        assert config.evolve.run_clustering is False
+
+
+def test_profile_propagates_sparql_enabled():
+    """_apply_pipeline_profile propagates sparql_enabled=False from lite profile."""
+    from smartmemory.pipeline.config import PipelineConfig
+
+    with ExitStack() as stack:
+        mem = _make_sm(stack, pipeline_profile=PipelineConfig.lite())
+        config = mem._build_pipeline_config()
+        assert config.enrich.wikidata.sparql_enabled is False
+
+
+def test_profile_propagates_evolution_disabled():
+    """_apply_pipeline_profile propagates run_evolution=False from lite profile."""
+    from smartmemory.pipeline.config import PipelineConfig
+
+    with ExitStack() as stack:
+        mem = _make_sm(stack, pipeline_profile=PipelineConfig.lite())
+        config = mem._build_pipeline_config()
+        assert config.evolve.run_evolution is False
+
+
+def test_profile_propagates_clustering_disabled():
+    """_apply_pipeline_profile propagates run_clustering=False from lite profile."""
+    from smartmemory.pipeline.config import PipelineConfig
+
+    with ExitStack() as stack:
+        mem = _make_sm(stack, pipeline_profile=PipelineConfig.lite())
+        config = mem._build_pipeline_config()
+        assert config.evolve.run_clustering is False
 
 
 # ---------------------------------------------------------------------------
 # defaults unchanged
 # ---------------------------------------------------------------------------
+
 
 def test_defaults_unchanged():
     """SmartMemory() without new params leaves all 4 new attrs at None/True."""
