@@ -12,9 +12,9 @@ SmartMemory is a comprehensive AI memory system that provides persistent, multi-
 ## 🚀 Quick Install
 
 ```bash
-pip install smartmemory-core             # Core library (requires Docker — FalkorDB + Redis)
 pip install smartmemory-core[lite]       # Zero-infra local mode (SQLite + usearch, no Docker)
 pip install smartmemory-core[lite,watch] # + vault watcher for auto-ingesting markdown files
+pip install smartmemory-core[server]     # Server mode (FalkorDB + Redis, requires Docker)
 ```
 
 > **End users:** Install `pip install smartmemory` for the distribution package with MCP server, viewer, and CLI. This package (`smartmemory-core`) is the core library for developers building on top of SmartMemory.
@@ -34,9 +34,9 @@ with lite_context() as memory:
     item_id = memory.ingest("Alice leads Project Atlas")
     results = memory.search("who leads Atlas")
 
-# Offline / no-API-key mode: opt into restricted pipeline explicitly
+# Force no LLM calls (even if OPENAI_API_KEY is set)
 from smartmemory.pipeline.config import PipelineConfig
-memory = create_lite_memory(pipeline_profile=PipelineConfig.lite())
+memory = create_lite_memory(pipeline_profile=PipelineConfig.lite(llm_enabled=False))
 ```
 
 Or via CLI:
@@ -71,10 +71,10 @@ SmartMemory implements a multi-layered memory architecture with the following co
 - **Observation Memory**: Synthesized entity summaries from scattered facts
 - **Decision Memory**: First-class decisions with confidence tracking, provenance chains, and lifecycle management
 
-### Storage Backend
+### Storage Backends
 
-- **FalkorDB**: Graph database for relationships and vector storage
-- **Redis**: Caching layer for performance optimization
+- **Lite mode**: SQLite graph + usearch vectors — no Docker, no external services
+- **Server mode**: FalkorDB (graph + vectors) + Redis (caching) — full-featured, requires Docker
 
 ### Processing Pipeline
 
@@ -91,14 +91,14 @@ The memory ingestion flow processes data through several stages:
 ## Key Features
 
 - **Multi-Type Memory System**: Working, Semantic, Episodic, and Procedural memory types
-- **Graph-Based Storage**: FalkorDB backend for complex relationship modeling
-- **Vector Similarity**: FalkorDB vector storage for semantic search
+- **Zero-Infra Lite Mode**: SQLite + usearch backend — `pip install smartmemory-core[lite]` and go
+- **Server Mode**: FalkorDB graph + Redis caching for production-scale deployments
+- **Graph-Based Storage**: Complex relationship modeling with vector similarity search
 - **Extensible Pipeline**: Modular processing stages for ingestion and evolution
 - **Plugin Architecture**: 30+ built-in plugins with external plugin support
 - **Plugin Security**: Sandboxing, permissions, and resource limits for safe plugin execution
 - **Flexible Scoping**: Optional `ScopeProvider` for multi-tenancy or unrestricted OSS usage
 - **Zero Configuration**: Works out-of-the-box for single-user applications
-- **Caching Layer**: Redis-based performance optimization
 - **Configuration Management**: Flexible configuration with environment variable support
 
 ## 📦 Installation
@@ -106,16 +106,15 @@ The memory ingestion flow processes data through several stages:
 ### From PyPI (Recommended)
 
 ```bash
-# Core package (zero infra — SQLite + usearch, no Docker required)
-pip install smartmemory-core
+# Lite mode (zero infra — SQLite + usearch, no Docker required)
+pip install smartmemory-core[lite]
 
-# With FalkorDB + Redis server backends
-pip install smartmemory-core[server]        # FalkorDB graph DB + Redis cache
+# Server mode (FalkorDB + Redis, requires Docker or manual install)
+pip install smartmemory-core[server]
 
-# With optional features
+# Optional features
 pip install smartmemory-core[cli]           # CLI tools
-pip install smartmemory-core[rebel]         # REBEL relation extractor
-pip install smartmemory-core[relik]         # ReliK relation extractor
+pip install smartmemory-core[watch]         # Vault watcher for Markdown files
 pip install smartmemory-core[wikipedia]     # Wikipedia enrichment
 pip install smartmemory-core[all]           # All optional features
 ```
@@ -131,66 +130,35 @@ pip install -e ".[dev]"
 python -m spacy download en_core_web_sm
 ```
 
-### Required Services
+### Infrastructure
 
-SmartMemory requires **FalkorDB** (graph + vector storage) and **Redis** (caching) to be running.
+**Lite mode** (`smartmemory-core[lite]`): No external services needed. SQLite and usearch are bundled.
 
-#### Option 1: Docker Compose (Recommended)
-
-Use the provided `docker-compose.yml` in the repository root:
+**Server mode** (`smartmemory-core[server]`): Requires FalkorDB and Redis:
 
 ```bash
+# Docker Compose (recommended) — from repository root
 docker-compose up -d
-```
+# Starts FalkorDB on port 9010, Redis on port 9012
 
-This starts:
-- **FalkorDB** on port `9010` - graph database with vector storage
-- **Redis** on port `9012` - caching layer
-
-#### Option 2: Manual Installation
-
-**FalkorDB:**
-```bash
-# macOS
-brew tap falkordb/tap
-brew install falkordb
-falkordb-server --port 9010
-
-# Or run via Docker directly
+# Or manually
 docker run -d -p 9010:6379 falkordb/falkordb:latest
-```
-
-**Redis:**
-```bash
-# macOS
-brew install redis
-redis-server --port 9012
-
-# Or run via Docker directly
 docker run -d -p 9012:6379 redis:7-alpine
+
+# Verify
+redis-cli -p 9010 PING   # FalkorDB
+redis-cli -p 9012 PING   # Redis
 ```
-
-#### Verify Services
-
-```bash
-# Test FalkorDB connection
-redis-cli -p 9010 PING
-
-# Test Redis connection
-redis-cli -p 9012 PING
-```
-
-Both should return `PONG`.
 
 ## 🎯 Quick Start
 
-### Basic Usage (OSS - Single User)
+### Basic Usage (Lite Mode)
 
 ```python
-from smartmemory import SmartMemory, MemoryItem
+from smartmemory.tools.factory import create_lite_memory
 
-# Initialize SmartMemory (no configuration needed for OSS usage)
-memory = SmartMemory()
+# No Docker, no config — just works
+memory = create_lite_memory()
 
 # Ingest a memory (full pipeline: extract → store → link → enrich → evolve)
 item_id = memory.ingest("User prefers Python for data analysis tasks")
@@ -320,19 +288,24 @@ SmartMemory uses environment variables for configuration:
 ### Environment Variables
 
 Key environment variables:
+- `OPENAI_API_KEY`: OpenAI API key for embeddings and LLM extraction (auto-detected in lite mode)
+- `GROQ_API_KEY`: Groq API key — alternative to OpenAI for LLM extraction (auto-detected in lite mode)
+
+**Server mode only:**
 - `FALKORDB_HOST`: FalkorDB server host (default: localhost)
 - `FALKORDB_PORT`: FalkorDB server port (default: 9010)
 - `REDIS_HOST`: Redis server host (default: localhost)
 - `REDIS_PORT`: Redis server port (default: 9012)
-- `OPENAI_API_KEY`: OpenAI API key for embeddings
 
 ```bash
-# Example .env file
+# Lite mode — only API key needed (optional, enables LLM extraction)
+export OPENAI_API_KEY=your-api-key-here
+
+# Server mode — also needs database hosts
 export FALKORDB_HOST=localhost
 export FALKORDB_PORT=9010
 export REDIS_HOST=localhost
 export REDIS_PORT=9012
-export OPENAI_API_KEY=your-api-key-here
 ```
 
 ## Memory Evolution
@@ -360,8 +333,8 @@ SmartMemory features a **unified, extensible plugin architecture** that allows y
 
 SmartMemory includes **30+ built-in plugins** across 4 types:
 
-- **9 Extractors**: Extract entities and relationships
-  - `LLMExtractor`, `LLMSingleExtractor`, `ConversationAwareLLMExtractor`, `SpacyExtractor`, `RelikExtractor`, `GLiNER2Extractor`, `HybridExtractor`, `DecisionExtractor`, `ReasoningExtractor`
+- **7 Extractors**: Extract entities and relationships
+  - `LLMExtractor`, `LLMSingleExtractor`, `ConversationAwareLLMExtractor`, `SpacyExtractor`, `HybridExtractor`, `DecisionExtractor`, `ReasoningExtractor`
 - **7 Enrichers**: Add context and metadata to memories
   - `BasicEnricher`, `SentimentEnricher`, `TemporalEnricher`, `TopicEnricher`, `SkillsToolsEnricher`, `WikipediaEnricher`, `LinkExpansionEnricher`
 - **1 Grounder**: Connect to external knowledge
@@ -547,38 +520,37 @@ class MemoryItem:
 
 SmartMemory requires the following key dependencies:
 
-- `falkordb`: Graph database and vector storage backend
 - `spacy`: Natural language processing and entity extraction
 - `dspy`: LLM programming framework for extraction and classification
 - `litellm`: LLM integration layer
 - `openai`: OpenAI API client (for embeddings)
-- `redis`: Caching layer
 - `scikit-learn`: Machine learning utilities
 - `pydantic`: Data validation
 - `python-dateutil`: Date/time handling
 - `vaderSentiment`: Sentiment analysis
 - `jinja2`: Template rendering
 
-**Note:** SmartMemory uses FalkorDB for both graph and vector storage. While the codebase contains legacy ChromaDB integration code, FalkorDB is the primary and recommended backend.
+**Lite mode** adds: `usearch` (vector search), uses Python's built-in `sqlite3`.
+
+**Server mode** adds: `falkordb` (graph + vector storage), `redis` (caching).
 
 ### Optional Dependencies
 
 Install additional features as needed:
 
 ```bash
-# Specific extractors
-pip install smartmemory-core[rebel]     # REBEL relation extraction
-pip install smartmemory-core[relik]     # ReliK relation extraction
+# Modes
+pip install smartmemory-core[lite]      # Zero-infra local mode (SQLite + usearch, no Docker)
+pip install smartmemory-core[server]    # Server mode (FalkorDB + Redis)
+
+# Tools
+pip install smartmemory-core[cli]       # Command-line interface (add, search, rebuild)
+pip install smartmemory-core[watch]     # Vault watcher for auto-ingesting Markdown files
 
 # Integrations
 pip install smartmemory-core[slack]     # Slack integration
 pip install smartmemory-core[aws]       # AWS integration
 pip install smartmemory-core[wikipedia] # Wikipedia enrichment
-
-# Tools
-pip install smartmemory-core[cli]       # Command-line interface (add, search, rebuild)
-pip install smartmemory-core[lite]      # Zero-infra local mode (SQLite + usearch, no Docker)
-pip install smartmemory-core[watch]     # Vault watcher for auto-ingesting Markdown files
 
 # Everything
 pip install smartmemory-core[all]       # All optional features
@@ -625,7 +597,7 @@ External plugins use the `standard` security profile by default. See `docs/PLUGI
 **Get started with SmartMemory today!**
 
 ```bash
-pip install smartmemory-core
+pip install smartmemory-core[lite]
 ```
 
 Explore the [examples](examples/) directory for complete demonstrations and use cases.
@@ -638,7 +610,7 @@ Explore the [examples](examples/) directory for complete demonstrations and use 
 - ✅ **`smartmemory[lite]`**: SQLite + usearch backend — no Docker, no FalkorDB, no Redis required
 - ✅ **`create_lite_memory()`**: Factory function from `smartmemory.tools.factory` for zero-config setup
 - ✅ **`lite_context()`**: Context manager that cleans up globals and closes SQLite on exit
-- ✅ **`PipelineConfig.lite()`**: Named preset disabling coreference, LLM extraction, enrichers, and Wikidata grounding — opt-in, not bundled with Lite storage
+- ✅ **`PipelineConfig.lite(llm_enabled=None)`**: Named preset disabling coreference, network enrichers, and evolution. LLM extraction auto-detected from `OPENAI_API_KEY`/`GROQ_API_KEY` env vars; override with `llm_enabled=True/False`
 - ✅ **`smartmemory[watch]`**: Vault watcher for auto-ingesting new/changed Markdown files
 - ✅ **Constructor injection**: `vector_backend`, `cache`, `observability`, `pipeline_profile`, `entity_ruler_patterns` params added to `SmartMemory.__init__` — no monkey-patching required
 
