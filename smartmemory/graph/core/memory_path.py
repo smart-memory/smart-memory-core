@@ -8,7 +8,7 @@ from smartmemory.models.base import MemoryBaseModel
 
 @dataclass
 class Node(MemoryBaseModel):
-    """Canonical node representation for smart-memory graph operations.
+    """Canonical node representation for smart-memory-core graph operations.
     
     Provides a unified interface for all node types across the system.
     """
@@ -59,7 +59,7 @@ class Node(MemoryBaseModel):
 
 @dataclass
 class Edge(MemoryBaseModel):
-    """Canonical edge representation for smart-memory graph operations.
+    """Canonical edge representation for smart-memory-core graph operations.
     
     Represents relationships between nodes with rich metadata.
     """

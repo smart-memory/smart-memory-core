@@ -256,7 +256,7 @@ sync_to_s3() {
 
     # Sync SmartMemory docs to S3
     log_info "Syncing SmartMemory docs to s3://docs.smartmemory.ai/smart-memory for Maya at https://docs.smartmemory.ai/maya..."
-    aws s3 sync "$DEPLOY_DIR/smart-memory" s3://docs.smartmemory.ai/smart-memory --delete --profile reg
+    aws s3 sync "$DEPLOY_DIR/smart-memory" s3://docs.smartmemory.ai/smart-memory-core --delete --profile reg
 
     # Sync architecture docs to S3
     if [ -d "$DEPLOY_DIR/architecture" ]; then

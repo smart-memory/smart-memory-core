@@ -98,13 +98,13 @@ def _find_config_dir() -> Optional[Path]:
 
 
 def _find_config_json() -> Optional[Path]:
-    """Find config.json in smart-memory/ core library."""
+    """Find config.json in smart-memory-core/ core library."""
     env_path = os.environ.get("SMARTMEMORY_CONFIG", "")
     candidates = [
         Path(env_path) if env_path else None,
         Path.cwd() / "config.json",
-        Path.cwd().parent / "smart-memory" / "config.json",
-        Path.cwd().parent.parent / "smart-memory" / "config.json",
+        Path.cwd().parent / "smart-memory-core" / "config.json",
+        Path.cwd().parent.parent / "smart-memory-core" / "config.json",
     ]
     for candidate in candidates:
         if candidate is not None and candidate.exists():

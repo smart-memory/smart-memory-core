@@ -2,7 +2,7 @@
 Tests for features in SmartMemory.
 
 Run with:
-    PYTHONPATH=/Users/ruze/reg/my/SmartMemory/smart-memory conda run -n memory pytest tests/integration/test_new_features.py -v
+    PYTHONPATH=/Users/ruze/reg/my/SmartMemory/smart-memory-core conda run -n memory pytest tests/integration/test_new_features.py -v
 """
 import pytest
 

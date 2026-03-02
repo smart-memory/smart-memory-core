@@ -126,7 +126,7 @@ pip install smartmemory-core[all]           # All optional features
 
 ```bash
 git clone https://github.com/smart-memory/smart-memory.git
-cd smart-memory
+cd smart-memory-core
 pip install -e ".[dev]"
 
 # Install spaCy model for entity extraction

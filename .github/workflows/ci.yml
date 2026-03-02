@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout smart-memory
+      - name: Checkout smart-memory-core
         uses: actions/checkout@v4
 
       - name: Setup uv

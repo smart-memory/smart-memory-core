@@ -1,5 +1,5 @@
 """
-Canonical graph types migration utilities for smart-memory.
+Canonical graph types migration utilities for smart-memory-core.
 
 This module provides utilities to migrate existing graph operations to use
 the canonical Node, Edge, and Triple types defined in memory_path.py.

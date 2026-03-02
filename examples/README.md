@@ -36,7 +36,7 @@ export HUGGINGFACE_MODEL=sentence-transformers/all-MiniLM-L6-v2
 ## Running Examples
 
 ```bash
-cd /path/to/smart-memory
+cd /path/to/smart-memory-core
 PYTHONPATH=. python examples/<example_name>.py
 ```
 

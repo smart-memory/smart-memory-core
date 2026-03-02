@@ -25,7 +25,7 @@ import shutil
 import sys
 from pathlib import Path
 
-# Ensure project root (smart-memory) is on sys.path for local imports
+# Ensure project root (smart-memory-core) is on sys.path for local imports
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))

@@ -1,7 +1,7 @@
 """Integration tests for SmartMemory Lite — no Docker, no external services required.
 
 Run with:
-    pip install -e ../smartmemory-lite   # from smart-memory/ directory
+    pip install -e ../smartmemory-lite   # from smart-memory-core/ directory
     PYTHONPATH=. pytest tests/integration/test_lite_flow.py -v
 """
 import socket
