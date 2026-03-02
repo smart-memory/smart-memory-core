@@ -42,18 +42,20 @@ def create_lite_memory(
 
     Lite mode replaces FalkorDB with SQLite, the FalkorDB vector index with usearch,
     Redis cache with a no-op, and disables observability event emission. The pipeline
-    defaults to ``PipelineConfig.lite()`` — EntityRuler + local enrichers only, no LLM
-    calls and no network enrichers.
+    defaults to ``PipelineConfig.lite()`` — EntityRuler + local enrichers only, no
+    coreference, no network enrichers, no evolution.
 
-    To run the full pipeline (LLM extraction, network enrichers), pass
-    ``pipeline_profile=PipelineConfig.default()`` explicitly.
+    LLM extraction is auto-detected (DEGRADE-1d): if ``OPENAI_API_KEY`` or
+    ``GROQ_API_KEY`` is set in the environment, LLM extraction is enabled
+    automatically. To force it off, pass
+    ``pipeline_profile=PipelineConfig.lite(llm_enabled=False)``.
 
     Args:
         data_dir: Directory for SQLite and usearch persistence. Defaults to ~/.smartmemory.
         entity_ruler_patterns: Optional pattern manager injected into EntityRulerStage.
         pipeline_profile: PipelineConfig to use. Defaults to ``PipelineConfig.lite()``
-            (EntityRuler + local enrichers, no LLM calls). Pass ``PipelineConfig.default()``
-            to enable LLM extraction and network enrichers.
+            which auto-detects LLM API keys. Pass ``PipelineConfig.lite(llm_enabled=False)``
+            to disable LLM extraction, or ``PipelineConfig.default()`` for the full pipeline.
         event_sink: Optional in-process event sink (DIST-LITE-3). When provided, pipeline
             events are dispatched to this sink instead of Redis. Defaults to None.
     """
@@ -101,9 +103,10 @@ def lite_context(data_dir: Optional[str] = None, pipeline_profile=None, event_si
 
     Args:
         data_dir: Directory for SQLite and usearch persistence. Defaults to ~/.smartmemory.
-        pipeline_profile: PipelineConfig to use. Defaults to PipelineConfig.default()
-            (full pipeline). Pass PipelineConfig.lite() to disable LLM extraction and
-            network enrichers.
+        pipeline_profile: PipelineConfig to use. Defaults to ``PipelineConfig.lite()``
+            which auto-detects LLM API keys (see ``create_lite_memory()``). Pass
+            ``PipelineConfig.lite(llm_enabled=False)`` to disable LLM extraction, or
+            ``PipelineConfig.default()`` for the full pipeline.
         event_sink: Optional in-process event sink (DIST-LITE-3). Passed to
             ``create_lite_memory()``. Defaults to None.
     """
