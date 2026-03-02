@@ -640,6 +640,111 @@ class TestOntologyConstrainPropertyValidation:
         assert len(result.relations) == 0
 
 
+class TestOntologyConstrainRelationTracking:
+    """Tests for CORE-EXT-1c: inline relation frequency and novel label tracking."""
+
+    def test_successful_normalization_increments_frequency(self):
+        """When norm_conf > 0.0, increment_relation_frequency is called."""
+        from smartmemory.relations.normalizer import RelationNormalizer
+
+        og = _mock_ontology({"Person": "seed"})
+        normalizer = RelationNormalizer()
+        stage = OntologyConstrainStage(og, relation_normalizer=normalizer)
+        state = PipelineState(
+            text="Test.",
+            llm_entities=[
+                {"name": "Alice", "entity_type": "person", "confidence": 0.9, "item_id": "a1"},
+                {"name": "Google", "entity_type": "organization", "confidence": 0.9, "item_id": "g1"},
+            ],
+            llm_relations=[
+                {"source_id": "a1", "target_id": "g1", "relation_type": "works_at"},
+            ],
+        )
+        config = PipelineConfig()
+
+        stage.execute(state, config)
+
+        og.increment_relation_frequency.assert_called()
+        # Find the call for "works_at"
+        calls = [c for c in og.increment_relation_frequency.call_args_list if c[0][0] == "works_at"]
+        assert len(calls) >= 1
+
+    def test_unknown_label_tracked_as_provisional(self):
+        """When norm_conf == 0.0, add_provisional_relation_type is called."""
+        from smartmemory.relations.normalizer import RelationNormalizer
+
+        og = _mock_ontology({"Person": "seed"})
+        normalizer = RelationNormalizer()
+        stage = OntologyConstrainStage(og, relation_normalizer=normalizer)
+        state = PipelineState(
+            text="Test.",
+            llm_entities=[
+                {"name": "Alice", "entity_type": "person", "confidence": 0.9, "item_id": "a1"},
+                {"name": "Bob", "entity_type": "person", "confidence": 0.9, "item_id": "b1"},
+            ],
+            llm_relations=[
+                {"source_id": "a1", "target_id": "b1", "relation_type": "supervises_directly"},
+            ],
+        )
+        config = PipelineConfig()
+
+        stage.execute(state, config)
+
+        # "supervises_directly" is not in ALIAS_INDEX, so norm_conf == 0.0
+        og.add_provisional_relation_type.assert_called()
+
+    def test_stopwords_not_tracked(self):
+        """Relation labels that are stopwords (e.g. 'is', 'has') are not tracked."""
+        from smartmemory.relations.normalizer import RelationNormalizer
+
+        og = _mock_ontology({"Person": "seed"})
+        normalizer = RelationNormalizer()
+        stage = OntologyConstrainStage(og, relation_normalizer=normalizer)
+        state = PipelineState(
+            text="Test.",
+            llm_entities=[
+                {"name": "Alice", "entity_type": "person", "confidence": 0.9, "item_id": "a1"},
+                {"name": "Bob", "entity_type": "person", "confidence": 0.9, "item_id": "b1"},
+            ],
+            llm_relations=[
+                {"source_id": "a1", "target_id": "b1", "relation_type": "is"},
+            ],
+        )
+        config = PipelineConfig()
+
+        stage.execute(state, config)
+
+        # "is" is in _RELATION_STOPWORDS — should NOT be tracked
+        # add_provisional_relation_type should not be called for "is"
+        for c in og.add_provisional_relation_type.call_args_list:
+            assert c[0][0] != "is", "Stopword 'is' should not be tracked as provisional"
+
+    def test_short_labels_not_tracked(self):
+        """Relation labels shorter than 3 chars are not tracked."""
+        from smartmemory.relations.normalizer import RelationNormalizer
+
+        og = _mock_ontology({"Person": "seed"})
+        normalizer = RelationNormalizer()
+        stage = OntologyConstrainStage(og, relation_normalizer=normalizer)
+        state = PipelineState(
+            text="Test.",
+            llm_entities=[
+                {"name": "Alice", "entity_type": "person", "confidence": 0.9, "item_id": "a1"},
+                {"name": "Bob", "entity_type": "person", "confidence": 0.9, "item_id": "b1"},
+            ],
+            llm_relations=[
+                {"source_id": "a1", "target_id": "b1", "relation_type": "at"},
+            ],
+        )
+        config = PipelineConfig()
+
+        stage.execute(state, config)
+
+        # "at" is only 2 chars — should NOT be tracked
+        for c in og.add_provisional_relation_type.call_args_list:
+            assert c[0][0] != "at", "Short label 'at' should not be tracked"
+
+
 class TestOntologyConstrainRegistryEdgeCases:
     """Edge cases for OL-2 registry version capture."""
 

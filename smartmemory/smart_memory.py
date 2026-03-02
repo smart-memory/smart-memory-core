@@ -261,8 +261,28 @@ class SmartMemory(MemoryBase):
             from smartmemory.relations.normalizer import RelationNormalizer
             from smartmemory.relations.validator import TypePairValidator
 
-            relation_normalizer = RelationNormalizer()  # alias-only mode (no embedding_fn)
-            type_pair_validator = TypePairValidator(mode="permissive")
+            # CORE-EXT-1c: Load workspace-promoted relation overlays
+            workspace_aliases = None
+            workspace_type_pairs = None
+            try:
+                from smartmemory.relations.overlays import load_workspace_overlays
+
+                workspace_aliases, workspace_type_pairs = load_workspace_overlays(ontology_graph)
+            except Exception:
+                pass  # graceful — seed types still work without overlays
+
+            relation_normalizer = RelationNormalizer(
+                workspace_aliases=workspace_aliases or None,
+            )
+            type_pair_validator = TypePairValidator(
+                mode="permissive",
+                workspace_type_pairs=workspace_type_pairs or None,
+            )
+
+            # Store references for reload_relation_overlays()
+            self._ontology_graph = ontology_graph
+            self._relation_normalizer = relation_normalizer
+            self._type_pair_validator = type_pair_validator
 
             ontology_constrain_stage = OntologyConstrainStage(
                 ontology_graph,
@@ -273,6 +293,7 @@ class SmartMemory(MemoryBase):
                 relation_normalizer=relation_normalizer,
                 type_pair_validator=type_pair_validator,
             )
+            self._ontology_constrain_stage = ontology_constrain_stage
 
         # Allow injected pattern manager to override (LitePatternManager in Lite mode, where
         # enable_ontology=False leaves pattern_manager=None after the block above is skipped).
@@ -360,6 +381,46 @@ class SmartMemory(MemoryBase):
         if self._pipeline_runner is None:
             self._pipeline_runner = self._create_pipeline_runner()
         return self._pipeline_runner
+
+    def reload_relation_overlays(self) -> None:
+        """Reload workspace-promoted relation types into normalizer and validator.
+
+        Called after RelationDiscoveryService.auto_promote() to pick up
+        newly promoted relation types without creating a new SmartMemory instance.
+        Updates both the normalizer and validator, then patches the
+        OntologyConstrainStage's references so the next ingest() uses them.
+
+        No-op when ontology is disabled or pipeline hasn't been built yet.
+        """
+        ontology_graph = getattr(self, "_ontology_graph", None)
+        if ontology_graph is None:
+            return
+
+        from smartmemory.relations.normalizer import RelationNormalizer
+        from smartmemory.relations.validator import TypePairValidator
+
+        workspace_aliases = None
+        workspace_type_pairs = None
+        try:
+            from smartmemory.relations.overlays import load_workspace_overlays
+
+            workspace_aliases, workspace_type_pairs = load_workspace_overlays(ontology_graph)
+        except Exception:
+            return  # nothing to reload
+
+        self._relation_normalizer = RelationNormalizer(
+            workspace_aliases=workspace_aliases or None,
+        )
+        self._type_pair_validator = TypePairValidator(
+            mode="permissive",
+            workspace_type_pairs=workspace_type_pairs or None,
+        )
+
+        # Patch the OntologyConstrainStage so the next ingest() uses the new instances
+        stage = getattr(self, "_ontology_constrain_stage", None)
+        if stage is not None:
+            stage._relation_normalizer = self._relation_normalizer
+            stage._type_pair_validator = self._type_pair_validator
 
     def _default_public_knowledge_store(self):
         """Auto-bootstrap the appropriate PublicKnowledgeStore based on available infra.

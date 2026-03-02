@@ -18,14 +18,26 @@ from smartmemory.relations.schema import CANONICAL_RELATION_TYPES, TYPE_PAIR_PRI
 class TypePairValidator:
     """Validate entity type-pairs against the canonical relation schema."""
 
-    def __init__(self, mode: str = "permissive"):
+    def __init__(
+        self,
+        mode: str = "permissive",
+        workspace_type_pairs: dict[tuple[str, str], list[str]] | None = None,
+    ):
         """
         Args:
             mode: "strict" (reject unknown pairs) or "permissive" (warn + allow)
+            workspace_type_pairs: Optional workspace-scoped type-pair overrides.
+                Merged on top of global TYPE_PAIR_PRIORS with set-dedup.
         """
         if mode not in ("strict", "permissive"):
             raise ValueError(f"Invalid mode: {mode!r}. Must be 'strict' or 'permissive'.")
         self._mode = mode
+        self._type_pair_priors = dict(TYPE_PAIR_PRIORS)  # instance copy — never mutate module-level
+        if workspace_type_pairs:
+            for key, canonicals in workspace_type_pairs.items():
+                existing = set(self._type_pair_priors.get(key, []))
+                existing.update(canonicals)
+                self._type_pair_priors[key] = list(existing)
 
     def validate(
         self,
@@ -45,17 +57,17 @@ class TypePairValidator:
 
         # Step 1: Check if this exact (src, tgt) pair is valid for this canonical_type
         pair_key = (src, tgt)
-        valid_types = TYPE_PAIR_PRIORS.get(pair_key, [])
+        valid_types = self._type_pair_priors.get(pair_key, [])
         if canonical_type in valid_types:
             return (True, 1.0)
 
         # Also check wildcard source: ("*", tgt)
-        wildcard_src = TYPE_PAIR_PRIORS.get(("*", tgt), [])
+        wildcard_src = self._type_pair_priors.get(("*", tgt), [])
         if canonical_type in wildcard_src:
             return (True, 1.0)
 
         # And wildcard target: (src, "*")
-        wildcard_tgt = TYPE_PAIR_PRIORS.get((src, "*"), [])
+        wildcard_tgt = self._type_pair_priors.get((src, "*"), [])
         if canonical_type in wildcard_tgt:
             return (True, 1.0)
 

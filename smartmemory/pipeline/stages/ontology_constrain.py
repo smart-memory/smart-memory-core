@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_RELATION_STOPWORDS: set[str] = {"is", "has", "does", "was", "are", "were", "been", "be"}
+
 
 class OntologyConstrainStage:
     """Merge ruler + LLM entities, validate types against ontology, filter relations."""
@@ -379,6 +381,19 @@ class OntologyConstrainStage:
             rel["plausibility_score"] = plausibility
             # Update relation_type to canonical (for FalkorDB edge label)
             rel["relation_type"] = canonical_type
+
+            # CORE-EXT-1c: Track relation type frequency and novel labels
+            if self._ontology is not None:
+                if norm_conf > 0.0:
+                    self._ontology.increment_relation_frequency(canonical_type, norm_conf)
+                elif norm_conf == 0.0:
+                    from smartmemory.relations.normalizer import _normalize_key
+
+                    key = _normalize_key(raw_predicate)
+                    if key and len(key) >= 3 and key not in _RELATION_STOPWORDS:
+                        self._ontology.add_provisional_relation_type(key)
+                        self._ontology.increment_relation_frequency(key, 0.0)
+
             enriched.append(rel)
 
         # Sort by plausibility descending (best triples survive max_relations limit)

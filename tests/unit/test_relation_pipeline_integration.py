@@ -17,7 +17,13 @@ class FakeOntologyGraph:
     def increment_frequency(self, name, conf):
         pass
 
+    def increment_relation_frequency(self, name, confidence):
+        pass
+
     def add_provisional(self, name):
+        return True
+
+    def add_provisional_relation_type(self, name, category="unknown"):
         return True
 
 

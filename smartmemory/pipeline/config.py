@@ -128,6 +128,19 @@ class ConstrainConfig(MemoryBaseModel):
     domain_range_validation: bool = True
 
 
+@dataclass
+class RelationDiscoveryConfig(MemoryBaseModel):
+    """Relation type discovery and promotion rules (CORE-EXT-1c)."""
+
+    enabled: bool = True
+    min_frequency: int = 3
+    min_cluster_frequency: int = 5
+    auto_promote_threshold: int = 10
+    auto_promote_min_workspaces: int = 1
+    embedding_similarity_threshold: float = 0.75
+    max_novel_labels_per_workspace: int = 1000
+
+
 # ------------------------------------------------------------------ #
 # Detection configs
 # ------------------------------------------------------------------ #
@@ -155,6 +168,7 @@ class ExtractionConfig(MemoryBaseModel):
     entity_ruler: EntityRulerConfig = field(default_factory=EntityRulerConfig)
     llm_extract: LLMExtractConfig = field(default_factory=LLMExtractConfig)
     promotion: PromotionConfig = field(default_factory=PromotionConfig)
+    relation_discovery: RelationDiscoveryConfig = field(default_factory=RelationDiscoveryConfig)
     constrain: ConstrainConfig = field(default_factory=ConstrainConfig)
     reasoning_detect: ReasoningDetectConfig = field(default_factory=ReasoningDetectConfig)
     max_extraction_attempts: int = 3

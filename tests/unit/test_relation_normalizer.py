@@ -83,6 +83,39 @@ class TestRelationNormalizerAliasOnly:
             assert conf == 1.0
 
 
+class TestRelationNormalizerWithWorkspaceOverlay:
+    """Tests for CORE-EXT-1c workspace-scoped alias overlays."""
+
+    def test_workspace_alias_overrides_fallback(self):
+        """A workspace-promoted alias resolves to its canonical type instead of related_to."""
+        normalizer = RelationNormalizer(workspace_aliases={"mentors": "advises"})
+        canonical, conf = normalizer.normalize("mentors")
+        assert canonical == "advises"
+        assert conf == 1.0
+
+    def test_workspace_alias_does_not_affect_seed(self):
+        """Seed aliases still resolve correctly when workspace overlay is set."""
+        normalizer = RelationNormalizer(workspace_aliases={"mentors": "advises"})
+        canonical, conf = normalizer.normalize("employed_by")
+        assert canonical == "works_at"
+        assert conf == 1.0
+
+    def test_no_workspace_aliases_matches_baseline(self):
+        """No workspace aliases = same behaviour as baseline."""
+        baseline = RelationNormalizer()
+        with_none = RelationNormalizer(workspace_aliases=None)
+        for pred in ["works_at", "employed_by", "completely_unknown_xyz"]:
+            assert baseline.normalize(pred) == with_none.normalize(pred)
+
+    def test_global_alias_index_not_mutated(self):
+        """Constructing with workspace aliases must NOT mutate the module-level ALIAS_INDEX."""
+        from smartmemory.relations.normalizer import ALIAS_INDEX
+
+        before = dict(ALIAS_INDEX)
+        RelationNormalizer(workspace_aliases={"novel_pred_xyz": "custom_type"})
+        assert ALIAS_INDEX == before, "Module-level ALIAS_INDEX was mutated"
+
+
 class TestRelationNormalizerWithEmbedding:
     """Tests with a mock embedding function."""
 

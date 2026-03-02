@@ -6,10 +6,16 @@ Separate from the data graph so ontology reads never contend with data writes.
 
 from __future__ import annotations
 
+import json
 import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 # Seed entity types shipped with SmartMemory
 SEED_TYPES: List[str] = [
@@ -507,23 +513,41 @@ class OntologyGraph:
         return created
 
     def get_relation_types(self, status: str | None = None) -> list[dict]:
-        """Return all relation types, optionally filtered by status."""
+        """Return all relation types, optionally filtered by status.
+
+        Returns dicts with: name, status, category, aliases (list), type_pairs (list),
+        frequency (int), promoted_at (str|None).
+        """
         backend = self._get_backend()
         try:
+            fields = (
+                "t.name AS name, t.status AS status, t.category AS category, "
+                "t.aliases AS aliases, t.type_pairs AS type_pairs, "
+                "t.frequency AS frequency, t.promoted_at AS promoted_at"
+            )
             if status:
                 result = backend.query(
-                    "MATCH (t:RelationType {status: $status}) RETURN t.name AS name, t.status AS status, "
-                    "t.category AS category ORDER BY t.name",
+                    f"MATCH (t:RelationType {{status: $status}}) RETURN {fields} ORDER BY t.name",
                     params={"status": status},
                     graph_name=self._graph_name,
                 )
             else:
                 result = backend.query(
-                    "MATCH (t:RelationType) RETURN t.name AS name, t.status AS status, "
-                    "t.category AS category ORDER BY t.name",
+                    f"MATCH (t:RelationType) RETURN {fields} ORDER BY t.name",
                     graph_name=self._graph_name,
                 )
-            return [{"name": row[0], "status": row[1], "category": row[2]} for row in (result or [])]
+            types = []
+            for row in result or []:
+                types.append({
+                    "name": row[0],
+                    "status": row[1],
+                    "category": row[2],
+                    "aliases": json.loads(row[3]) if row[3] else [],
+                    "type_pairs": json.loads(row[4]) if row[4] else [],
+                    "frequency": int(row[5]) if row[5] is not None else 0,
+                    "promoted_at": row[6],
+                })
+            return types
         except Exception as e:
             logger.warning("Failed to query relation types: %s", e)
             return []
@@ -590,6 +614,147 @@ class OntologyGraph:
 
         logger.info("Ensured %d type-pair edges in %s", ensured, self._graph_name)
         return ensured
+
+    # ------------------------------------------------------------------ #
+    # Relation frequency & novel label tracking (CORE-EXT-1c)
+    # ------------------------------------------------------------------ #
+
+    def increment_relation_frequency(self, name: str, confidence: float) -> None:
+        """Atomically increment frequency on a RelationType node and update last_seen."""
+        backend = self._get_backend()
+        try:
+            backend.query(
+                "MERGE (t:RelationType {name: $name}) "
+                "SET t.frequency = COALESCE(t.frequency, 0) + 1, "
+                "t.last_seen = $now",
+                params={"name": name, "now": _now_iso()},
+                graph_name=self._graph_name,
+            )
+        except Exception as e:
+            logger.warning("Failed to increment relation frequency for '%s': %s", name, e)
+
+    def add_novel_relation_label(
+        self,
+        name: str,
+        raw_examples: list[str] | None = None,
+        source_types: list[str] | None = None,
+        target_types: list[str] | None = None,
+        workspace_id: str | None = None,
+    ) -> bool:
+        """Track a novel relation label. Increments frequency if exists.
+
+        Returns True if this is a new label (created), False if updated.
+        """
+        backend = self._get_backend()
+        try:
+            existing = backend.query(
+                "MATCH (n:NovelRelationLabel {name: $name}) RETURN n.name, n.frequency",
+                params={"name": name},
+                graph_name=self._graph_name,
+            )
+            if existing:
+                backend.query(
+                    "MATCH (n:NovelRelationLabel {name: $name}) "
+                    "SET n.frequency = n.frequency + 1, n.last_seen = $now",
+                    params={"name": name, "now": _now_iso()},
+                    graph_name=self._graph_name,
+                )
+                return False
+            backend.query(
+                "CREATE (n:NovelRelationLabel {"
+                "name: $name, frequency: 1, status: 'tracking', "
+                "raw_examples: $raw_examples, source_types: $source_types, "
+                "target_types: $target_types, workspace_id: $ws, "
+                "first_seen: $now, last_seen: $now})",
+                params={
+                    "name": name,
+                    "raw_examples": json.dumps((raw_examples or [])[:10]),
+                    "source_types": json.dumps(source_types or []),
+                    "target_types": json.dumps(target_types or []),
+                    "ws": workspace_id or "",
+                    "now": _now_iso(),
+                },
+                graph_name=self._graph_name,
+            )
+            return True
+        except Exception as e:
+            logger.warning("Failed to track novel relation label '%s': %s", name, e)
+            return False
+
+    def get_novel_relation_labels(
+        self, min_frequency: int = 1, status: str | None = None
+    ) -> list[dict]:
+        """Query NovelRelationLabel nodes above a frequency threshold."""
+        backend = self._get_backend()
+        try:
+            where = "WHERE n.frequency >= $min_freq"
+            params: dict = {"min_freq": min_frequency}
+            if status:
+                where += " AND n.status = $status"
+                params["status"] = status
+            result = backend.query(
+                f"MATCH (n:NovelRelationLabel) {where} "
+                "RETURN n.name, n.frequency, n.status, n.raw_examples, "
+                "n.source_types, n.target_types, n.workspace_id, n.first_seen, n.last_seen "
+                "ORDER BY n.frequency DESC",
+                params=params,
+                graph_name=self._graph_name,
+            )
+            return [
+                {
+                    "name": row[0],
+                    "frequency": row[1],
+                    "status": row[2],
+                    "raw_examples": json.loads(row[3] or "[]"),
+                    "source_types": json.loads(row[4] or "[]"),
+                    "target_types": json.loads(row[5] or "[]"),
+                    "workspace_id": row[6],
+                    "first_seen": row[7],
+                    "last_seen": row[8],
+                }
+                for row in (result or [])
+            ]
+        except Exception as e:
+            logger.warning("Failed to query novel relation labels: %s", e)
+            return []
+
+    def promote_relation_type(
+        self,
+        name: str,
+        category: str = "discovered",
+        aliases: list[str] | None = None,
+        type_pairs: list[tuple[str, str]] | None = None,
+    ) -> bool:
+        """Promote a novel label to a confirmed canonical relation type.
+
+        Creates or updates a RelationType node with status='confirmed' and
+        marks the corresponding NovelRelationLabel as 'promoted' if it exists.
+        """
+        backend = self._get_backend()
+        try:
+            backend.query(
+                "MERGE (t:RelationType {name: $name}) "
+                "SET t.status = 'confirmed', t.category = $category, "
+                "t.aliases = $aliases, t.type_pairs = $type_pairs, "
+                "t.promoted_at = $now",
+                params={
+                    "name": name,
+                    "category": category,
+                    "aliases": json.dumps(aliases or []),
+                    "type_pairs": json.dumps(type_pairs or []),
+                    "now": _now_iso(),
+                },
+                graph_name=self._graph_name,
+            )
+            backend.query(
+                "MATCH (n:NovelRelationLabel {name: $name}) SET n.status = 'promoted'",
+                params={"name": name},
+                graph_name=self._graph_name,
+            )
+            return True
+        except Exception as e:
+            logger.warning("Failed to promote relation type '%s': %s", name, e)
+            return False
 
     # ------------------------------------------------------------------ #
     # Internal helpers

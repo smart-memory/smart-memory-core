@@ -20,6 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **7 new SQLite direction tests** (`TestGetNeighborsDirection` in `test_sqlite_backend.py`).
 - **7 new VersionTracker SQLite integration tests** (`TestVersionTrackerSQLite` in `test_version_tracker.py`) covering create/get, temporal queries, comparison, placeholder creation, fallback search, and cross-workspace isolation.
 
+#### CORE-EXT-1c — Relation Type Discovery
+
+- **Workspace-scoped overlays** for `RelationNormalizer` and `TypePairValidator`: `workspace_aliases` and `workspace_type_pairs` constructor params build instance-level copies of seed data and merge workspace-promoted types on top. Module-level `ALIAS_INDEX` and `TYPE_PAIR_PRIORS` are never mutated.
+- **OntologyGraph relation methods**: `increment_relation_frequency()`, `add_novel_relation_label()`, `get_novel_relation_labels()`, `promote_relation_type()` for full lifecycle management of novel relation labels (`NovelRelationLabel` FalkorDB nodes).
+- **Inline novel label tracking**: `OntologyConstrainStage` now tracks novel labels (when `normalization_confidence == 0.0`) and increments frequency for successful normalizations. Quality gating filters stopwords and short labels.
+- **Tier 2 worker integration**: `extraction_worker.py` now forwards ONTO-PUB-3 metadata (`canonical_type`, `raw_predicate`, `normalization_confidence`) on relation edges and tracks novel labels (Step 7b) via per-job workspace-scoped normalizers.
+- **`RelationDiscoveryService`** (`smartmemory/relations/discovery.py`): batch analysis pipeline — `cluster_novel_labels()` → `propose_candidates()` → `auto_promote()` with three-tier frequency thresholds (3/5/10). Supports embedding-based and string-equality clustering. Redis pub/sub notification on promotion.
+- **`RelationDiscoveryConfig`**: 7 config fields in `PipelineConfig` for tuning discovery thresholds.
+- **`SmartMemory.reload_relation_overlays()`**: hot-reload workspace-promoted types into live normalizer/validator without recreating the SmartMemory instance. Patches `OntologyConstrainStage` references for next `ingest()` call.
+- **173 relation+reload tests** across 6 test files covering workspace isolation, overlay loading, discovery service, reload path, and inline tracking.
+
 #### ONTO-PUB-3 — Relation Schema + Extraction Quality
 
 - **Canonical relation vocabulary** (`smartmemory/relations/schema.py`): 39 relation types in 8 categories with ~200 aliases, frozen dataclass definitions, module-level derived lookup tables (`ALIAS_INDEX`, `TYPE_PAIR_PRIORS`).

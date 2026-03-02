@@ -18,13 +18,21 @@ from smartmemory.relations.schema import ALIAS_INDEX, CANONICAL_RELATION_TYPES
 class RelationNormalizer:
     """Normalize free-text predicates to canonical relation types."""
 
-    def __init__(self, embedding_fn: Callable[[str], list[float]] | None = None):
+    def __init__(
+        self,
+        embedding_fn: Callable[[str], list[float]] | None = None,
+        workspace_aliases: dict[str, str] | None = None,
+    ):
         """
         Args:
             embedding_fn: Optional function that maps text → embedding vector.
                 If None, Step 2 (embedding similarity) is skipped.
+            workspace_aliases: Optional workspace-scoped alias overrides.
+                Merged on top of global ALIAS_INDEX (workspace wins on collision).
         """
-        self._alias_index = ALIAS_INDEX
+        self._alias_index = dict(ALIAS_INDEX)  # instance copy — never mutate module-level
+        if workspace_aliases:
+            self._alias_index.update(workspace_aliases)
         self._embedding_fn = embedding_fn
         self._canonical_embeddings: dict[str, list[float]] | None = None
 

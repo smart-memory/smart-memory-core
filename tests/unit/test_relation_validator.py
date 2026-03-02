@@ -54,6 +54,41 @@ class TestTypePairValidatorPermissive:
         assert score == 1.0
 
 
+class TestTypePairValidatorWithWorkspaceOverlay:
+    """Tests for CORE-EXT-1c workspace-scoped type-pair overlays."""
+
+    def test_workspace_type_pair_validates(self):
+        """A workspace-promoted type-pair scores 1.0 for the promoted relation."""
+        validator = TypePairValidator(
+            mode="permissive",
+            workspace_type_pairs={("robot", "task"): ["automates"]},
+        )
+        is_valid, score = validator.validate("robot", "automates", "task")
+        assert is_valid is True
+        assert score == 1.0
+
+    def test_workspace_type_pair_no_dedup_leak(self):
+        """Repeated init with same overlay doesn't accumulate duplicates."""
+        overlay = {("robot", "task"): ["automates"]}
+        v1 = TypePairValidator(mode="permissive", workspace_type_pairs=overlay)
+        v2 = TypePairValidator(mode="permissive", workspace_type_pairs=overlay)
+        # Both should have exactly 1 entry for ("robot", "task")
+        assert v1._type_pair_priors[("robot", "task")] == ["automates"]
+        assert v2._type_pair_priors[("robot", "task")] == ["automates"]
+
+    def test_global_type_pair_priors_not_mutated(self):
+        """Constructing with workspace type-pairs must NOT mutate the module-level TYPE_PAIR_PRIORS."""
+        from smartmemory.relations.schema import TYPE_PAIR_PRIORS
+
+        before_keys = set(TYPE_PAIR_PRIORS.keys())
+        TypePairValidator(
+            mode="permissive",
+            workspace_type_pairs={("robot", "task"): ["automates"]},
+        )
+        assert set(TYPE_PAIR_PRIORS.keys()) == before_keys, "Module-level TYPE_PAIR_PRIORS was mutated"
+        assert ("robot", "task") not in TYPE_PAIR_PRIORS
+
+
 class TestTypePairValidatorStrict:
     def setup_method(self):
         self.validator = TypePairValidator(mode="strict")
