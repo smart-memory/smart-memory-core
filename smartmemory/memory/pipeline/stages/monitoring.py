@@ -11,8 +11,7 @@ class Monitoring:
         insights = {}
         type_names = ["semantic", "episodic", "procedural", "working"]
         for name in type_names:
-            # Use proper graph query instead of MongoDB-style $or syntax
-            items = self._graph.backend.search_nodes_by_type_or_tag(name)
+            items = self._graph.backend.search_nodes({"memory_type": name})
             keyword_count = {}
             for node in items:
                 for word in str(node.get("content", "")).split():
@@ -25,8 +24,7 @@ class Monitoring:
 
     def orphaned_notes(self):
         orphaned = []
-        # Use proper graph query instead of MongoDB-style $or syntax
-        for note in self._graph.backend.search_nodes_by_type_or_tag("note"):
+        for note in self._graph.backend.search_nodes({"memory_type": "note"}):
             neighbors = self._graph.get_neighbors(note.get('item_id'))
             if not neighbors:
                 orphaned.append(note)
@@ -58,8 +56,7 @@ class Monitoring:
     def find_old_notes(self, days: int = 365):
         cutoff = datetime.now() - timedelta(days=days)
         old_notes = []
-        # Use proper graph query instead of MongoDB-style $or syntax
-        for node in self._graph.backend.search_nodes_by_type_or_tag("note"):
+        for node in self._graph.backend.search_nodes({"memory_type": "note"}):
             created_at = None
             if 'created_at' in node:
                 created_at = node['created_at']
@@ -76,8 +73,7 @@ class Monitoring:
         status = {}
         type_names = ["semantic", "episodic", "procedural", "working"]
         for name in type_names:
-            # Use proper graph query instead of MongoDB-style $or syntax
-            items = self._graph.backend.search_nodes_by_type_or_tag(name)
+            items = self._graph.backend.search_nodes({"memory_type": name})
             count = len(items)
             warnings = []
             status[name] = {
@@ -90,8 +86,7 @@ class Monitoring:
         insights = {}
         type_names = ["semantic", "episodic", "procedural", "working"]
         for name in type_names:
-            # Use proper graph query instead of MongoDB-style $or syntax
-            items = self._graph.backend.search_nodes_by_type_or_tag(name)
+            items = self._graph.backend.search_nodes({"memory_type": name})
             keyword_count = {}
             for node in items:
                 content = str(node.get("content", ""))
@@ -108,8 +103,7 @@ class Monitoring:
         summaries = {}
         type_names = ["semantic", "episodic", "procedural", "working"]
         for name in type_names:
-            # Use proper graph query instead of MongoDB-style $or syntax
-            items = self._graph.backend.search_nodes_by_type_or_tag(name)
+            items = self._graph.backend.search_nodes({"memory_type": name})
             content_preview = [str(item.get("content", ""))[:100] for item in items[:max_items]]
             summaries[name] = {
                 "count": len(items),

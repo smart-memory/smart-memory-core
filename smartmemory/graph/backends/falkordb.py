@@ -613,64 +613,84 @@ class FalkorDBBackend(SmartGraphBackend):
         return True
 
     def merge_nodes(self, target_id: str, source_ids: List[str]) -> bool:
-        """
-        Merge multiple source nodes into a target node.
+        """Merge multiple source nodes into a target node.
+
         Rewires relationships and merges properties, then deletes source nodes.
+        Uses a read-then-recreate approach because FalkorDB does not support
+        dynamic edge types (``TYPE(r)``) in MERGE/CREATE patterns.
 
         Args:
-            target_id: The ID of the node to keep (canonical node)
-            source_ids: List of IDs of nodes to merge into the target
+            target_id: The ID of the node to keep (canonical node).
+            source_ids: List of IDs of nodes to merge into the target.
 
         Returns:
-            bool: True if successful
+            True if successful, False if target does not exist or on error.
         """
         if not source_ids:
             return True
 
         try:
-            # 1. Rewire incoming relationships (others -> source) to (others -> target)
-            # We use APOC if available, or manual rewiring if not.
-            # Since FalkorDB supports Cypher, we can do this with standard Cypher.
+            # Guard: target must exist — otherwise source deletion causes silent data loss.
+            target_check = self._query(
+                "MATCH (t {item_id: $tid}) RETURN t.item_id LIMIT 1",
+                {"tid": target_id},
+            )
+            if not target_check:
+                logger.error("merge_nodes: target %s does not exist", target_id)
+                return False
 
             for source_id in source_ids:
                 if source_id == target_id:
                     continue
 
-                # Rewire outgoing relationships: (source)-[r]->(other) ==> (target)-[r]->(other)
-                query_out = """
-                MATCH (source {item_id: $source_id})-[r]->(other)
-                WHERE other.item_id <> $target_id
-                MERGE (target {item_id: $target_id})-[new_r:TYPE(r)]->(other)
-                SET new_r = properties(r)
-                DELETE r
-                """
-                self._query(query_out, {"source_id": source_id, "target_id": target_id})
+                # 1. Read outgoing edges: (source)-[r]->(other), excluding target.
+                out_rows = self._query(
+                    "MATCH (source {item_id: $sid})-[r]->(other) "
+                    "WHERE other.item_id <> $tid "
+                    "RETURN other.item_id, type(r), properties(r)",
+                    {"sid": source_id, "tid": target_id},
+                )
 
-                # Rewire incoming relationships: (other)-[r]->(source) ==> (other)-[r]->(target)
-                query_in = """
-                MATCH (other)-[r]->(source {item_id: $source_id})
-                WHERE other.item_id <> $target_id
-                MERGE (other)-[new_r:TYPE(r)]->(target {item_id: $target_id})
-                SET new_r = properties(r)
-                DELETE r
-                """
-                self._query(query_in, {"source_id": source_id, "target_id": target_id})
+                # 2. Read incoming edges: (other)-[r]->(source), excluding target.
+                in_rows = self._query(
+                    "MATCH (other)-[r]->(source {item_id: $sid}) "
+                    "WHERE other.item_id <> $tid "
+                    "RETURN other.item_id, type(r), properties(r)",
+                    {"sid": source_id, "tid": target_id},
+                )
 
-                # Merge properties (target properties take precedence, but we can fill in missing ones)
-                # Note: This is a simple merge. Complex merging strategies might be needed for specific fields.
-                query_props = """
-                MATCH (source {item_id: $source_id}), (target {item_id: $target_id})
-                SET target += properties(source)
-                """
-                self._query(query_props, {"source_id": source_id, "target_id": target_id})
+                # 3. Delete all edges from/to source.
+                self._query(
+                    "MATCH (source {item_id: $sid})-[r]-() DELETE r",
+                    {"sid": source_id},
+                )
 
-                # Delete the source node
+                # 4. Recreate outgoing edges on target.
+                for row in out_rows:
+                    other_id, etype, props = row[0], row[1], row[2] if len(row) > 2 else {}
+                    self.add_edge(target_id, other_id, etype, props or {})
+
+                # 5. Recreate incoming edges on target.
+                for row in in_rows:
+                    other_id, etype, props = row[0], row[1], row[2] if len(row) > 2 else {}
+                    self.add_edge(other_id, target_id, etype, props or {})
+
+                # 6. Merge properties (source fills gaps, target keeps identity).
+                #    ``+=`` overwrites ALL matching keys, including ``item_id``,
+                #    so we immediately restore the target's ``item_id`` afterward.
+                self._query(
+                    "MATCH (source {item_id: $sid}), (target {item_id: $tid}) "
+                    "SET target += properties(source), target.item_id = $tid",
+                    {"sid": source_id, "tid": target_id},
+                )
+
+                # 7. Delete source node.
                 self.remove_node(source_id)
 
             return True
 
         except Exception as e:
-            logger.error(f"Failed to merge nodes into {target_id}: {e}")
+            logger.error("Failed to merge nodes into %s: %s", target_id, e)
             return False
 
     # ---------- Vector similarity ----------

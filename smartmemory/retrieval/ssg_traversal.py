@@ -38,16 +38,18 @@ class SimilarityGraphTraversal:
     def __init__(self, smart_memory):
         """
         Initialize SSG traversal with SmartMemory instance.
-        
+
         Args:
             smart_memory: SmartMemory instance with graph and vector store
         """
         self.sm = smart_memory
-        self.graph = smart_memory._graph
-        
-        # Get vector store from graph
+        self._backend = getattr(smart_memory._graph, "backend", smart_memory._graph)
+
+        # Prefer the VectorStore already configured on SmartMemory (respects DI /
+        # ContextVar overrides in lite mode).  Fall back to a fresh instance only
+        # when the SmartMemory object doesn't expose one.
         from smartmemory.stores.vector.vector_store import VectorStore
-        self.vector_store = VectorStore()
+        self.vector_store = getattr(smart_memory, "_vector_store", None) or VectorStore()
         
         # Load configuration
         self.config = get_config('ssg') or {}
@@ -278,49 +280,57 @@ class SimilarityGraphTraversal:
     
     def _get_memory_item(self, item_id: str) -> Optional[MemoryItem]:
         """
-        Retrieve MemoryItem from graph by ID.
-        
+        Retrieve MemoryItem from graph by ID via backend ABC method.
+
         Args:
             item_id: Item identifier
-            
+
         Returns:
             MemoryItem object or None if not found
         """
         try:
-            return self.graph.nodes.get_node(item_id)
+            node = self._backend.get_node(item_id)
+            if node is None:
+                return None
+            return MemoryItem(
+                item_id=node.get("item_id", item_id),
+                content=node.get("content", ""),
+                metadata=node,
+            )
         except Exception as e:
             logger.debug(f"Failed to get item {item_id}: {e}")
             return None
     
     def _get_neighbors(
-        self, 
-        chunk_id: str, 
-        visited: Set[str]
+        self,
+        chunk_id: str,
+        visited: Set[str],
     ) -> List[str]:
         """
         Get unvisited neighbors from both graph relationships and vector similarity.
-        
+
         Combines:
-        1. Graph-based neighbors (explicit relationships)
+        1. Graph-based neighbors via backend ABC ``get_neighbors()``
         2. Vector-based neighbors (semantic similarity)
-        
-        Note: Tenant isolation is handled by the underlying graph's scope_provider.
-        
+
+        Note: Tenant isolation is handled by the underlying backend's scope_provider.
+
         Args:
             chunk_id: Current chunk ID
             visited: Set of already visited chunk IDs
-            
+
         Returns:
             List of neighbor chunk IDs (limited by config)
         """
         neighbors = []
-        
-        # 1. Graph-based neighbors (existing relationships)
+
+        # 1. Graph-based neighbors via backend ABC method.
         try:
-            graph_neighbors = self.graph.get_neighbors(chunk_id)
-            for neighbor in graph_neighbors[:self.max_graph_neighbors]:
-                if hasattr(neighbor, 'item_id') and neighbor.item_id not in visited:
-                    neighbors.append(neighbor.item_id)
+            graph_neighbors = self._backend.get_neighbors(chunk_id)
+            for neighbor in graph_neighbors[: self.max_graph_neighbors]:
+                nid = neighbor.get("item_id") if isinstance(neighbor, dict) else getattr(neighbor, "item_id", None)
+                if nid and nid not in visited:
+                    neighbors.append(nid)
         except Exception as e:
             logger.debug(f"Failed to get graph neighbors for {chunk_id}: {e}")
         

@@ -1,7 +1,8 @@
 """Inference engine that applies rules to enrich the graph.
 
-Executes pattern-matching Cypher queries from InferenceRules and creates
-inferred edges with provenance metadata.
+Backend-agnostic: uses RULE_MATCHERS (GraphAlgos + ABC methods) for the
+three built-in rules.  Falls back to raw Cypher via ``execute_cypher()``
+only for custom rules that provide ``pattern_cypher`` and run on FalkorDB.
 """
 
 import logging
@@ -11,7 +12,7 @@ from typing import Any
 
 from smartmemory.models.base import MemoryBaseModel
 
-from .rules import InferenceRule, get_default_rules
+from .rules import RULE_MATCHERS, InferenceRule, get_default_rules
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,13 @@ class InferenceEngine:
         self.graph = graph or getattr(memory, "_graph", None)
         self.rules = rules if rules is not None else get_default_rules()
 
+    @property
+    def _backend(self) -> Any:
+        """Return the graph backend (SQLite or FalkorDB), or None."""
+        if self.graph is None:
+            return None
+        return getattr(self.graph, "backend", self.graph)
+
     def run(self, dry_run: bool = False) -> InferenceResult:
         """Execute all enabled inference rules.
 
@@ -72,11 +80,26 @@ class InferenceEngine:
         return result
 
     def _apply_rule(self, rule: InferenceRule, dry_run: bool = False) -> int:
-        """Apply a single inference rule."""
-        if not self.graph:
+        """Apply a single inference rule.
+
+        Resolution order:
+        1. Backend-agnostic matcher from RULE_MATCHERS (works on any backend)
+        2. Cypher fallback via pattern_cypher (FalkorDB only)
+        """
+        backend = self._backend
+        if not backend:
             return 0
 
-        rows = self._cypher(rule.pattern_cypher)
+        # 1. Try backend-agnostic matcher first.
+        matcher = RULE_MATCHERS.get(rule.name)
+        if matcher and hasattr(backend, "algos"):
+            rows = matcher(backend)
+        elif rule.pattern_cypher and hasattr(backend, "execute_cypher"):
+            rows = self._cypher(rule.pattern_cypher)
+        else:
+            logger.debug("Rule '%s': no matcher and no Cypher support on %s", rule.name, type(backend).__name__)
+            return 0
+
         if not rows:
             return 0
 
@@ -110,22 +133,38 @@ class InferenceEngine:
         return count
 
     def _create_inferred_edge(self, source_id: str, target_id: str, edge_type: str, **properties: Any) -> None:
-        """Create an inferred edge with provenance metadata."""
-        cypher = f"MATCH (a {{item_id: $source_id}}), (b {{item_id: $target_id}}) CREATE (a)-[:{edge_type} $props]->(b)"
-        self._cypher(
-            cypher,
-            {
-                "source_id": source_id,
-                "target_id": target_id,
-                "props": properties,
-            },
-        )
+        """Create an inferred edge with provenance metadata.
+
+        Uses the backend's ``add_edge()`` ABC method (works on any backend).
+        Falls back to Cypher only when ``add_edge`` is unavailable.
+        """
+        backend = self._backend
+        if backend and hasattr(backend, "add_edge"):
+            backend.add_edge(source_id, target_id, edge_type, properties)
+        else:
+            # Cypher fallback for legacy compatibility.
+            cypher = (
+                f"MATCH (a {{item_id: $source_id}}), (b {{item_id: $target_id}}) "
+                f"CREATE (a)-[:{edge_type} $props]->(b)"
+            )
+            self._cypher(
+                cypher,
+                {
+                    "source_id": source_id,
+                    "target_id": target_id,
+                    "props": properties,
+                },
+            )
 
     def _cypher(self, query: str, params: dict | None = None) -> list:
+        """Execute a raw Cypher query (FalkorDB fallback path only)."""
         if not self.graph:
             return []
-        try:
-            return self.graph.backend.execute_cypher(query, params or {})
-        except Exception as e:
-            logger.debug("Cypher query failed: %s", e)
-            return []
+        backend = self._backend
+        if backend and hasattr(backend, "execute_cypher"):
+            try:
+                return backend.execute_cypher(query, params or {})
+            except Exception as e:
+                logger.debug("Cypher query failed: %s", e)
+                return []
+        return []

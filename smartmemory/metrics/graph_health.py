@@ -1,7 +1,8 @@
 """Graph health metrics collection.
 
 Measures graph quality: orphan nodes, edge distribution, provenance coverage.
-All queries use property-based Cypher (not label-based) for FalkorDB compatibility.
+Backend-agnostic: uses SmartGraphBackend query methods and the GraphAlgos protocol
+so the same code works for both SQLiteBackend and FalkorDBBackend.
 """
 
 import logging
@@ -11,6 +12,9 @@ from typing import Any
 from smartmemory.models.base import MemoryBaseModel
 
 logger = logging.getLogger(__name__)
+
+# Edge types that count as "provenance" for decision nodes.
+_PROVENANCE_EDGE_TYPES = frozenset({"DERIVED_FROM", "CAUSED_BY", "PRODUCED"})
 
 ORPHAN_THRESHOLD = 0.2
 PROVENANCE_THRESHOLD = 0.5
@@ -64,7 +68,10 @@ class HealthReport(MemoryBaseModel):
 
 
 class GraphHealthChecker:
-    """Collects graph health metrics via Cypher queries.
+    """Collects graph health metrics using backend-agnostic queries.
+
+    Works on both SQLiteBackend (via GraphAlgos / get_all_nodes) and
+    FalkorDBBackend (same interface).
 
     Usage:
         checker = GraphHealthChecker(smart_memory)
@@ -76,6 +83,12 @@ class GraphHealthChecker:
     def __init__(self, memory: Any, graph: Any = None):
         self.memory = memory
         self.graph = graph or getattr(memory, "_graph", None)
+
+    @property
+    def _backend(self) -> Any:
+        if self.graph is None:
+            return None
+        return getattr(self.graph, "backend", self.graph)
 
     def collect_health(self) -> HealthReport:
         """Collect all health metrics into a single report."""
@@ -92,43 +105,61 @@ class GraphHealthChecker:
         return report
 
     def _count_nodes(self) -> int:
-        rows = self._cypher("MATCH (n) RETURN count(n)")
-        return rows[0][0] if rows else 0
+        backend = self._backend
+        if backend is None:
+            return 0
+        if hasattr(backend, "count_nodes"):
+            return backend.count_nodes()
+        return len(backend.get_all_nodes())
 
     def _count_edges(self) -> int:
-        rows = self._cypher("MATCH ()-[r]->() RETURN count(r)")
-        return rows[0][0] if rows else 0
+        backend = self._backend
+        if backend is None:
+            return 0
+        if hasattr(backend, "count_edges"):
+            return backend.count_edges()
+        return sum(backend.algos.edge_type_counts().values())
 
     def _type_distribution(self) -> dict[str, int]:
-        rows = self._cypher("MATCH (n) WHERE n.memory_type IS NOT NULL RETURN n.memory_type AS t, count(n) AS c")
-        return {row[0]: row[1] for row in rows} if rows else {}
+        backend = self._backend
+        if backend is None:
+            return {}
+        dist: dict[str, int] = {}
+        for node in backend.get_all_nodes():
+            mt = node.get("memory_type")
+            if mt:
+                dist[mt] = dist.get(mt, 0) + 1
+        return dist
 
     def _edge_distribution(self) -> dict[str, int]:
-        rows = self._cypher("MATCH ()-[r]->() RETURN type(r) AS t, count(r) AS c")
-        return {row[0]: row[1] for row in rows} if rows else {}
+        backend = self._backend
+        if backend is None:
+            return {}
+        return backend.algos.edge_type_counts()
 
     def _count_orphans(self) -> int:
-        rows = self._cypher("MATCH (n) WHERE NOT (n)-[]-() RETURN count(n)")
-        return rows[0][0] if rows else 0
+        backend = self._backend
+        if backend is None:
+            return 0
+        return len(backend.algos.orphan_nodes())
 
     def _provenance_coverage(self) -> float:
-        """Fraction of decision nodes that have provenance edges."""
-        total_rows = self._cypher("MATCH (n {memory_type: 'decision'}) RETURN count(n)")
-        total_count = total_rows[0][0] if total_rows else 0
-        if total_count == 0:
+        """Fraction of decision nodes that have at least one provenance edge."""
+        backend = self._backend
+        if backend is None:
             return 1.0
-
-        with_prov_rows = self._cypher(
-            "MATCH (n {memory_type: 'decision'})-[:DERIVED_FROM|:CAUSED_BY|:PRODUCED]-() RETURN count(DISTINCT n)"
-        )
-        with_count = with_prov_rows[0][0] if with_prov_rows else 0
-        return with_count / total_count
-
-    def _cypher(self, query: str, params: dict | None = None) -> list:
-        if not self.graph:
-            return []
-        try:
-            return self.graph.backend.execute_cypher(query, params)
-        except Exception as e:
-            logger.debug("Cypher query failed: %s", e)
-            return []
+        decisions = [
+            n for n in backend.get_all_nodes()
+            if n.get("memory_type") == "decision"
+        ]
+        if not decisions:
+            return 1.0
+        with_prov = 0
+        for d in decisions:
+            item_id = d.get("item_id")
+            if not item_id:
+                continue
+            edges = backend.get_edges_for_node(item_id)
+            if any(e.get("edge_type") in _PROVENANCE_EDGE_TYPES for e in edges):
+                with_prov += 1
+        return with_prov / len(decisions)

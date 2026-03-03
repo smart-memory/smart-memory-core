@@ -520,6 +520,182 @@ class SQLiteBackend(SmartGraphBackend):
             ).fetchall()
         return [self._row_to_node(r) for r in rows]
 
+    def merge_nodes(self, target_id: str, source_ids: List[str]) -> bool:
+        """Merge multiple source nodes into a target node.
+
+        Matches FalkorDB merge_nodes semantics:
+        1. Rewire outgoing edges: (source→other) becomes (target→other), skip self-loops
+        2. Rewire incoming edges: (other→source) becomes (other→target), skip self-loops
+        3. Merge properties: source fills missing keys, target wins on collision
+        4. Delete source nodes (CASCADE removes remaining edges like source↔target)
+        5. Reload the in-memory compute graph
+
+        Uses UPSERT (INSERT OR REPLACE) for rewired edges to handle PK conflicts
+        when the target already has an edge to the same neighbor with the same type.
+        """
+        if not source_ids:
+            return True
+        try:
+            with self._lock:
+                # Guard: target must exist — otherwise source deletion causes silent data loss.
+                target_exists = self._conn.execute(
+                    "SELECT 1 FROM nodes WHERE item_id=?", (target_id,)
+                ).fetchone()
+                if not target_exists:
+                    logger.error("merge_nodes: target %s does not exist", target_id)
+                    return False
+                with self._conn:
+                    for source_id in source_ids:
+                        if source_id == target_id:
+                            continue
+
+                        # 1. Rewire outgoing: (source)-[r]->(other) → (target)-[r]->(other)
+                        #    Skip edges pointing at target (would create self-loop).
+                        outgoing = self._conn.execute(
+                            "SELECT source_id, target_id, edge_type, memory_type, "
+                            "valid_from, valid_to, created_at, properties "
+                            "FROM edges WHERE source_id=? AND target_id!=?",
+                            (source_id, target_id),
+                        ).fetchall()
+                        for row in outgoing:
+                            self._conn.execute(
+                                _UPSERT_EDGE_SQL,
+                                (target_id, row[1], row[2], row[3], row[4], row[5], row[6], row[7]),
+                            )
+
+                        # 2. Rewire incoming: (other)-[r]->(source) → (other)-[r]->(target)
+                        #    Skip edges coming from target (would create self-loop).
+                        incoming = self._conn.execute(
+                            "SELECT source_id, target_id, edge_type, memory_type, "
+                            "valid_from, valid_to, created_at, properties "
+                            "FROM edges WHERE target_id=? AND source_id!=?",
+                            (source_id, target_id),
+                        ).fetchall()
+                        for row in incoming:
+                            self._conn.execute(
+                                _UPSERT_EDGE_SQL,
+                                (row[0], target_id, row[2], row[3], row[4], row[5], row[6], row[7]),
+                            )
+
+                        # 3. Merge properties (target wins on collision)
+                        source_row = self._conn.execute(
+                            "SELECT properties FROM nodes WHERE item_id=?", (source_id,)
+                        ).fetchone()
+                        target_row = self._conn.execute(
+                            "SELECT properties FROM nodes WHERE item_id=?", (target_id,)
+                        ).fetchone()
+                        if source_row and target_row:
+                            source_props = json.loads(source_row[0])
+                            target_props = json.loads(target_row[0])
+                            merged = {**source_props, **target_props}
+                            self._conn.execute(
+                                "UPDATE nodes SET properties=? WHERE item_id=?",
+                                (json.dumps(merged), target_id),
+                            )
+
+                        # 4. Delete source node (CASCADE removes source↔target edges)
+                        self._conn.execute("DELETE FROM nodes WHERE item_id=?", (source_id,))
+
+            # 5. Rebuild the in-memory graph from SQL state
+            self._compute.reload()
+            return True
+        except Exception as e:
+            logger.error("Failed to merge nodes into %s: %s", target_id, e)
+            return False
+
+    # ── DIST-LITE-PARITY-1 Phase 4: optimizations ──────────────────────────────
+
+    def add_nodes_bulk(
+        self, nodes: List[Dict[str, Any]], batch_size: int = 500, is_global: bool = False
+    ) -> int:
+        """Bulk upsert nodes using executemany() — bypasses per-item sync hooks.
+
+        Calls _compute.reload() once at the end to sync the in-memory graph.
+        """
+        rows = []
+        for node in nodes:
+            item_id = node.get("item_id")
+            if item_id is None:
+                item_id = str(uuid.uuid4())
+            mem_type = node.get("memory_type")
+            props = {k: v for k, v in node.items() if k not in ("item_id", "memory_type")}
+            rows.append((
+                item_id,
+                mem_type,
+                node.get("valid_from"),
+                node.get("valid_to"),
+                node.get("created_at"),
+                json.dumps(props),
+            ))
+        with self._lock:
+            with self._conn:
+                self._conn.executemany(_UPSERT_NODE_SQL, rows)
+        self._compute.reload()
+        return len(rows)
+
+    def add_edges_bulk(
+        self, edges: List[Tuple[str, str, str, Dict[str, Any]]], batch_size: int = 500, is_global: bool = False
+    ) -> int:
+        """Bulk upsert edges — skips edges referencing missing nodes.
+
+        FK constraints cause ``executemany`` to abort the whole batch on one bad
+        reference.  To match FalkorDB's per-edge graceful degradation, edges are
+        inserted individually so valid edges still land when some reference
+        non-existent nodes.
+
+        Calls ``_compute.reload()`` once at the end to sync the in-memory graph.
+        """
+        created = 0
+        with self._lock:
+            for src, tgt, etype, props in edges:
+                row = (
+                    src,
+                    tgt,
+                    etype,
+                    props.get("memory_type"),
+                    props.get("valid_from"),
+                    props.get("valid_to"),
+                    props.get("created_at"),
+                    json.dumps(props),
+                )
+                try:
+                    with self._conn:
+                        self._conn.execute(_UPSERT_EDGE_SQL, row)
+                    created += 1
+                except sqlite3.IntegrityError:
+                    logger.debug("add_edges_bulk: skipped edge %s->%s (FK miss)", src, tgt)
+        self._compute.reload()
+        return created
+
+    def health_check(self) -> Dict[str, Any]:
+        """Run SQLite PRAGMA integrity_check and return diagnostic info."""
+        with self._lock:
+            result = self._conn.execute("PRAGMA integrity_check").fetchone()
+        ok = result is not None and result[0] == "ok"
+        return {
+            "status": "ok" if ok else "error",
+            "integrity_check": result[0] if result else "unknown",
+            "backend": "sqlite",
+        }
+
+    def backend_info(self) -> Dict[str, Any]:
+        """Return SQLite backend metadata for diagnostics."""
+        info: Dict[str, Any] = {
+            "backend": "sqlite",
+            "journal_mode": self._journal_mode,
+            "node_count": self.count_nodes(),
+            "edge_count": self.count_edges(),
+            "in_memory": self._is_memory_db,
+        }
+        if not self._is_memory_db:
+            try:
+                db_path = self._conn.execute("PRAGMA database_list").fetchone()
+                if db_path and db_path[2]:
+                    info["file_size_bytes"] = Path(db_path[2]).stat().st_size
+            except Exception:
+                pass
+        return info
+
     def execute_query(self, *args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError(
             "Cypher queries are not supported in SQLiteBackend. "

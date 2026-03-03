@@ -64,15 +64,28 @@ class CypherAlgos:
         target_id: str,
         max_depth: int = 10,
     ) -> Optional[List[str]]:
-        rows = self._q(
-            "MATCH (s {item_id: $src}), (t {item_id: $tgt}), "
-            f"path = shortestPath((s)-[*..{max_depth}]-(t)) "
-            "RETURN [n IN nodes(path) | n.item_id]",
-            {"src": source_id, "tgt": target_id},
-        )
-        if rows:
-            return list(rows[0][0])
-        return None
+        # FalkorDB only supports directed shortestPath in WITH/RETURN clauses.
+        # Try forward direction first, then reverse (to simulate undirected).
+        best: Optional[List[str]] = None
+        for direction, needs_reverse in [("->", False), ("<-", True)]:
+            try:
+                rows = self._q(
+                    "MATCH (s {item_id: $src}), (t {item_id: $tgt}) "
+                    f"WITH shortestPath((s)-[*..{max_depth}]{direction}(t)) AS path "
+                    "WHERE path IS NOT NULL "
+                    "RETURN [n IN nodes(path) | n.item_id]",
+                    {"src": source_id, "tgt": target_id},
+                )
+                if rows:
+                    path = list(rows[0][0])
+                    if needs_reverse:
+                        path = list(reversed(path))
+                    if len(path) - 1 <= max_depth:
+                        if best is None or len(path) < len(best):
+                            best = path
+            except Exception:
+                continue
+        return best
 
     # ── Transitive closure & pattern matching ─────────────────────────
 
