@@ -9,14 +9,54 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Dict, Protocol, runtime_checkable
 
 from smartmemory.ontology.promotion import COMMON_WORD_BLOCKLIST
 
 if TYPE_CHECKING:
-    from smartmemory.graph.ontology_graph import OntologyGraph
+    pass
 
 logger = logging.getLogger(__name__)
+
+
+@runtime_checkable
+class PatternStore(Protocol):
+    """Persistence backend for EntityRuler patterns.
+
+    PatternManager is responsible for in-memory caching, quality gating
+    (blocklist + length filter), and thread safety. The store handles
+    durable I/O only.
+    """
+
+    def load(self, workspace_id: str) -> list[tuple[str, str]]:
+        """Return (name, label) pairs that have passed the quality threshold.
+
+        Implementations apply their own threshold internally (FalkorDB: count >= 2
+        in Cypher; JSONL: frequency >= 2 filter on read). Returns only patterns
+        ready for the EntityRuler — PatternManager does not re-filter.
+        """
+        ...
+
+    def save(
+        self,
+        name: str,
+        label: str,
+        confidence: float,
+        count: int,
+        workspace_id: str,
+        source: str = "unknown",
+    ) -> None:
+        """Persist a pattern. count = initial occurrence count.
+
+        Use count=2 to immediately pass the quality threshold on next load().
+        source is a provenance tag stored on CREATE only — not overwritten on
+        update (preserves original discovery context, matching FalkorDB semantics).
+        """
+        ...
+
+    def delete(self, name: str, label: str, workspace_id: str) -> None:
+        """Remove a pattern by name and label."""
+        ...
 
 
 class PatternManager:
@@ -24,7 +64,8 @@ class PatternManager:
 
     Usage::
 
-        pm = PatternManager(ontology_graph, workspace_id="acme")
+        store = FalkorDBPatternStore(ontology_graph)
+        pm = PatternManager(store, workspace_id="acme")
         patterns = pm.get_patterns()  # {"python": "Technology", "react": "Technology"}
 
     EntityRulerStage scans tokens against this dict after running spaCy NER.
@@ -34,11 +75,11 @@ class PatternManager:
 
     def __init__(
         self,
-        ontology_graph: OntologyGraph,
+        store: PatternStore,
         workspace_id: str = "default",
         redis_client=None,
     ):
-        self._ontology = ontology_graph
+        self._store = store
         self._workspace_id = workspace_id
         self._redis = redis_client
         self._patterns: Dict[str, str] = {}
@@ -90,35 +131,34 @@ class PatternManager:
                     accepted += 1
                 else:
                     continue  # already cached — skip persistence too
-            # Persist to ontology graph best-effort (outside lock to avoid I/O under lock)
+            # Persist to backing store best-effort (outside lock to avoid I/O under lock)
             try:
-                self._ontology.add_entity_pattern(
+                self._store.save(
                     name=key,
                     label=label,
                     confidence=0.9,
+                    count=initial_count,
                     workspace_id=self._workspace_id,
                     source=source,
-                    initial_count=initial_count,
                 )
             except Exception as exc:
-                logger.debug("Failed to persist code pattern '%s': %s", key, exc)
+                logger.debug("Failed to persist pattern '%s': %s", key, exc)
         return accepted
 
     def _build_patterns(self) -> None:
-        """Load EntityPattern nodes from ontology graph, filtered by blocklist."""
+        """Reload patterns from the backing store into the in-memory cache."""
         try:
-            raw = self._ontology.get_entity_patterns(self._workspace_id)
+            raw = self._store.load(self._workspace_id)
             new_patterns: Dict[str, str] = {}
-            for p in raw:
-                name = p.get("name", "").lower().strip()
-                label = p.get("label", "")
-                if not name or not label:
+            for name, label in raw:
+                key = name.lower().strip()
+                if not key or not label:
                     continue
-                if name in COMMON_WORD_BLOCKLIST:
+                if key in COMMON_WORD_BLOCKLIST:
                     continue
-                if len(name) < 2:
+                if len(key) < 2:
                     continue
-                new_patterns[name] = label
+                new_patterns[key] = label
             with self._lock:
                 self._patterns = new_patterns
                 self._version += 1

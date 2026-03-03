@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### CORE-EXT-2 — Unified PatternManager Backend (COMPLETE)
+
+- **`PatternStore` protocol** (`@runtime_checkable`) in `smartmemory/ontology/pattern_manager.py`: `load(workspace_id) → list[tuple[str, str]]`, `save(name, label, confidence, count, workspace_id, source) → None`, `delete(name, label, workspace_id) → None`.
+- **`FalkorDBPatternStore`** (`smartmemory/ontology/falkordb_pattern_store.py`, new file): thin adapter over `OntologyGraph.get_entity_patterns()` / `add_entity_pattern()` / `delete_entity_pattern()`. All methods swallow exceptions — store failures do not crash the pipeline.
+- **`PatternManager` refactored** to accept `store: PatternStore` instead of `ontology_graph: OntologyGraph`. `_build_patterns()` delegates to `store.load()`; `add_patterns()` delegates to `store.save()`. FalkorDB coupling removed from the manager class.
+- **`seed_patterns_from_code()` simplified**: removed `inspect.signature` compatibility shim. Injected managers detected by `hasattr(..., "add_patterns")` (plural). Read-only injectors fall through to Path A/B.
+- Source provenance semantics: `source` is set on CREATE only — `FalkorDBPatternStore` forwards the field on `ON CREATE SET`; `ON MATCH SET` does not overwrite it.
+
 #### DIST-LITE-DEGRADE-1 (a-f) — Graceful Degradation for Lite Mode (COMPLETE)
 
 - **Temporal queries on SQLite (1b)**: replaced raw Cypher in `TemporalQueries.at_time()`, `TemporalRelationshipQueries._query_relationships()`, `at_time()`, and `get_relationship_history()` with backend-agnostic `search_nodes`/`get_edges_for_node`/`get_all_edges`. Added abstract methods to `SmartGraphBackend` ABC. Normalized FalkorDB edge keys. Deleted `_NoOpTemporalQueries` stub.

@@ -561,12 +561,13 @@ class TestPatternManagerAddPatterns:
 
     def _make_pm(self):
         from smartmemory.ontology.pattern_manager import PatternManager
+        from smartmemory.ontology.falkordb_pattern_store import FalkorDBPatternStore
 
         mock_ontology = MagicMock()
         mock_ontology.get_entity_patterns.return_value = []
         mock_ontology.add_entity_pattern.return_value = True
 
-        pm = PatternManager(ontology_graph=mock_ontology, workspace_id="test-ws")
+        pm = PatternManager(FalkorDBPatternStore(mock_ontology), workspace_id="test-ws")
         return pm
 
     def test_new_patterns_are_accepted(self):
@@ -607,12 +608,13 @@ class TestPatternManagerAddPatterns:
 
     def test_persisted_to_ontology_graph(self):
         from smartmemory.ontology.pattern_manager import PatternManager
+        from smartmemory.ontology.falkordb_pattern_store import FalkorDBPatternStore
 
         mock_ontology = MagicMock()
         mock_ontology.get_entity_patterns.return_value = []
         mock_ontology.add_entity_pattern.return_value = True
 
-        pm = PatternManager(ontology_graph=mock_ontology, workspace_id="test-ws")
+        pm = PatternManager(FalkorDBPatternStore(mock_ontology), workspace_id="test-ws")
         pm.add_patterns({"PaymentService": "class"})
 
         mock_ontology.add_entity_pattern.assert_called_with(

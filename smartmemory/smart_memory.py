@@ -243,9 +243,10 @@ class SmartMemory(MemoryBase):
                     pass
 
             # Phase 4: PatternManager for learned entity pattern dictionary scan
+            from smartmemory.ontology.falkordb_pattern_store import FalkorDBPatternStore
             from smartmemory.ontology.pattern_manager import PatternManager
 
-            pattern_manager = PatternManager(ontology_graph, workspace_id=workspace_id)
+            pattern_manager = PatternManager(FalkorDBPatternStore(ontology_graph), workspace_id=workspace_id)
             self._pipeline_pattern_manager = pattern_manager  # CODE-DEV-4: for seed_patterns_from_code() reload
 
             # Phase 4: EntityPairCache for relation caching
@@ -299,8 +300,8 @@ class SmartMemory(MemoryBase):
             )
             self._ontology_constrain_stage = ontology_constrain_stage
 
-        # Allow injected pattern manager to override (LitePatternManager in Lite mode, where
-        # enable_ontology=False leaves pattern_manager=None after the block above is skipped).
+        # Allow injected pattern manager to override (PatternManager with JSONLPatternStore in Lite
+        # mode, where enable_ontology=False leaves pattern_manager=None after the block above).
         if self._entity_ruler_patterns is not None:
             pattern_manager = self._entity_ruler_patterns
 
@@ -1576,8 +1577,8 @@ class SmartMemory(MemoryBase):
         calls recognise code symbols as named entities.
 
         Three paths:
-        - **Lite mode** (``entity_ruler_patterns`` injected): calls ``add_pattern()``
-          on the LitePatternManager with ``initial_frequency=2`` to bypass threshold.
+        - **Lite mode** (``entity_ruler_patterns`` injected): calls ``add_patterns()``
+          with ``initial_count=2`` to bypass the frequency threshold.
         - **Path A** (pipeline already initialised): adds patterns to the pipeline's
           PatternManager and reloads — patterns available immediately.
         - **Path B** (pipeline not yet initialised): persists to FalkorDB via a
@@ -1597,25 +1598,12 @@ class SmartMemory(MemoryBase):
         if not patterns:
             return
 
-        # Path 1: Lite mode (entity_ruler_patterns injected with add_pattern support)
-        # The injection contract is only get_patterns() → dict[str, str]. If the
-        # injected manager doesn't implement add_pattern, fall through to Path A/B.
-        if self._entity_ruler_patterns is not None and hasattr(self._entity_ruler_patterns, "add_pattern"):
-            import inspect
-
-            lpm = self._entity_ruler_patterns
-            has_initial_freq = "initial_frequency" in inspect.signature(lpm.add_pattern).parameters
-            for name, label in patterns.items():
-                try:
-                    if has_initial_freq:
-                        lpm.add_pattern(name, label, initial_frequency=2)
-                    else:
-                        # Fallback for older LitePatternManager without initial_frequency
-                        lpm.add_pattern(name, label)
-                        lpm.add_pattern(name, label)
-                except (ValueError, Exception):
-                    pass  # quality gate rejections (short name, low confidence)
-            logger.debug("seed_patterns_from_code: seeded %d patterns (Lite mode)", len(patterns))
+        # Path 1: injected manager supports add_patterns() — unified PatternManager (Lite mode).
+        # If the injected manager only implements get_patterns() (read-only custom injector),
+        # skip the early return so Path A/B can seed through _pipeline_pattern_manager.
+        if self._entity_ruler_patterns is not None and hasattr(self._entity_ruler_patterns, "add_patterns"):
+            self._entity_ruler_patterns.add_patterns(patterns, source="code_index", initial_count=2)
+            logger.debug("seed_patterns_from_code: seeded %d patterns via injected manager", len(patterns))
             return
 
         # Paths A and B require ontology support (FalkorDB-backed PatternManager).
@@ -1635,8 +1623,9 @@ class SmartMemory(MemoryBase):
         # Path B: Pipeline not yet initialised — persist to FalkorDB
         # Next _create_pipeline_runner() will pick them up via get_entity_patterns()
         try:
-            from smartmemory.ontology.pattern_manager import PatternManager
             from smartmemory.graph.ontology_graph import OntologyGraph
+            from smartmemory.ontology.falkordb_pattern_store import FalkorDBPatternStore
+            from smartmemory.ontology.pattern_manager import PatternManager
 
             workspace_id = "default"
             try:
@@ -1646,7 +1635,7 @@ class SmartMemory(MemoryBase):
                 pass
 
             ontology_graph = OntologyGraph(workspace_id=workspace_id)
-            pm = PatternManager(ontology_graph, workspace_id=workspace_id)
+            pm = PatternManager(FalkorDBPatternStore(ontology_graph), workspace_id=workspace_id)
             accepted = pm.add_patterns(patterns, source="code_index", initial_count=2)
             logger.debug("seed_patterns_from_code: seeded %d (Path B — FalkorDB persist)", accepted)
         except Exception as exc:

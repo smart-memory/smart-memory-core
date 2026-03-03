@@ -5,11 +5,38 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-from smartmemory.ontology.pattern_manager import PatternManager
+from smartmemory.ontology.pattern_manager import PatternManager, PatternStore
+from smartmemory.ontology.falkordb_pattern_store import FalkorDBPatternStore
 from smartmemory.graph.ontology_graph import OntologyGraph
 from smartmemory.pipeline.stages.entity_ruler import _ngram_scan
 
 from tests.unit.pipeline_v2.test_ontology_graph_extended import ExtendedMockBackend
+
+
+# ------------------------------------------------------------------ #
+# Shared stub store for pure unit tests (no FalkorDB needed)
+# ------------------------------------------------------------------ #
+
+
+class StubPatternStore:
+    """In-memory PatternStore for unit tests."""
+
+    def __init__(self, initial=None):
+        self._data: list[tuple[str, str]] = list(initial or [])
+        self._saved: list[tuple] = []
+
+    def load(self, workspace_id: str) -> list[tuple[str, str]]:
+        return list(self._data)
+
+    def save(self, name: str, label: str, confidence: float, count: int,
+             workspace_id: str, source: str = "unknown") -> None:
+        self._saved.append((name, label, count, source))
+        # Simulate threshold: only persist if count >= 2
+        if count >= 2:
+            self._data.append((name, label))
+
+    def delete(self, name: str, label: str, workspace_id: str) -> None:
+        self._data = [(n, l) for n, l in self._data if not (n == name and l == label)]
 
 
 @pytest.fixture
@@ -23,15 +50,26 @@ def graph(backend):
 
 
 # ------------------------------------------------------------------ #
-# PatternManager
+# PatternStore protocol
 # ------------------------------------------------------------------ #
 
 
-def test_pattern_manager_loads_patterns(graph):
-    graph.add_entity_pattern("python", "Technology", 0.9, workspace_id="test", initial_count=2)
-    graph.add_entity_pattern("react", "Technology", 0.85, workspace_id="test", initial_count=2)
+def test_falkordb_store_satisfies_protocol(graph):
+    assert isinstance(FalkorDBPatternStore(graph), PatternStore)
 
-    pm = PatternManager(graph, workspace_id="test")
+
+def test_stub_store_satisfies_protocol():
+    assert isinstance(StubPatternStore(), PatternStore)
+
+
+# ------------------------------------------------------------------ #
+# PatternManager with StubPatternStore
+# ------------------------------------------------------------------ #
+
+
+def test_pattern_manager_loads_patterns():
+    store = StubPatternStore(initial=[("python", "Technology"), ("react", "Technology")])
+    pm = PatternManager(store, workspace_id="test")
     patterns = pm.get_patterns()
 
     assert "python" in patterns
@@ -39,58 +77,53 @@ def test_pattern_manager_loads_patterns(graph):
     assert patterns["python"] == "Technology"
 
 
-def test_pattern_manager_filters_blocklist_words(graph):
-    graph.add_entity_pattern("the", "Concept", 0.5, workspace_id="test", initial_count=2)
-    graph.add_entity_pattern("python", "Technology", 0.9, workspace_id="test", initial_count=2)
-
-    pm = PatternManager(graph, workspace_id="test")
+def test_pattern_manager_filters_blocklist_words():
+    store = StubPatternStore(initial=[("the", "Concept"), ("python", "Technology")])
+    pm = PatternManager(store, workspace_id="test")
     patterns = pm.get_patterns()
 
     assert "the" not in patterns
     assert "python" in patterns
 
 
-def test_pattern_manager_filters_short_names(graph):
-    graph.add_entity_pattern("a", "Concept", 0.5, workspace_id="test", initial_count=2)
-    graph.add_entity_pattern("qt", "Technology", 0.9, workspace_id="test", initial_count=2)
-
-    pm = PatternManager(graph, workspace_id="test")
+def test_pattern_manager_filters_short_names():
+    store = StubPatternStore(initial=[("a", "Concept"), ("qt", "Technology")])
+    pm = PatternManager(store, workspace_id="test")
     patterns = pm.get_patterns()
 
     assert "a" not in patterns
     assert "qt" in patterns  # length 2 passes
 
 
-def test_pattern_manager_reload(graph):
-    pm = PatternManager(graph, workspace_id="test")
+def test_pattern_manager_reload():
+    store = StubPatternStore()
+    pm = PatternManager(store, workspace_id="test")
     assert pm.pattern_count == 0
 
-    graph.add_entity_pattern("docker", "Technology", 0.9, workspace_id="test", initial_count=2)
+    store._data.append(("docker", "Technology"))
     pm.reload()
 
     assert pm.pattern_count == 1
     assert pm.version == 2  # initial load + reload
 
 
-def test_pattern_manager_includes_global_patterns(graph):
-    graph.add_entity_pattern("python", "Technology", 0.9, is_global=True, source="seed", initial_count=2)
-    graph.add_entity_pattern("mylib", "Technology", 0.7, workspace_id="test", is_global=False, initial_count=2)
-
-    pm = PatternManager(graph, workspace_id="test")
-    patterns = pm.get_patterns()
-
-    assert "python" in patterns
-    assert "mylib" in patterns
+def test_pattern_manager_version_increments_on_add():
+    store = StubPatternStore()
+    pm = PatternManager(store, workspace_id="test")
+    v0 = pm.version
+    pm.add_patterns({"fastapi": "Technology"}, source="code_index", initial_count=2)
+    assert pm.version == v0 + 1
 
 
 # ------------------------------------------------------------------ #
-# add_patterns with source / initial_count (CODE-DEV-4)
+# add_patterns with FalkorDB backend (count/source round-trip)
 # ------------------------------------------------------------------ #
 
 
 def test_add_patterns_initial_count_2_survives_reload(graph):
     """Patterns added with initial_count=2 persist through a reload (count >= 2 threshold)."""
-    pm = PatternManager(graph, workspace_id="test")
+    store = FalkorDBPatternStore(graph)
+    pm = PatternManager(store, workspace_id="test")
     pm.add_patterns({"fastapi": "Technology"}, source="code_index", initial_count=2)
 
     assert "fastapi" in pm.get_patterns()  # in-memory cache
@@ -101,7 +134,8 @@ def test_add_patterns_initial_count_2_survives_reload(graph):
 
 def test_add_patterns_default_count_lost_on_reload(graph):
     """Patterns added with default initial_count=1 are in cache but lost on reload."""
-    pm = PatternManager(graph, workspace_id="test")
+    store = FalkorDBPatternStore(graph)
+    pm = PatternManager(store, workspace_id="test")
     pm.add_patterns({"flask": "Technology"})
 
     assert "flask" in pm.get_patterns()  # in-memory cache
@@ -112,7 +146,8 @@ def test_add_patterns_default_count_lost_on_reload(graph):
 
 def test_add_patterns_blocklist_rejected_regardless_of_initial_count(graph):
     """Blocklist words are rejected even with initial_count=2."""
-    pm = PatternManager(graph, workspace_id="test")
+    store = FalkorDBPatternStore(graph)
+    pm = PatternManager(store, workspace_id="test")
     accepted = pm.add_patterns({"the": "Concept", "python": "Technology"}, initial_count=2)
 
     assert accepted == 1
@@ -122,11 +157,24 @@ def test_add_patterns_blocklist_rejected_regardless_of_initial_count(graph):
 
 def test_add_patterns_custom_source(graph, backend):
     """Source parameter is passed through to ontology graph."""
-    pm = PatternManager(graph, workspace_id="test")
+    store = FalkorDBPatternStore(graph)
+    pm = PatternManager(store, workspace_id="test")
     pm.add_patterns({"react": "Technology"}, source="code_index", initial_count=2)
 
     pattern = backend._patterns[("react", "Technology")]
     assert pattern["source"] == "code_index"
+
+
+def test_pattern_manager_includes_global_patterns(graph):
+    graph.add_entity_pattern("python", "Technology", 0.9, is_global=True, source="seed", initial_count=2)
+    graph.add_entity_pattern("mylib", "Technology", 0.7, workspace_id="test", is_global=False, initial_count=2)
+
+    store = FalkorDBPatternStore(graph)
+    pm = PatternManager(store, workspace_id="test")
+    patterns = pm.get_patterns()
+
+    assert "python" in patterns
+    assert "mylib" in patterns
 
 
 # ------------------------------------------------------------------ #
@@ -182,7 +230,8 @@ def test_entity_ruler_stage_uses_learned_patterns(graph):
     from unittest.mock import MagicMock
 
     graph.add_entity_pattern("fastapi", "Technology", 0.9, workspace_id="test", initial_count=2)
-    pm = PatternManager(graph, workspace_id="test")
+    store = FalkorDBPatternStore(graph)
+    pm = PatternManager(store, workspace_id="test")
 
     # Mock spaCy to avoid requiring the model
     mock_nlp = MagicMock()

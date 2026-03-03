@@ -14,6 +14,7 @@ pytestmark = pytest.mark.unit
 
 from smartmemory.graph.ontology_graph import OntologyGraph
 from smartmemory.ontology.pattern_manager import PatternManager
+from smartmemory.ontology.falkordb_pattern_store import FalkorDBPatternStore
 
 from tests.unit.pipeline_v2.test_ontology_graph_extended import ExtendedMockBackend
 
@@ -81,7 +82,7 @@ def test_pattern_manager_merges_all_visible_layers(graph):
     graph.add_entity_pattern("react", "Technology", 0.9, is_global=True, source="promoted", initial_count=2)
     graph.add_entity_pattern("mylib", "Technology", 0.7, workspace_id="default", is_global=False, source="llm_discovery", initial_count=2)
 
-    pm = PatternManager(graph, workspace_id="default")
+    pm = PatternManager(FalkorDBPatternStore(graph), workspace_id="default")
     patterns = pm.get_patterns()
 
     assert "python" in patterns
