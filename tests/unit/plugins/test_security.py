@@ -196,7 +196,7 @@ class TestSecurityValidation:
         assert len(warnings) == 0
     
     def test_validate_plugin_with_network(self):
-        """Test validation detects network usage."""
+        """Test validation warns when plugin declares network requirement but profile forbids it."""
         class NetworkPlugin(EnricherPlugin):
             @classmethod
             def metadata(cls):
@@ -205,15 +205,16 @@ class TestSecurityValidation:
                     version="1.0.0",
                     author="Test",
                     description="Network plugin",
-                    plugin_type="enricher"
+                    plugin_type="enricher",
+                    requires_network=True,  # plugin declares it needs network access
                 )
-            
+
             def enrich(self, item, node_ids=None):
                 return {"data": "from network"}
-        
+
         perms = get_security_profile('restricted')  # No network access
         warnings = validate_plugin_security(NetworkPlugin, perms)
-        
+
         assert len(warnings) > 0
         assert any('network' in w.lower() for w in warnings)
 

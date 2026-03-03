@@ -122,7 +122,7 @@ class TestHardFailInstantiation:
     def test_falkordb_backend_raises_with_hint(self):
         with _absent_package("falkordb"):
             from smartmemory.graph.backends.falkordb import FalkorDBBackend
-            with pytest.raises(ImportError, match=r"smartmemory\[server\]"):
+            with pytest.raises(ImportError, match=r"smartmemory-core\[server\]"):
                 FalkorDBBackend()
 
     def test_async_falkordb_backend_raises_on_connect(self):
@@ -130,31 +130,31 @@ class TestHardFailInstantiation:
         with _absent_package("falkordb", "falkordb.asyncio"):
             from smartmemory.graph.backends.async_falkordb import AsyncFalkorDBBackend
             backend = AsyncFalkorDBBackend()  # __init__ stores config only — must not raise
-            with pytest.raises(ImportError, match=r"smartmemory\[server\]"):
-                asyncio.get_event_loop().run_until_complete(backend.connect())
+            with pytest.raises(ImportError, match=r"smartmemory-core\[server\]"):
+                asyncio.run(backend.connect())
 
     def test_ontology_registry_raises_with_hint(self):
         with _absent_package("falkordb"):
             from smartmemory.ontology.registry import OntologyRegistry
-            with pytest.raises(ImportError, match=r"smartmemory\[server\]"):
+            with pytest.raises(ImportError, match=r"smartmemory-core\[server\]"):
                 OntologyRegistry()
 
     def test_falkor_vector_backend_raises_with_hint(self):
         with _absent_package("falkordb"):
             from smartmemory.stores.vector.backends.falkor import FalkorVectorBackend
-            with pytest.raises(ImportError, match=r"smartmemory\[server\]"):
+            with pytest.raises(ImportError, match=r"smartmemory-core\[server\]"):
                 FalkorVectorBackend("test_collection", None)
 
     def test_falkordb_graph_service_raises_with_hint(self):
         with _absent_package("falkordb"):
             from smartmemory.stores.ontology.falkordb import FalkorDBGraphService
-            with pytest.raises(ImportError, match=r"smartmemory\[server\]"):
+            with pytest.raises(ImportError, match=r"smartmemory-core\[server\]"):
                 FalkorDBGraphService()
 
     def test_redis_cache_raises_with_hint(self):
         with _absent_package("redis"):
             from smartmemory.utils.cache import RedisCache
-            with pytest.raises(ImportError, match=r"smartmemory\[server\]"):
+            with pytest.raises(ImportError, match=r"smartmemory-core\[server\]"):
                 RedisCache()
 
 
