@@ -1,6 +1,6 @@
 import json
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional
 
 
@@ -21,7 +21,7 @@ class StatusLoggerMixin:
             history = json.loads(history_json)
         except Exception:
             history = []
-        now = datetime.now().isoformat()
+        now = datetime.now(UTC).isoformat()
         entry = {
             'status': status,
             'timestamp': now,

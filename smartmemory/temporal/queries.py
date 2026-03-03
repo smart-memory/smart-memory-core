@@ -6,7 +6,7 @@ and temporal analysis.
 """
 
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 from dataclasses import dataclass, field
 import logging
 
@@ -641,7 +641,7 @@ class TemporalQueries:
                     return datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S")
                 except Exception:
                     logger.warning(f"Could not parse time: {time_str}, using now")
-                    return datetime.now()
+                    return datetime.now(UTC)
 
     def _compare_versions(self, old: TemporalVersion, new: TemporalVersion) -> Optional[TemporalChange]:
         """Compare two versions and return change."""
@@ -665,7 +665,7 @@ class TemporalQueries:
 
             return TemporalChange(
                 item_id=new.item_id,
-                timestamp=new.transaction_time_start or datetime.now(),
+                timestamp=new.transaction_time_start or datetime.now(UTC),
                 change_type="updated",
                 old_value={"content": old.content, "metadata": old_meta},
                 new_value={"content": new.content, "metadata": new_meta},

@@ -4,7 +4,7 @@ Analytics and monitoring for memory drift and bias detection.
 import numpy as np
 import re
 from collections import defaultdict, Counter
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from scipy import stats
 from typing import Dict, List
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -76,7 +76,7 @@ class MemoryAnalytics:
         Returns:
             Dict containing drift scores and significant changes
         """
-        now = datetime.now()
+        now = datetime.now(UTC)
         recent_cutoff = now - timedelta(days=time_window_days)
 
         # Get recent and historical items
@@ -651,4 +651,4 @@ class MemoryAnalytics:
                     return datetime.fromtimestamp(ts)
                 elif isinstance(ts, datetime):
                     return ts
-        return datetime.now()  # Default to current time if no timestamp found
+        return datetime.now(UTC)  # Default to current time if no timestamp found

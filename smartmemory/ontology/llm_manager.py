@@ -9,7 +9,7 @@ ontologies automatically based on usage patterns and domain knowledge.
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, List, Any, Tuple, Optional
 
 from smartmemory.integration.llm.prompts.prompt_provider import get_prompt_value, apply_placeholders
@@ -135,14 +135,14 @@ class LLMOntologyManager:
 
             # Add evolution metadata
             evolution_rule = OntologyRule(
-                id=f"llm_evolution_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                id=f"llm_evolution_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}",
                 name="llm_evolution",
                 rule_type="evolution",
                 description=f"LLM-driven evolution: {evolution_plan.rationale}",
                 conditions={},
                 actions={"changes_applied": changes_applied, "evolution_plan_id": evolution_plan.ontology_id, "auto_applied": True},
                 created_by="llm_manager",
-                created_at=datetime.now()
+                created_at=datetime.now(UTC)
             )
             ontology.add_rule(evolution_rule)
             self.ontology_manager.storage.save_ontology(ontology)
@@ -378,7 +378,7 @@ class LLMOntologyManager:
             data = json.loads(response)
             return OntologyAnalysis(
                 ontology_id=ontology_id,
-                analysis_date=datetime.now(),
+                analysis_date=datetime.now(UTC),
                 coverage_score=data.get("coverage_score", 0.0),
                 consistency_score=data.get("consistency_score", 0.0),
                 completeness_score=data.get("completeness_score", 0.0),
@@ -395,7 +395,7 @@ class LLMOntologyManager:
             # Return default analysis
             return OntologyAnalysis(
                 ontology_id=ontology_id,
-                analysis_date=datetime.now(),
+                analysis_date=datetime.now(UTC),
                 coverage_score=0.5,
                 consistency_score=0.5,
                 completeness_score=0.5,
@@ -414,7 +414,7 @@ class LLMOntologyManager:
             data = json.loads(response)
             return EvolutionPlan(
                 ontology_id=ontology_id,
-                created_date=datetime.now(),
+                created_date=datetime.now(UTC),
                 priority=data.get("priority", "medium"),
                 changes=data.get("changes", []),
                 rationale=data.get("rationale", ""),
@@ -426,7 +426,7 @@ class LLMOntologyManager:
             self.logger.error(f"Failed to parse improvement response: {e}")
             return EvolutionPlan(
                 ontology_id=ontology_id,
-                created_date=datetime.now(),
+                created_date=datetime.now(UTC),
                 priority="low",
                 changes=[],
                 rationale="Parsing failed",
@@ -466,7 +466,7 @@ class LLMOntologyManager:
                     aliases=set(data.get("aliases", [])),
                     examples=data.get("examples", []),
                     created_by="llm_manager",
-                    created_at=datetime.now()
+                    created_at=datetime.now(UTC)
                 )
                 ontology.add_entity_type(entity_type)
                 return True
@@ -482,21 +482,21 @@ class LLMOntologyManager:
                     aliases=set(data.get("aliases", [])),
                     examples=data.get("examples", []),
                     created_by="llm_manager",
-                    created_at=datetime.now()
+                    created_at=datetime.now(UTC)
                 )
                 ontology.add_relationship_type(rel_type)
                 return True
 
             elif change_type == "add_rule":
                 rule = OntologyRule(
-                    id=data.get("id", f"llm_rule_{datetime.now().strftime('%Y%m%d_%H%M%S')}"),
+                    id=data.get("id", f"llm_rule_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}"),
                     name=data["name"],
                     rule_type=data.get("rule_type", "validation"),
                     description=data.get("description", "LLM-generated rule"),
                     conditions=data.get("conditions") or {},
                     actions=data.get("actions") or {},
                     created_by="llm_manager",
-                    created_at=datetime.now()
+                    created_at=datetime.now(UTC)
                 )
                 ontology.add_rule(rule)
                 return True

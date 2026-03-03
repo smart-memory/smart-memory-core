@@ -8,7 +8,7 @@ maintainable client supporting multiple providers with consistent interfaces.
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, List, Optional, Any, Type
 
 from smartmemory.configuration import MemoryConfig
@@ -136,7 +136,7 @@ class LLMResponse:
 
     def __post_init__(self):
         if self.created_at is None:
-            self.created_at = datetime.now()
+            self.created_at = datetime.now(UTC)
 
 
 class LLMClient:

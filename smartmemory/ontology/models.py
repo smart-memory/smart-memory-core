@@ -1,6 +1,6 @@
 import uuid
 from dataclasses import dataclass, asdict, field
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, Set, List, Any, Optional
 
 
@@ -70,7 +70,7 @@ class RelationshipTypeDefinition:
         if self.examples is None:
             self.examples = []
         if self.created_at is None:
-            self.created_at = datetime.now()
+            self.created_at = datetime.now(UTC)
 
 
 @dataclass
@@ -89,7 +89,7 @@ class OntologyRule:
 
     def __post_init__(self):
         if self.created_at is None:
-            self.created_at = datetime.now()
+            self.created_at = datetime.now(UTC)
 
 
 @dataclass
@@ -117,7 +117,7 @@ class OntologySubscription:
             base_registry_id=data["base_registry_id"],
             pinned_version=data.get("pinned_version"),
             hidden_types=set(data.get("hidden_types", [])),
-            subscribed_at=datetime.fromisoformat(data["subscribed_at"]) if "subscribed_at" in data else datetime.now(),
+            subscribed_at=datetime.fromisoformat(data["subscribed_at"]) if "subscribed_at" in data else datetime.now(UTC),
             subscribed_by=data.get("subscribed_by", ""),
         )
 
@@ -139,8 +139,8 @@ class Ontology:
         self.id = str(uuid.uuid4())
         self.name = name
         self.version = version
-        self.created_at = datetime.now()
-        self.updated_at = datetime.now()
+        self.created_at = datetime.now(UTC)
+        self.updated_at = datetime.now(UTC)
 
         self.entity_types: Dict[str, EntityTypeDefinition] = {}
         self.relationship_types: Dict[str, RelationshipTypeDefinition] = {}
@@ -162,17 +162,17 @@ class Ontology:
     def add_entity_type(self, entity_type: EntityTypeDefinition) -> None:
         """Add an entity type to the ontology."""
         self.entity_types[entity_type.name.lower()] = entity_type
-        self.updated_at = datetime.now()
+        self.updated_at = datetime.now(UTC)
 
     def add_relationship_type(self, rel_type: RelationshipTypeDefinition) -> None:
         """Add a relationship type to the ontology."""
         self.relationship_types[rel_type.name.lower()] = rel_type
-        self.updated_at = datetime.now()
+        self.updated_at = datetime.now(UTC)
 
     def add_rule(self, rule: OntologyRule) -> None:
         """Add a rule to the ontology."""
         self.rules[rule.id] = rule
-        self.updated_at = datetime.now()
+        self.updated_at = datetime.now(UTC)
 
     def get_entity_type(self, name: str) -> Optional[EntityTypeDefinition]:
         """Get entity type by name (case-insensitive)."""

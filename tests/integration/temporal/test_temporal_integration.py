@@ -13,7 +13,7 @@ import pytest
 
 
 pytestmark = pytest.mark.integration
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from smartmemory import SmartMemory, MemoryItem
 import time
 import json
@@ -212,12 +212,12 @@ class TestTimeTravelQueries:
         # Add item
         item = MemoryItem(
             content="Original content",
-            metadata={"timestamp": datetime.now().isoformat()}
+            metadata={"timestamp": datetime.now(UTC).isoformat()}
         )
         item_id = memory.add(item)
         
         # Time travel to past
-        past = (datetime.now() - timedelta(hours=1)).isoformat()
+        past = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
         
         with memory.time_travel(past):
             # Context should be set
@@ -235,7 +235,7 @@ class TestTimeTravelQueries:
         memory.add(item2)
         
         # Search in time-travel context
-        past = (datetime.now() - timedelta(seconds=1)).isoformat()
+        past = (datetime.now(UTC) - timedelta(seconds=1)).isoformat()
         
         with memory.time_travel(past):
             results = memory.search("programming")
@@ -246,8 +246,8 @@ class TestTimeTravelQueries:
         item = MemoryItem(content="Test")
         memory.add(item)
         
-        time1 = (datetime.now() - timedelta(hours=2)).isoformat()
-        time2 = (datetime.now() - timedelta(hours=1)).isoformat()
+        time1 = (datetime.now(UTC) - timedelta(hours=2)).isoformat()
+        time2 = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
         
         with memory.time_travel(time1):
             assert memory._temporal_context == time1
@@ -271,7 +271,7 @@ class TestRollbackOperations:
         original = memory.get(item_id)
         
         # Dry run rollback
-        to_time = (datetime.now() - timedelta(hours=1)).isoformat()
+        to_time = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
         result = memory.temporal.rollback(item_id, to_time, dry_run=True)
         
         # Data should be unchanged
@@ -283,7 +283,7 @@ class TestRollbackOperations:
         item = MemoryItem(content="Test")
         item_id = memory.add(item)
         
-        to_time = (datetime.now() - timedelta(hours=1)).isoformat()
+        to_time = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
         preview = memory.temporal.rollback(item_id, to_time, dry_run=True)
         
         assert isinstance(preview, dict)
@@ -303,7 +303,7 @@ class TestComplianceScenarios:
                 "patient_id": "patient123",
                 "user_id": "doctor_smith",
                 "sensitivity": "PHI",
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now(UTC).isoformat()
             }
         )
         record_id = memory.add(record)
@@ -335,7 +335,7 @@ class TestComplianceScenarios:
                 "data_type": "personal",
                 "user_id": "user123",
                 "consent": True,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now(UTC).isoformat()
             }
         )
         data_id = memory.add(personal_data)
@@ -366,7 +366,7 @@ class TestComplianceScenarios:
                 "event_type": "security",
                 "user_id": "user123",
                 "ip_address": "192.168.1.1",
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "success": True
             }
         )
@@ -495,7 +495,7 @@ class TestTemporalEdgeCases:
         item = MemoryItem(content="Test")
         item_id = memory.add(item)
         
-        time_point = datetime.now().isoformat()
+        time_point = datetime.now(UTC).isoformat()
         
         diff = memory.temporal.compare_versions(item_id, time_point, time_point)
         
@@ -506,7 +506,7 @@ class TestTemporalEdgeCases:
         item = MemoryItem(content="Test")
         item_id = memory.add(item)
         
-        future = (datetime.now() + timedelta(days=1)).isoformat()
+        future = (datetime.now(UTC) + timedelta(days=1)).isoformat()
         
         result = memory.temporal.rollback(item_id, future, dry_run=True)
         

@@ -7,7 +7,7 @@ from raw text chunks using structured prompts and lightweight NLP.
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, List, Tuple, Any
 
 from smartmemory.configuration import MemoryConfig
@@ -78,7 +78,7 @@ class LLMInferenceService:
             concepts=concepts,
             relations=relations,
             taxonomy=taxonomy,
-            built_at=datetime.now()
+            built_at=datetime.now(UTC)
         )
 
         metrics = {
@@ -139,7 +139,7 @@ class LLMInferenceService:
                     )],
                     meta=Meta(
                         created_by="ai",
-                        created_at=datetime.now()
+                        created_at=datetime.now(UTC)
                     )
                 )
                 concepts.append(concept)
@@ -449,7 +449,7 @@ Return JSON format:
                     origin=Origin.AI,
                     confidence=0.3,  # Low confidence for fallback
                     evidence=[Evidence(doc=doc_id, quote=word)],
-                    meta=Meta(created_by="fallback", created_at=datetime.now())
+                    meta=Meta(created_by="fallback", created_at=datetime.now(UTC))
                 )
                 concepts.append(concept)
 

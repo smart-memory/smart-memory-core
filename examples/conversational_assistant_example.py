@@ -19,7 +19,7 @@ memory context to provide more sophisticated and natural conversations.
 import json
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List, Dict, Any, Tuple
 
 # Configure logging
@@ -74,7 +74,7 @@ class ConversationalAssistant:
     def process_user_input(self, user_input: str, context: Dict[str, Any] = None) -> str:
         """Process user input and generate memory-enhanced response."""
         self.quality_metrics['total_interactions'] += 1
-        timestamp = datetime.now()
+        timestamp = datetime.now(UTC)
 
         # Store user input in working memory
         user_memory = MemoryItem(
@@ -262,7 +262,7 @@ class ConversationalAssistant:
                 'type': 'user_preference',
                 'user_id': self.user_id,
                 'session_id': self.current_session_id,
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(UTC).isoformat(),
                 'category': 'preference'
             }
         )

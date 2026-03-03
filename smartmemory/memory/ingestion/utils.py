@@ -5,7 +5,7 @@ This module contains sanitization, normalization, and helper functions
 used throughout the ingestion pipeline.
 """
 import re
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional, Tuple, Any, Dict
 
 
@@ -71,7 +71,7 @@ def infer_temporal_metadata(entity: Optional[Dict[str, Any]] = None,
     """
     valid_start = None
     valid_end = None
-    tx_time = datetime.now()
+    tx_time = datetime.now(UTC)
 
     # Try to extract temporal information from enrichment
     if enrichment_result:

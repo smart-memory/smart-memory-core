@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from smartmemory.models.memory_item import MemoryItem
 
@@ -54,7 +54,7 @@ class Monitoring:
             raise ValueError(f"Unknown prune strategy: {strategy}")
 
     def find_old_notes(self, days: int = 365):
-        cutoff = datetime.now() - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
         old_notes = []
         for node in self._graph.backend.search_nodes({"memory_type": "note"}):
             created_at = None

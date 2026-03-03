@@ -1,4 +1,5 @@
 """Unit tests for OntologyConstrainStage."""
+from datetime import UTC
 
 import pytest
 
@@ -377,7 +378,7 @@ class TestOntologyConstrainPropertyValidation:
             aliases=set(),
             examples=[],
             created_by="human",
-            created_at=datetime.now(),
+            created_at=datetime.now(UTC),
             property_constraints={name: PropertyConstraint(**params) for name, params in constraints.items()},
         )
         ontology.add_entity_type(et)

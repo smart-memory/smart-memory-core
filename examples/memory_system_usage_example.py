@@ -10,7 +10,7 @@ This script demonstrates basic usage of the unified SemanticMemoryGraph interfac
 This is NOT a formal test. For automated testing, see the test suite.
 """
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 
 from smartmemory.models.memory_item import MemoryItem
 from smartmemory.smart_memory import SmartMemory
@@ -25,7 +25,7 @@ def run_memory_operations(memory: SmartMemory):
     logger.info("\n--- Ingesting Example ---")
     memory_item_1 = MemoryItem(
         content="The user attended the AI conference on Tuesday.",
-        valid_start_time=datetime.now(),
+        valid_start_time=datetime.now(UTC),
         metadata={'source': 'user_input', 'importance': 0.8}
     )
     # Use ingest() for full pipeline (extract → store → link → enrich → evolve)

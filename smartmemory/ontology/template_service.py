@@ -4,7 +4,7 @@ import copy
 import json
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -131,8 +131,8 @@ class TemplateService:
         ontology = Ontology.from_dict(data)
         ontology.id = str(uuid.uuid4())
         ontology.name = target_name
-        ontology.created_at = datetime.now()
-        ontology.updated_at = datetime.now()
+        ontology.created_at = datetime.now(UTC)
+        ontology.updated_at = datetime.now(UTC)
         ontology.created_by = user_id
         ontology.tenant_id = tenant_id
         ontology.is_template = False
@@ -164,8 +164,8 @@ class TemplateService:
         template.tenant_id = tenant_id
         template.is_template = True
         template.source_template = ""
-        template.created_at = datetime.now()
-        template.updated_at = datetime.now()
+        template.created_at = datetime.now(UTC)
+        template.updated_at = datetime.now(UTC)
 
         self.storage.save_ontology(template)
         return template.id

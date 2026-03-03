@@ -32,7 +32,7 @@ class UserModel(MemoryBaseModel):
         self.last_explicit = responses
         self.history.append({
             'type': 'explicit',
-            'timestamp': datetime.datetime.now().isoformat(),
+            'timestamp': datetime.datetime.now(datetime.UTC).isoformat(),
             'trait_scores': trait_scores,
             'responses': responses
         })
@@ -44,7 +44,7 @@ class UserModel(MemoryBaseModel):
             self.inferred_traits[k] = v
         self.history.append({
             'type': 'behavior',
-            'timestamp': datetime.datetime.now().isoformat(),
+            'timestamp': datetime.datetime.now(UTC).isoformat(),
             'behavior': behavior
         })
 
@@ -54,7 +54,7 @@ class UserModel(MemoryBaseModel):
             self.inferred_traits[k] = v
         self.history.append({
             'type': 'inference',
-            'timestamp': datetime.datetime.now().isoformat(),
+            'timestamp': datetime.datetime.now(UTC).isoformat(),
             'deductions': deductions
         })
 

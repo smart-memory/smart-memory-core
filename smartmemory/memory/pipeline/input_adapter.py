@@ -2,7 +2,7 @@
 InputAdapter component for componentized memory ingestion pipeline.
 Handles conversion of raw input to MemoryItem with metadata normalization.
 """
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, Any, Optional
 
 from smartmemory.memory.pipeline.components import PipelineComponent, ComponentResult
@@ -59,7 +59,7 @@ class InputAdapter(PipelineComponent):
 
     def _normalize_metadata(self, item: MemoryItem) -> MemoryItem:
         """Normalize metadata fields with timestamps and status"""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         if not hasattr(item, 'metadata') or item.metadata is None:
             item.metadata = {}

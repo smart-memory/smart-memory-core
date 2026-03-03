@@ -4,7 +4,7 @@ FalkorDB Graph Materialization Service
 Materializes approved ontology concepts and relations as graph nodes and edges.
 """
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List, Dict, Any, Optional
 
 from smartmemory.configuration import MemoryConfig
@@ -111,7 +111,7 @@ class FalkorDBGraphService:
                     origin: '{concept.origin.value}',
                     pinned: {str(concept.pinned).lower()},
                     snapshot_version: '{version}',
-                    created_at: '{datetime.now().isoformat()}'
+                    created_at: '{datetime.now(UTC).isoformat()}'
                 }})
                 """
                 queries.append(query)
@@ -153,7 +153,7 @@ class FalkorDBGraphService:
                     aliases: {aliases},
                     confidence: {relation.confidence},
                     snapshot_version: '{version}',
-                    created_at: '{datetime.now().isoformat()}'
+                    created_at: '{datetime.now(UTC).isoformat()}'
                 }}]->(range)
                 """
 
@@ -189,7 +189,7 @@ class FalkorDBGraphService:
                     confidence: {tax.confidence},
                     origin: '{tax.origin.value}',
                     snapshot_version: '{version}',
-                    created_at: '{datetime.now().isoformat()}'
+                    created_at: '{datetime.now(UTC).isoformat()}'
                 }}]->(parent)
                 """
 

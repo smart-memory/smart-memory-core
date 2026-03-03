@@ -3,7 +3,7 @@ Memory migration/conversion utilities for agentic memory system.
 Supports moving or transforming items between semantic, episodic, procedural, and working memory types.
 These are intended for use by background processes, enrichment daemons, or agentic workflows outside SmartMemory.
 """
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional
 
 from smartmemory.models.memory_item import MemoryItem
@@ -67,7 +67,7 @@ def working_to_semantic(item: MemoryItem) -> MemoryItem:
     # Promote to semantic: enrich with type and timestamp if missing
     meta = dict(item.metadata)
     meta.setdefault("type", "semantic")
-    meta.setdefault("promoted_at", datetime.now().isoformat())
+    meta.setdefault("promoted_at", datetime.now(UTC).isoformat())
     return MemoryItem(content=item.content, metadata=meta)
 
 
@@ -75,7 +75,7 @@ def working_to_episodic(item: MemoryItem) -> MemoryItem:
     # Promote to episodic: add type and created_at
     meta = dict(item.metadata)
     meta["type"] = "episode"
-    meta["created_at"] = meta.get("created_at", datetime.now().isoformat())
+    meta["created_at"] = meta.get("created_at", datetime.now(UTC).isoformat())
     return MemoryItem(content=item.content, metadata=meta)
 
 

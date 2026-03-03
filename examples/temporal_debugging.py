@@ -8,7 +8,7 @@ by examining what it knew at that point in time.
 """
 
 from smartmemory import SmartMemory, MemoryItem
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import time
 
 
@@ -22,7 +22,7 @@ def simulate_ai_learning(memory):
     
     # Day 1: AI learns basic fact
     print("\n📅 Day 1 (2 days ago): Initial learning")
-    day1 = datetime.now() - timedelta(days=2)
+    day1 = datetime.now(UTC) - timedelta(days=2)
     
     item1 = MemoryItem(
         content="Python was created by Guido van Rossum",
@@ -44,7 +44,7 @@ def simulate_ai_learning(memory):
     
     # Day 2: AI learns more details
     print("\n📅 Day 2 (1 day ago): Additional learning")
-    day2 = datetime.now() - timedelta(days=1)
+    day2 = datetime.now(UTC) - timedelta(days=1)
     
     item2 = MemoryItem(
         content="Python was first released in 1991",
@@ -65,7 +65,7 @@ def simulate_ai_learning(memory):
     
     # Day 3: AI corrects understanding
     print("\n📅 Day 3 (today): Correction based on new information")
-    day3 = datetime.now()
+    day3 = datetime.now(UTC)
     
     item1_v2 = MemoryItem(
         content="Python was created by Guido van Rossum in 1989, first released in 1991",

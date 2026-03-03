@@ -1,6 +1,7 @@
 """
 End-to-end test demonstrating the complete plugin system workflow.
 """
+from datetime import UTC
 
 import pytest
 
@@ -47,7 +48,7 @@ class TestPluginSystemE2E:
                 from datetime import datetime
                 return {
                     "properties": {
-                        "enriched_at": datetime.now().isoformat(),
+                        "enriched_at": datetime.now(UTC).isoformat(),
                         "enricher_version": "1.0.0"
                     },
                     "tags": ["enriched", "custom"]

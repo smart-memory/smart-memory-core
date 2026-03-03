@@ -1,6 +1,7 @@
 """Tests for ontology template service."""
 
 import json
+from datetime import UTC
 from pathlib import Path
 from unittest.mock import patch
 
@@ -234,7 +235,7 @@ class TestSaveAsTemplate:
                 aliases=set(),
                 examples=["John Doe"],
                 created_by="user",
-                created_at=datetime.now(),
+                created_at=datetime.now(UTC),
             )
         )
         tmp_storage.save_ontology(source)

@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import UTC
 from typing import Any, Dict, Optional
 
 from smartmemory.models.base import MemoryBaseModel, StageRequest
@@ -63,7 +64,7 @@ class BasicEnricher(EnricherPlugin):
                 result['tags'] = list(entities)
                 from datetime import datetime
                 temporal = {}
-                now = datetime.now()
+                now = datetime.now(UTC)
                 for entity in entities:
                     temporal[entity] = {
                         'valid_start': now,

@@ -6,6 +6,7 @@ while maintaining all functionality through unified patterns.
 """
 
 import logging
+from datetime import UTC
 from typing import Optional, List
 
 from smartmemory.configuration import MemoryConfig
@@ -117,7 +118,7 @@ class SemanticMemory(HybridMemory):
                         from datetime import datetime
                         if isinstance(valid_time, str):
                             valid_time = datetime.fromisoformat(valid_time)
-                        if (datetime.now() - valid_time).days < age_out:
+                        if (datetime.now(UTC) - valid_time).days < age_out:
                             continue
                 if llm_feedback and item.item_id in llm_feedback:
                     if llm_feedback[item.item_id] == "keep":

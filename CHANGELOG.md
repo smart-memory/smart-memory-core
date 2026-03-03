@@ -511,7 +511,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Eliminated 3 hardcoded JWT defaults** — Replaced by `DEV_JWT_SECRET` constant for dev/test
 - **Unified `AUTH_JWT_SECRET` → `JWT_SECRET_KEY`** — Single env var name across all config files and docker-compose
 - **Eliminated dead domain `app.smartmemory.ai`** — All references updated to `www.smartmemory.ai`
-- **Fixed `datetime.utcnow()` in auth paths** — Migrated to `datetime.now(timezone.utc)` in jwt.py, jwt_provider.py, scope.py
+- **Fixed `datetime.now(UTC)` in auth paths** — Migrated to `datetime.now(timezone.utc)` in jwt.py, jwt_provider.py, scope.py
 - **Removed `dummy` auth provider default** — Core config.json now defaults to `jwt`
 
 ### Added
@@ -603,7 +603,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Cluster ID stability**: Changed from random UUIDs to deterministic hashes, enabling reliable promote/dismiss flow
-- **Deprecated datetime.utcnow()**: Updated to timezone-aware `datetime.now(timezone.utc)`
+- **Deprecated datetime.now(UTC)**: Updated to timezone-aware `datetime.now(timezone.utc)`
 
 ---
 

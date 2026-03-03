@@ -8,7 +8,7 @@ ingestion-time validation, it enables smart curation and gradual improvement.
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import Enum
 from typing import Dict, List, Any, Tuple
 
@@ -160,7 +160,7 @@ class OntologyGovernor:
             action=action,
             rationale=rationale,
             decided_by=decided_by,
-            decided_at=datetime.now(),
+            decided_at=datetime.now(UTC),
             metadata={}
         )
 
@@ -189,7 +189,7 @@ class OntologyGovernor:
 
                 # Record in governance history
                 self.governance_history.append({
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "violation": violation.to_dict(),
                     "decision": {
                         "action": action.value,
@@ -254,7 +254,7 @@ class OntologyGovernor:
         self.logger.info(f"Running periodic governance analysis for last {days_back} days")
 
         # Get recent memory items
-        cutoff_date = datetime.now() - timedelta(days=days_back)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days_back)
         recent_items = self._get_memory_items_since(cutoff_date)
 
         # Analyze against all ontologies
@@ -268,7 +268,7 @@ class OntologyGovernor:
 
         # Prepare summary
         summary = {
-            "analysis_date": datetime.now().isoformat(),
+            "analysis_date": datetime.now(UTC).isoformat(),
             "items_analyzed": len(recent_items),
             "violations_found": len(violations),
             "auto_fixed": fixed_count,
@@ -370,7 +370,7 @@ class OntologyGovernor:
                 description=f"Entity type '{entity_type}' not defined in ontology",
                 suggested_fix=f"Add '{entity_type}' to ontology or map to existing type",
                 confidence=0.9,
-                detected_at=datetime.now(),
+                detected_at=datetime.now(UTC),
                 data_context={
                     "entity": entity,
                     "item_content": item.content[:200] if item.content else ""
@@ -395,7 +395,7 @@ class OntologyGovernor:
                         description=f"Missing required property '{req_prop}' for {entity_type}",
                         suggested_fix=f"Add '{req_prop}' property or make it optional",
                         confidence=0.95,
-                        detected_at=datetime.now(),
+                        detected_at=datetime.now(UTC),
                         data_context={
                             "entity": entity,
                             "required_property": req_prop
@@ -423,7 +423,7 @@ class OntologyGovernor:
                 description=f"Relationship type '{rel_type}' not defined in ontology",
                 suggested_fix=f"Add '{rel_type}' to ontology or map to existing type",
                 confidence=0.85,
-                detected_at=datetime.now(),
+                detected_at=datetime.now(UTC),
                 data_context={
                     "relationship": relationship
                 },

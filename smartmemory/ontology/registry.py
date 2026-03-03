@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, Any, List
 from uuid import uuid4
 
@@ -92,7 +92,7 @@ class OntologyRegistry:
 
             if not result.result_set:
                 # Create default registry
-                now = datetime.now().isoformat()
+                now = datetime.now(UTC).isoformat()
                 query = f"""
                 CREATE (r:Registry {{
                     id: 'default',
@@ -140,7 +140,7 @@ class OntologyRegistry:
             raise ValueError(f"Registry '{name}' already exists")
 
         # Create registry node
-        now = datetime.now().isoformat()
+        now = datetime.now(UTC).isoformat()
         escaped_desc = self._escape_string(description)
         audit_user = self._get_audit_user()
         escaped_user = self._escape_string(audit_user)
@@ -356,7 +356,7 @@ class OntologyRegistry:
             escaped_user = self._escape_string(audit_user)
             escaped_message = self._escape_string(message)
             ontology_json = self._escape_string(json.dumps(ontology.to_dict()))
-            now = datetime.now().isoformat()
+            now = datetime.now(UTC).isoformat()
 
             # Create snapshot node
             query = f"""
@@ -402,7 +402,7 @@ class OntologyRegistry:
             escaped_user = self._escape_string(audit_user)
             escaped_message = self._escape_string(message)
             changes_json = self._escape_string(json.dumps(changes_summary))
-            now = datetime.now().isoformat()
+            now = datetime.now(UTC).isoformat()
 
             query = f"""
             CREATE (c:ChangelogEntry {{
@@ -475,7 +475,7 @@ class OntologyRegistry:
         try:
             escaped_id = self._escape_string(registry_id)
             escaped_version = self._escape_string(new_version)
-            now = datetime.now().isoformat()
+            now = datetime.now(UTC).isoformat()
 
             query = f"""
             MATCH (r:Registry {{id: '{escaped_id}'}})
@@ -525,4 +525,4 @@ class OntologyRegistry:
             return f"v{'.'.join(parts)}"
         except Exception:
             # Fallback to timestamp-based versioning
-            return f"v1.0.{int(datetime.now().timestamp())}"
+            return f"v1.0.{int(datetime.now(UTC).timestamp())}"

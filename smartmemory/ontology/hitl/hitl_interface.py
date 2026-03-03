@@ -7,7 +7,7 @@ and interact with the intelligent ontology governance system.
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, List, Any, Tuple
 
 from smartmemory.ontology.governance import (
@@ -330,11 +330,11 @@ class HITLInterface:
     def export_governance_report(self, filename: str = None) -> str:
         """Export governance report to JSON file."""
         if filename is None:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
             filename = f"ontology_governance_report_{timestamp}.json"
 
         report = {
-            "generated_at": datetime.now().isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "active_violations": [v.to_dict() for v in self.governor.violations.values()],
             "decisions": [
                 {

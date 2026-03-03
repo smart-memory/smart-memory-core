@@ -8,7 +8,7 @@ Maya asks natural questions to guide users through governance decisions.
 
 import logging
 import warnings
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List, Optional, Tuple
 
 from smartmemory.ontology.governance import (
@@ -406,7 +406,7 @@ and ontology are in excellent shape. Keep up the good work! ✨
         if decisions:
             today_decisions = len([
                 d for d in decisions
-                if d.decided_at.date() == datetime.now().date()
+                if d.decided_at.date() == datetime.now(UTC).date()
             ])
 
             summary += "\n**Recent Activity:**\n"

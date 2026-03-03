@@ -19,7 +19,7 @@ import pytest
 
 
 pytestmark = [pytest.mark.integration]
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from smartmemory import SmartMemory, MemoryItem
 from smartmemory.temporal.queries import TemporalQueries, TemporalVersion, TemporalChange
 import time
@@ -185,8 +185,8 @@ class TestGetChanges:
         item = MemoryItem(content="Test")
         item_id = memory.add(item)
 
-        since = (datetime.now() - timedelta(hours=1)).isoformat()
-        until = datetime.now().isoformat()
+        since = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
+        until = datetime.now(UTC).isoformat()
 
         changes = temporal.get_changes(item_id, since=since, until=until)
         assert isinstance(changes, list)
@@ -200,8 +200,8 @@ class TestCompareVersions:
         item = MemoryItem(content="Test")
         item_id = memory.add(item)
 
-        time1 = (datetime.now() - timedelta(hours=1)).isoformat()
-        time2 = datetime.now().isoformat()
+        time1 = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
+        time2 = datetime.now(UTC).isoformat()
 
         result = temporal.compare_versions(item_id, time1, time2)
         assert isinstance(result, dict)
@@ -211,8 +211,8 @@ class TestCompareVersions:
         item = MemoryItem(content="Test")
         item_id = memory.add(item)
 
-        time1 = (datetime.now() - timedelta(hours=1)).isoformat()
-        time2 = datetime.now().isoformat()
+        time1 = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
+        time2 = datetime.now(UTC).isoformat()
 
         result = temporal.compare_versions(item_id, time1, time2)
 
@@ -235,7 +235,7 @@ class TestRollback:
         item = MemoryItem(content="Test")
         item_id = memory.add(item)
 
-        to_time = (datetime.now() - timedelta(hours=1)).isoformat()
+        to_time = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
 
         result = temporal.rollback(item_id, to_time)
 
@@ -248,7 +248,7 @@ class TestRollback:
         item = MemoryItem(content="Test")
         item_id = memory.add(item)
 
-        to_time = (datetime.now() - timedelta(hours=1)).isoformat()
+        to_time = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
 
         result = temporal.rollback(item_id, to_time, dry_run=True)
 
@@ -260,7 +260,7 @@ class TestRollback:
         item = MemoryItem(content="Test")
         item_id = memory.add(item)
 
-        to_time = (datetime.now() - timedelta(hours=1)).isoformat()
+        to_time = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
 
         result = temporal.rollback(item_id, to_time, dry_run=True)
 
@@ -355,7 +355,7 @@ class TestFindMemoriesChangedSince:
 
     def test_find_changed_returns_list(self, temporal):
         """Test that find_memories_changed_since returns a list."""
-        since = (datetime.now() - timedelta(hours=1)).isoformat()
+        since = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
 
         result = temporal.find_memories_changed_since(since)
 
@@ -372,7 +372,7 @@ class TestFindMemoriesChangedSince:
 
     def test_find_changed_with_filters(self, temporal):
         """Test find_memories_changed_since with filters."""
-        since = datetime.now().isoformat()
+        since = datetime.now(UTC).isoformat()
 
         result = temporal.find_memories_changed_since(since, filters={"user_id": "test"})
 
@@ -450,7 +450,7 @@ class TestTemporalDataTypes:
     def test_temporal_change_structure(self):
         """Test TemporalChange dataclass structure."""
         change = TemporalChange(
-            item_id="test-id", timestamp=datetime.now(), change_type="updated", changed_fields=["content"]
+            item_id="test-id", timestamp=datetime.now(UTC), change_type="updated", changed_fields=["content"]
         )
 
         assert change.item_id == "test-id"

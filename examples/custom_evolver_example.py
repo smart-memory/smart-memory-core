@@ -6,7 +6,7 @@ transforms memories based on custom rules and conditions.
 """
 
 from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from smartmemory.plugins.base import EvolverPlugin, PluginMetadata
 
 
@@ -61,7 +61,7 @@ class ImportantMemoryEvolver(EvolverPlugin):
             # This is a simplified example - actual implementation would query the graph
             # For demonstration, we'll show the logic
             
-            cutoff_date = datetime.now() - timedelta(days=self.time_window_days)
+            cutoff_date = datetime.now(UTC) - timedelta(days=self.time_window_days)
             
             # In a real implementation, you would:
             # 1. Query memories from the graph
@@ -77,7 +77,7 @@ class ImportantMemoryEvolver(EvolverPlugin):
             #     access_count = item.metadata.get('access_count', 0)
             #     if access_count >= self.access_threshold:
             #         item.metadata['importance'] = 'high'
-            #         item.metadata['promoted_at'] = datetime.now().isoformat()
+            #         item.metadata['promoted_at'] = datetime.now(UTC).isoformat()
             #         memory.update(item)
             
             if logger:
@@ -125,7 +125,7 @@ class StaleMemoryEvolver(EvolverPlugin):
         if logger:
             logger.info(f"Running {self.metadata().name} evolver")
         
-        cutoff_date = datetime.now() - timedelta(days=self.stale_days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=self.stale_days)
         
         try:
             # Example logic for stale memory handling
@@ -139,7 +139,7 @@ class StaleMemoryEvolver(EvolverPlugin):
             #     if last_access and last_access < cutoff_date:
             #         if self.action == 'archive':
             #             item.metadata['archived'] = True
-            #             item.metadata['archived_at'] = datetime.now().isoformat()
+            #             item.metadata['archived_at'] = datetime.now(UTC).isoformat()
             #             memory.update(item)
             #         elif self.action == 'delete':
             #             memory.delete(item.item_id)

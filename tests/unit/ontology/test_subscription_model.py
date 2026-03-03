@@ -5,7 +5,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 from smartmemory.ontology.models import Ontology, OntologySubscription
 
@@ -45,7 +45,7 @@ class TestOntologySubscriptionRoundtrip:
         d = {
             "base_registry_id": "base-123",
             "hidden_types": ["animal", "plant"],
-            "subscribed_at": datetime.now().isoformat(),
+            "subscribed_at": datetime.now(UTC).isoformat(),
         }
         restored = OntologySubscription.from_dict(d)
         assert isinstance(restored.hidden_types, set)

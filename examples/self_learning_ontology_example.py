@@ -24,7 +24,7 @@ Run this example:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -85,7 +85,7 @@ def demo_create_ontology():
         aliases={"Individual", "User"},
         examples=["John Smith", "Jane Doe"],
         created_by="human",
-        created_at=datetime.now(),
+        created_at=datetime.now(UTC),
         confidence=1.0,
     )
     ontology.add_entity_type(person_type)
@@ -104,7 +104,7 @@ def demo_create_ontology():
         aliases={"Company", "Business"},
         examples=["Google", "OpenAI"],
         created_by="human",
-        created_at=datetime.now(),
+        created_at=datetime.now(UTC),
         confidence=1.0,
     )
     ontology.add_entity_type(org_type)
@@ -122,7 +122,7 @@ def demo_create_ontology():
         aliases={"Tech", "Tool", "Framework"},
         examples=["Python", "React", "Docker"],
         created_by="human",
-        created_at=datetime.now(),
+        created_at=datetime.now(UTC),
         confidence=1.0,
     )
     ontology.add_entity_type(tech_type)
@@ -180,7 +180,7 @@ def demo_validation():
         aliases=set(),
         examples=[],
         created_by="human",
-        created_at=datetime.now(),
+        created_at=datetime.now(UTC),
     )
     ontology.add_entity_type(person_type)
     
@@ -219,7 +219,7 @@ def demo_layered_ontology():
         aliases=set(),
         examples=[],
         created_by="human",
-        created_at=datetime.now(),
+        created_at=datetime.now(UTC),
     ))
     base.add_entity_type(EntityTypeDefinition(
         name="Organization",
@@ -230,7 +230,7 @@ def demo_layered_ontology():
         aliases=set(),
         examples=[],
         created_by="human",
-        created_at=datetime.now(),
+        created_at=datetime.now(UTC),
     ))
     base.add_entity_type(EntityTypeDefinition(
         name="Location",
@@ -241,7 +241,7 @@ def demo_layered_ontology():
         aliases=set(),
         examples=[],
         created_by="human",
-        created_at=datetime.now(),
+        created_at=datetime.now(UTC),
     ))
     
     print(f"📋 Base ontology: {len(base.entity_types)} entity types")
@@ -265,7 +265,7 @@ def demo_layered_ontology():
         aliases={"Developer", "Engineer"},
         examples=["Linus Torvalds", "Guido van Rossum"],
         created_by="human",
-        created_at=datetime.now(),
+        created_at=datetime.now(UTC),
     ))
     
     # Add new type not in base
@@ -278,7 +278,7 @@ def demo_layered_ontology():
         aliases={"Repo", "Project"},
         examples=["linux", "tensorflow"],
         created_by="human",
-        created_at=datetime.now(),
+        created_at=datetime.now(UTC),
     ))
     
     print(f"\n📋 Overlay ontology: {len(overlay.entity_types)} entity types")
@@ -436,7 +436,7 @@ def demo_serialization():
         aliases={"Sample"},
         examples=["test"],
         created_by="human",
-        created_at=datetime.now(),
+        created_at=datetime.now(UTC),
     ))
     
     # Serialize to dict

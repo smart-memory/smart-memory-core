@@ -3,7 +3,7 @@ Pipeline state management for componentized memory ingestion flow.
 Provides stage checkpoints and dependency resolution for Studio integration.
 """
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, Any, Optional, List
 
 
@@ -144,4 +144,4 @@ class PipelineState:
 
     def update_timestamp(self):
         """Update the last modified timestamp"""
-        self.updated_at = datetime.now()
+        self.updated_at = datetime.now(UTC)

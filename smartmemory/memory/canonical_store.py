@@ -3,7 +3,7 @@ CanonicalMemoryStore: Read-only, append-only store for raw canonical MemoryItems
 Supports soft-delete (prune) and deep retrieval for audit or advanced reasoning.
 All derived memory types should reference this canonical layer.
 """
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List, Optional
 
 from smartmemory.memory.base import MemoryBase
@@ -43,7 +43,7 @@ class CanonicalMemoryStore(MemoryBase):
             self._pruned.add(item_id)
             item = self._items[item_id]
             meta = dict(item.metadata)
-            meta["pruned_at"] = datetime.now().isoformat()
+            meta["pruned_at"] = datetime.now(UTC).isoformat()
             if reason:
                 meta["prune_reason"] = reason
             self._items[item_id] = MemoryItem(content=item.content, metadata=meta)

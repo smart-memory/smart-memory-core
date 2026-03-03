@@ -12,6 +12,7 @@ The main flow is reduced to ~200 lines of pure orchestration.
 """
 import logging
 import time
+from datetime import UTC
 
 from smartmemory.memory.context_types import IngestionContext
 from smartmemory.memory.ingestion.enrichment import EnrichmentPipeline
@@ -90,7 +91,7 @@ class MemoryIngestionFlow:
             item = MemoryItem(**item) if isinstance(item, dict) else MemoryItem(content=str(item))
 
         # Normalize metadata
-        now = datetime.now()
+        now = datetime.now(UTC)
         if not hasattr(item, 'metadata') or item.metadata is None:
             item.metadata = {}
         item.metadata.setdefault('created_at', now)

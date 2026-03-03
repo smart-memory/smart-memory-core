@@ -9,7 +9,7 @@ import logging
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List, Dict, Any, Optional, Set
 
 from smartmemory.models.memory_item import MemoryItem
@@ -271,9 +271,9 @@ class TemporalSimilarityMetric(SimilarityMetric):
                 return 0.0  # No temporal information available
 
             if not isinstance(time1, datetime):
-                time1 = datetime.fromisoformat(str(time1)) if time1 else datetime.now()
+                time1 = datetime.fromisoformat(str(time1)) if time1 else datetime.now(UTC)
             if not isinstance(time2, datetime):
-                time2 = datetime.fromisoformat(str(time2)) if time2 else datetime.now()
+                time2 = datetime.fromisoformat(str(time2)) if time2 else datetime.now(UTC)
 
             time_diff = abs((time1 - time2).total_seconds())
 

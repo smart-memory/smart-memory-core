@@ -15,7 +15,7 @@ across multiple sessions, building up knowledge and making connections.
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Dict, Any
 
 # Configure logging
@@ -68,7 +68,7 @@ class HolisticSmartMemoryDemo:
                 'session': 1,
                 'task': 'research',
                 'focus': 'transformer_basics',
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now(UTC).isoformat()
             }
         )
         working_id = self.working_memory.add(working_item)
@@ -91,7 +91,7 @@ class HolisticSmartMemoryDemo:
                     'domain': 'machine_learning',
                     'concept_type': 'transformer_architecture',
                     'session': 1,
-                    'timestamp': datetime.now().isoformat()
+                    'timestamp': datetime.now(UTC).isoformat()
                 }
             )
             semantic_id = self.semantic_memory.add(semantic_item)
@@ -107,7 +107,7 @@ class HolisticSmartMemoryDemo:
                 'session': 1,
                 'duration_minutes': 45,
                 'papers_read': ['attention_is_all_you_need'],
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now(UTC).isoformat()
             }
         )
         episodic_id = self.episodic_memory.add(episodic_item)
@@ -136,7 +136,7 @@ class HolisticSmartMemoryDemo:
                 'task': 'research',
                 'focus': 'attention_mechanisms',
                 'previous_session': 1,
-                'timestamp': (datetime.now() + timedelta(days=1)).isoformat()
+                'timestamp': (datetime.now(UTC) + timedelta(days=1)).isoformat()
             }
         )
         working_id = self.working_memory.add(working_item)
@@ -159,7 +159,7 @@ class HolisticSmartMemoryDemo:
                     'concept_type': 'attention_mechanism',
                     'session': 2,
                     'builds_on_session': 1,
-                    'timestamp': (datetime.now() + timedelta(days=1)).isoformat()
+                    'timestamp': (datetime.now(UTC) + timedelta(days=1)).isoformat()
                 }
             )
             semantic_id = self.semantic_memory.add(semantic_item)
@@ -175,7 +175,7 @@ class HolisticSmartMemoryDemo:
                 'domain': 'machine_learning',
                 'session': 2,
                 'effectiveness': 'high',
-                'timestamp': (datetime.now() + timedelta(days=1)).isoformat()
+                'timestamp': (datetime.now(UTC) + timedelta(days=1)).isoformat()
             }
         )
         procedural_id = self.procedural_memory.add(procedural_item)
@@ -189,7 +189,7 @@ class HolisticSmartMemoryDemo:
                 'session': 2,
                 'emotional_valence': 'positive',
                 'insight_level': 'high',
-                'timestamp': (datetime.now() + timedelta(days=1)).isoformat()
+                'timestamp': (datetime.now(UTC) + timedelta(days=1)).isoformat()
             }
         )
         episodic_id = self.episodic_memory.add(episodic_item)

@@ -21,7 +21,7 @@ This showcases the benefits of multi-type memory systems over simpler approaches
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List, Dict, Any, Tuple
 
 from smartmemory.models.memory_item import MemoryItem
@@ -98,7 +98,7 @@ class AdvancedProgrammingTutor:
                     'effectiveness': 0.5,  # Will be updated based on experience
                     'student_id': self.student_id,
                     'category': 'general',
-                    'timestamp': datetime.now().isoformat()
+                    'timestamp': datetime.now(UTC).isoformat()
                 }
             )
             self.procedural_memory.add(strategy_item)
@@ -117,7 +117,7 @@ class AdvancedProgrammingTutor:
                 'topic': topic,
                 'learning_goals': learning_goals,
                 'student_id': self.student_id,
-                'start_date': datetime.now().isoformat(),
+                'start_date': datetime.now(UTC).isoformat(),
                 'status': 'active'
             }
         )
@@ -457,7 +457,7 @@ class AdvancedProgrammingTutor:
 
     def _store_teaching_interaction(self, concept: str, user_question: str, explanation: str, context: Dict):
         """Store the teaching interaction across appropriate memory types."""
-        timestamp = datetime.now()
+        timestamp = datetime.now(UTC)
 
         # Semantic memory: Store the concept and its explanation
         semantic_item = MemoryItem(
@@ -515,7 +515,7 @@ class AdvancedProgrammingTutor:
                 'effectiveness': effectiveness_score,
                 'week': self.current_week,
                 'student_id': self.student_id,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now(UTC).isoformat()
             }
         )
         self.episodic_memory.add(outcome_item)

@@ -1,7 +1,7 @@
 """Merged read view of a base + overlay ontology pair."""
 
 import copy
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict, Optional, Set
 
 from smartmemory.ontology.models import (
@@ -179,7 +179,7 @@ class LayeredOntology:
 
         flat.subscription = None
         flat.is_base_layer = False
-        flat.updated_at = datetime.now()
+        flat.updated_at = datetime.now(UTC)
         return flat
 
     def to_dict(self) -> Dict[str, Any]:

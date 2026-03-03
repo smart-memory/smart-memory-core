@@ -11,7 +11,7 @@ This showcases SmartMemory's unique bi-temporal capabilities.
 """
 
 from smartmemory import SmartMemory, MemoryItem
-from datetime import datetime
+from datetime import datetime, UTC
 import json
 import time
 
@@ -136,7 +136,7 @@ def main():
     
     print("\nAudit Trail:")
     print(f"  Total Events: {len(trail)}")
-    print(f"  Report Generated: {datetime.now().isoformat()}")
+    print(f"  Report Generated: {datetime.now(UTC).isoformat()}")
     
     print(f"\n{'-'*70}")
     print("Event History (Chronological):")
@@ -173,7 +173,7 @@ def main():
         'patient_id': item.metadata['patient_id'],
         'facility': item.metadata['facility'],
         'department': item.metadata['department'],
-        'generated_at': datetime.now().isoformat(),
+        'generated_at': datetime.now(UTC).isoformat(),
         'generated_by': 'compliance_system',
         'total_events': len(trail),
         'events': trail,
@@ -185,7 +185,7 @@ def main():
         ]
     }
     
-    filename = f"audit_trail_{record_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    filename = f"audit_trail_{record_id}_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.json"
     with open(filename, 'w') as f:
         json.dump(audit_export, f, indent=2)
     

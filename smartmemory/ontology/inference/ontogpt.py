@@ -17,7 +17,7 @@ import re
 import shutil
 import subprocess
 import tempfile
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict, List, Optional, Tuple
 
 from smartmemory.ontology.models import Ontology, EntityTypeDefinition, RelationshipTypeDefinition
@@ -476,7 +476,7 @@ class OntoGPTInferenceEngine:
             aliases=set(),
             examples=examples,
             created_by="ontogpt",
-            created_at=datetime.now(),
+            created_at=datetime.now(UTC),
             confidence=confidence,
         )
 
@@ -499,7 +499,7 @@ class OntoGPTInferenceEngine:
             aliases=set(),
             examples=[],
             created_by="ontogpt",
-            created_at=datetime.now(),
+            created_at=datetime.now(UTC),
             confidence=confidence,
         )
 

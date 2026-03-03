@@ -8,7 +8,7 @@ enable compliance, debugging, and time-travel analysis.
 """
 
 from smartmemory import SmartMemory, MemoryItem
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import time
 
 
@@ -79,7 +79,7 @@ def main():
     print("-" * 70)
     
     # Get state from 5 seconds ago
-    five_sec_ago = (datetime.now() - timedelta(seconds=5)).isoformat()
+    five_sec_ago = (datetime.now(UTC) - timedelta(seconds=5)).isoformat()
     print(f"Querying state as of: {five_sec_ago}")
     
     past_state = memory.graph.get_node(item_id, as_of_time=five_sec_ago)
@@ -114,7 +114,7 @@ def main():
         diff = memory.temporal.compare_versions(
             item_id,
             history[-1].transaction_time_start.isoformat() if history[-1].transaction_time_start else "2024-01-01",
-            history[0].transaction_time_start.isoformat() if history[0].transaction_time_start else datetime.now().isoformat()
+            history[0].transaction_time_start.isoformat() if history[0].transaction_time_start else datetime.now(UTC).isoformat()
         )
         print("✓ Differences found:")
         print(f"  Changed fields: {diff.get('changed_fields', [])}")

@@ -4,7 +4,7 @@ import pytest
 
 
 pytestmark = pytest.mark.unit
-from datetime import datetime
+from datetime import datetime, UTC
 
 from smartmemory.ontology.layered import LayeredOntology
 from smartmemory.ontology.models import (
@@ -26,7 +26,7 @@ def _make_entity(name: str, desc: str = "test") -> EntityTypeDefinition:
         aliases=set(),
         examples=[],
         created_by="test",
-        created_at=datetime.now(),
+        created_at=datetime.now(UTC),
     )
 
 

@@ -8,7 +8,7 @@ This module handles all enrichment operations including:
 - Wikipedia grounding operations
 """
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, Any
 
 from smartmemory.memory.ingestion import utils as ingestion_utils
@@ -102,8 +102,8 @@ class EnrichmentPipeline:
                     valid_start = temporal.get('valid_start')
                     valid_end = temporal.get('valid_end')
                     tx_time = temporal.get('transaction_time')
-            valid_start = valid_start or datetime.now()
-            tx_time = tx_time or datetime.now()
+            valid_start = valid_start or datetime.now(UTC)
+            tx_time = tx_time or datetime.now(UTC)
             return valid_start, valid_end, tx_time
 
         for entity, wiki in wiki_data.items():

@@ -5,7 +5,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 from smartmemory.ontology.models import PropertyConstraint, EntityTypeDefinition, Ontology
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 class TestPropertyConstraint:
@@ -106,7 +106,7 @@ class TestEntityTypeDefinitionConstraints:
             aliases=set(),
             examples=[],
             created_by="human",
-            created_at=datetime.now(),
+            created_at=datetime.now(UTC),
             property_constraints=constraints or {},
         )
 
@@ -141,7 +141,7 @@ class TestOntologyConstraintSerialization:
             aliases=set(),
             examples=["Alice"],
             created_by="human",
-            created_at=datetime.now(),
+            created_at=datetime.now(UTC),
             property_constraints={
                 "name": PropertyConstraint(required=True, type="string", kind="hard"),
                 "age": PropertyConstraint(type="number", kind="soft"),
@@ -186,7 +186,7 @@ class TestOntologyConstraintSerialization:
             aliases=set(),
             examples=[],
             created_by="human",
-            created_at=datetime.now(),
+            created_at=datetime.now(UTC),
         )
         ontology.add_entity_type(et)
         d = ontology.to_dict()

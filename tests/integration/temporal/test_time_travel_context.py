@@ -13,7 +13,7 @@ import pytest
 
 
 pytestmark = [pytest.mark.integration]
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from smartmemory import SmartMemory, MemoryItem
 from smartmemory.temporal.context import time_travel, TemporalContext
 
@@ -234,14 +234,14 @@ class TestTimeTravelEdgeCases:
 
     def test_time_travel_with_future_date(self, memory):
         """Test time-travel to future date."""
-        future = (datetime.now() + timedelta(days=365)).isoformat()
+        future = (datetime.now(UTC) + timedelta(days=365)).isoformat()
 
         with memory.time_travel(future):
             assert memory._temporal_context == future
 
     def test_time_travel_with_past_date(self, memory):
         """Test time-travel to past date."""
-        past = (datetime.now() - timedelta(days=365)).isoformat()
+        past = (datetime.now(UTC) - timedelta(days=365)).isoformat()
 
         with memory.time_travel(past):
             assert memory._temporal_context == past
@@ -267,12 +267,12 @@ class TestTimeTravelIntegration:
         # Add item in present
         item = MemoryItem(
             content="Present content",
-            metadata={"timestamp": datetime.now().isoformat()}
+            metadata={"timestamp": datetime.now(UTC).isoformat()}
         )
         memory.add(item)
 
         # Time travel to past
-        past = (datetime.now() - timedelta(hours=1)).isoformat()
+        past = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
 
         with memory.time_travel(past):
             # Context should be set
@@ -286,7 +286,7 @@ class TestTimeTravelIntegration:
         item = MemoryItem(content="Test")
         item_id = memory.add(item)
 
-        past = (datetime.now() - timedelta(hours=1)).isoformat()
+        past = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
 
         with memory.time_travel(past):
             # Temporal queries should still work

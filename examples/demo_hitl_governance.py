@@ -7,7 +7,7 @@ system to review violations, make decisions, and manage ontology evolution.
 
 import shutil
 import tempfile
-from datetime import datetime
+from datetime import datetime, UTC
 
 from smartmemory.ontology.governance import (
     OntologyGovernor, OntologyViolation, ViolationSeverity, GovernanceAction
@@ -60,7 +60,7 @@ def create_demo_environment():
         aliases=set(),
         examples=["React", "Django", "Spring"],
         created_by="demo",
-        created_at=datetime.now()
+        created_at=datetime.now(UTC)
     )
 
     organization_type = EntityTypeDefinition(
@@ -72,7 +72,7 @@ def create_demo_environment():
         aliases=set(),
         examples=["Google", "Microsoft", "Facebook"],
         created_by="demo",
-        created_at=datetime.now()
+        created_at=datetime.now(UTC)
     )
 
     ontology.add_entity_type(framework_type)
@@ -86,7 +86,7 @@ def create_demo_environment():
         target_types={"organization"},
         properties={},
         created_by="demo",
-        created_at=datetime.now()
+        created_at=datetime.now(UTC)
     )
 
     ontology.add_relationship_type(developed_by_rel)
@@ -103,7 +103,7 @@ def create_demo_environment():
             description="Unknown entity type 'programming_language' found in data",
             suggested_fix="Add 'programming_language' entity type to ontology",
             confidence=0.9,
-            detected_at=datetime.now(),
+            detected_at=datetime.now(UTC),
             data_context={
                 "entity": {"name": "Python", "type": "programming_language"},
                 "item_content": "Python is a high-level programming language"
@@ -119,7 +119,7 @@ def create_demo_environment():
             description="Framework 'Vue.js' missing required property 'language'",
             suggested_fix="Add 'language' property with value 'JavaScript'",
             confidence=0.95,
-            detected_at=datetime.now(),
+            detected_at=datetime.now(UTC),
             data_context={
                 "entity": {"name": "Vue.js", "type": "framework"},
                 "missing_property": "language"
@@ -135,7 +135,7 @@ def create_demo_environment():
             description="Unknown relationship type 'competes_with' found",
             suggested_fix="Add 'competes_with' relationship type or map to existing type",
             confidence=0.7,
-            detected_at=datetime.now(),
+            detected_at=datetime.now(UTC),
             data_context={
                 "relationship": {"type": "competes_with", "source": "React", "target": "Vue.js"}
             },
@@ -150,7 +150,7 @@ def create_demo_environment():
             description="Critical data inconsistency: organization 'Facebook' has conflicting founding dates",
             suggested_fix="Review and correct founding date information",
             confidence=0.85,
-            detected_at=datetime.now(),
+            detected_at=datetime.now(UTC),
             data_context={
                 "conflicting_values": {"founded": ["2004", "2003"]},
                 "entity": {"name": "Facebook", "type": "organization"}
@@ -285,7 +285,7 @@ def demo_batch_processing():
                 description=f"Unknown entity type 'database_{i}' found in data",
                 suggested_fix=f"Add 'database_{i}' entity type to ontology",
                 confidence=0.8,
-                detected_at=datetime.now(),
+                detected_at=datetime.now(UTC),
                 data_context={"entity_type": f"database_{i}"},
                 auto_fixable=False
             )

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional
 
 from smartmemory.models.base import MemoryBaseModel
@@ -20,7 +20,7 @@ class Procedure(MemoryBaseModel):
             item_id=item.item_id,
             name=item.content or item.metadata.get("name", ""),
             description=item.metadata.get("description", ""),
-            created_at=item.metadata.get("created_at", datetime.now()),
+            created_at=item.metadata.get("created_at", datetime.now(UTC)),
         )
 
     def to_memory_item(self) -> MemoryItem:

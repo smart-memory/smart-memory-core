@@ -11,7 +11,7 @@ Supports:
 
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, List, Optional, Any
 
 from smartmemory.ontology.models import EntityTypeDefinition, RelationshipTypeDefinition, OntologyRule, Ontology
@@ -138,7 +138,7 @@ class OntologyManager:
                     aliases=set(),
                     examples=stats['examples'][:5],  # Keep top 5 examples
                     created_by="inferred",
-                    created_at=datetime.now(),
+                    created_at=datetime.now(UTC),
                     confidence=min(1.0, stats['count'] / 10)  # Higher confidence for more examples
                 )
                 ontology.add_entity_type(entity_def)
@@ -153,7 +153,7 @@ class OntologyManager:
                     target_types=stats['target_types'],
                     properties={},
                     created_by="inferred",
-                    created_at=datetime.now(),
+                    created_at=datetime.now(UTC),
                     confidence=min(1.0, stats['count'] / 10)
                 )
                 ontology.add_relationship_type(rel_def)
@@ -181,7 +181,7 @@ class OntologyManager:
             conditions={"source": "freeform_extraction"},
             actions={"validate_against_ontology": True, "suggest_improvements": True},
             created_by="migration",
-            created_at=datetime.now()
+            created_at=datetime.now(UTC)
         )
         ontology.add_rule(migration_rule)
 

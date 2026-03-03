@@ -7,7 +7,7 @@ Handles parsing and validation of LLM responses with Pydantic models.
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict, Optional, Type
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class StructuredResponse:
 
     def __post_init__(self):
         if self.created_at is None:
-            self.created_at = datetime.now()
+            self.created_at = datetime.now(UTC)
 
 
 class ResponseParser:
@@ -162,7 +162,7 @@ class ResponseParser:
             # Return default analysis structure
             return {
                 "ontology_id": ontology_id,
-                "analysis_date": datetime.now().isoformat(),
+                "analysis_date": datetime.now(UTC).isoformat(),
                 "coverage_score": 0.5,
                 "consistency_score": 0.5,
                 "completeness_score": 0.5,
@@ -178,7 +178,7 @@ class ResponseParser:
         # Ensure required fields with defaults
         analysis = {
             "ontology_id": ontology_id,
-            "analysis_date": datetime.now().isoformat(),
+            "analysis_date": datetime.now(UTC).isoformat(),
             "coverage_score": parsed_data.get("coverage_score", 0.0),
             "consistency_score": parsed_data.get("consistency_score", 0.0),
             "completeness_score": parsed_data.get("completeness_score", 0.0),
@@ -205,7 +205,7 @@ class ResponseParser:
             # Return default plan structure
             return {
                 "ontology_id": ontology_id,
-                "created_date": datetime.now().isoformat(),
+                "created_date": datetime.now(UTC).isoformat(),
                 "priority": "low",
                 "changes": [],
                 "rationale": "Parsing failed",
@@ -217,7 +217,7 @@ class ResponseParser:
         # Ensure required fields with defaults
         plan = {
             "ontology_id": ontology_id,
-            "created_date": datetime.now().isoformat(),
+            "created_date": datetime.now(UTC).isoformat(),
             "priority": parsed_data.get("priority", "medium"),
             "changes": parsed_data.get("changes", []),
             "rationale": parsed_data.get("rationale", ""),
