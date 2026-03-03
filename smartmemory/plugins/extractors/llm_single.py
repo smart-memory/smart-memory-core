@@ -153,6 +153,15 @@ EXTRACTION_JSON_SCHEMA = {
 # This invalidates all cached extraction results without requiring a manual cache clear.
 EXTRACTION_SCHEMA_VERSION = 2
 
+# Canonical valid entity types — derived from the schema enum so they stay in sync.
+# Used in _process_entities() to normalize out-of-enum values returned by providers
+# that ignore or partially enforce the structured-output schema (Groq, Ollama, etc.).
+VALID_ENTITY_TYPES: frozenset[str] = frozenset(
+    EXTRACTION_JSON_SCHEMA["json_schema"]["schema"]["properties"]["entities"]["items"][
+        "properties"
+    ]["entity_type"]["enum"]
+)
+
 _DECISIONS_PROMPT_SECTION = """
 DECISION EXTRACTION (only if clearly present in the text):
 A "decision" is a firm choice, commitment, or conclusion — not a hypothetical,
@@ -396,6 +405,12 @@ class LLMSingleExtractor(ExtractorPlugin):
 
             name = (e.get("name") or "").strip()
             etype = (e.get("entity_type") or "concept").strip().lower()
+            # CROSS-API-2: normalize out-of-enum types — providers may ignore the schema
+            # enum constraint (Groq, Ollama, non-strict JSON mode). Fall back to "concept"
+            # so unknown types never enter the graph unchecked.
+            if etype not in VALID_ENTITY_TYPES:
+                logger.debug("entity_type %r not in enum — normalizing to 'concept'", etype)
+                etype = "concept"
 
             if not name:
                 continue

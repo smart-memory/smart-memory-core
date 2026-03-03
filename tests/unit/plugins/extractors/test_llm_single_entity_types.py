@@ -17,6 +17,8 @@ from smartmemory.plugins.extractors.llm_single import (
     EXTRACTION_JSON_SCHEMA,
     EXTRACTION_SCHEMA_VERSION,
     SINGLE_CALL_PROMPT,
+    VALID_ENTITY_TYPES,
+    LLMSingleExtractor,
 )
 
 # The canonical list of valid entity types, shared by SINGLE_CALL_PROMPT and the JSON schema.
@@ -145,3 +147,84 @@ class TestEnumMatchesSingleCallPrompt:
             f"  Extra in prompt: {prompt_types - EXPECTED_ENTITY_TYPES}\n"
             f"  Missing from prompt: {EXPECTED_ENTITY_TYPES - prompt_types}"
         )
+
+
+class TestEntityTypeFallbackNormalization:
+    """CROSS-API-2: _process_entities() normalizes out-of-enum entity_type values.
+
+    LLM providers (Groq, Ollama, non-strict JSON mode) may ignore the schema
+    enum constraint and return arbitrary type strings. The normalization gate
+    in _process_entities() must remap these to "concept" before they enter the graph.
+    """
+
+    @pytest.fixture
+    def extractor(self):
+        """Extractor instance with a dummy API key (no LLM calls made in these tests)."""
+        return LLMSingleExtractor(api_key="test-key-unused")
+
+    def test_valid_entity_types_constant_matches_schema_enum(self):
+        """VALID_ENTITY_TYPES must equal the enum from EXTRACTION_JSON_SCHEMA."""
+        schema_enum = frozenset(
+            EXTRACTION_JSON_SCHEMA["json_schema"]["schema"]["properties"]["entities"][
+                "items"
+            ]["properties"]["entity_type"]["enum"]
+        )
+        assert VALID_ENTITY_TYPES == schema_enum, (
+            "VALID_ENTITY_TYPES has drifted from EXTRACTION_JSON_SCHEMA enum.\n"
+            f"  Extra in constant: {VALID_ENTITY_TYPES - schema_enum}\n"
+            f"  Missing from constant: {schema_enum - VALID_ENTITY_TYPES}"
+        )
+
+    def test_unknown_type_normalized_to_concept(self, extractor):
+        """An out-of-enum type returned by the LLM is remapped to 'concept'."""
+        raw = [{"name": "Pizza", "entity_type": "food", "confidence": 0.9}]
+        result = extractor._process_entities(raw)
+
+        assert len(result) == 1
+        assert result[0].metadata["entity_type"] == "concept", (
+            "entity_type 'food' is not in the enum and must be normalized to 'concept'"
+        )
+
+    def test_multiple_unknown_types_all_normalized(self, extractor):
+        """Each out-of-enum type in a batch is individually remapped."""
+        raw = [
+            {"name": "Pizza", "entity_type": "food", "confidence": 0.9},
+            {"name": "Dog", "entity_type": "animal", "confidence": 0.85},
+            {"name": "Happiness", "entity_type": "emotion", "confidence": 0.7},
+        ]
+        result = extractor._process_entities(raw)
+
+        assert len(result) == 3
+        for item in result:
+            assert item.metadata["entity_type"] == "concept", (
+                f"Expected 'concept' for {item.content!r}, got {item.metadata['entity_type']!r}"
+            )
+
+    def test_valid_types_pass_through_unchanged(self, extractor):
+        """Known enum types are not remapped."""
+        for valid_type in ["person", "organization", "location", "technology", "award"]:
+            raw = [{"name": "Test", "entity_type": valid_type, "confidence": 0.9}]
+            result = extractor._process_entities(raw)
+            assert result[0].metadata["entity_type"] == valid_type, (
+                f"Valid type {valid_type!r} should not be remapped"
+            )
+
+    def test_uppercase_type_lowercased_then_validated(self, extractor):
+        """Types are lowercased before validation — 'PERSON' normalizes to valid 'person'."""
+        raw = [{"name": "Alice", "entity_type": "PERSON", "confidence": 0.95}]
+        result = extractor._process_entities(raw)
+        assert result[0].metadata["entity_type"] == "person"
+
+    def test_mixed_valid_and_invalid_in_same_batch(self, extractor):
+        """Valid and invalid types in the same LLM response are handled correctly."""
+        raw = [
+            {"name": "Alice", "entity_type": "person", "confidence": 0.95},
+            {"name": "Mars", "entity_type": "planet", "confidence": 0.8},   # out-of-enum
+            {"name": "Python", "entity_type": "technology", "confidence": 0.9},
+        ]
+        result = extractor._process_entities(raw)
+        by_name = {item.content: item.metadata["entity_type"] for item in result}
+
+        assert by_name["Alice"] == "person"
+        assert by_name["Mars"] == "concept"   # "planet" → fallback
+        assert by_name["Python"] == "technology"
