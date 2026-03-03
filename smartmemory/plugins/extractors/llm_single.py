@@ -122,7 +122,7 @@ EXTRACTION_JSON_SCHEMA = {
                         "type": "object",
                         "properties": {
                             "name": {"type": "string"},
-                            "entity_type": {"type": "string"},
+                            "entity_type": {"type": "string", "enum": ["person", "organization", "location", "event", "product", "work_of_art", "temporal", "concept", "technology", "award"]},
                             "confidence": {"type": "number"},
                         },
                         "required": ["name", "entity_type", "confidence"],
@@ -151,7 +151,7 @@ EXTRACTION_JSON_SCHEMA = {
 
 # CORE-SYS2-1b: Increment when SINGLE_CALL_PROMPT or EXTRACTION_JSON_SCHEMA changes shape.
 # This invalidates all cached extraction results without requiring a manual cache clear.
-EXTRACTION_SCHEMA_VERSION = 1
+EXTRACTION_SCHEMA_VERSION = 2
 
 _DECISIONS_PROMPT_SECTION = """
 DECISION EXTRACTION (only if clearly present in the text):
