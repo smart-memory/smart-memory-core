@@ -76,6 +76,14 @@ class FalkorDBBackend(SmartGraphBackend):
         self.db = _FalkorDB(host=self.host, port=self.port)
         self.graph = self.db.select_graph(self.graph_name)
 
+        from smartmemory.graph.cypher_algos import CypherAlgos
+
+        self._algos = CypherAlgos(self)
+
+    @property
+    def algos(self):
+        return self._algos
+
     # ---------- Capability Checks ----------
     def has_capability(self, name: str) -> bool:
         if name in {"vector"}:  # RedisGraph lacks native vector ops

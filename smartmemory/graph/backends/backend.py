@@ -1,9 +1,24 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
+if TYPE_CHECKING:
+    from smartmemory.graph.algos import GraphAlgos
 
 
 class SmartGraphBackend(ABC):
     """Abstract base class for graph storage backends."""
+
+    @property
+    def algos(self) -> "GraphAlgos":
+        """Backend-agnostic graph algorithms (path finding, centrality, etc.).
+
+        Implementations: NetworkXAlgos (SQLiteBackend), CypherAlgos (FalkorDBBackend).
+        Override in subclasses; default raises NotImplementedError.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not provide graph algorithms. "
+            "Use SQLiteBackend or FalkorDBBackend for GraphAlgos support."
+        )
 
     @abstractmethod
     def add_node(

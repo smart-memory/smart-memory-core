@@ -16,7 +16,10 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from smartmemory.graph.algos import GraphAlgos
 from smartmemory.graph.backends.backend import SmartGraphBackend
+from smartmemory.graph.compute import GraphComputeLayer
+from smartmemory.graph.networkx_algos import NetworkXAlgos
 from smartmemory.interfaces import ScopeProvider
 
 logger = logging.getLogger(__name__)
@@ -59,6 +62,30 @@ _CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_edges_target ON edges(target_id)",
 ]
 
+_UPSERT_NODE_SQL = (
+    "INSERT INTO nodes "
+    "(item_id, memory_type, valid_from, valid_to, created_at, properties) "
+    "VALUES (?, ?, ?, ?, ?, ?) "
+    "ON CONFLICT(item_id) DO UPDATE SET "
+    "    memory_type = excluded.memory_type, "
+    "    valid_from   = excluded.valid_from, "
+    "    valid_to     = excluded.valid_to, "
+    "    created_at   = excluded.created_at, "
+    "    properties   = excluded.properties"
+)
+
+_UPSERT_EDGE_SQL = (
+    "INSERT INTO edges "
+    "(source_id, target_id, edge_type, memory_type, valid_from, valid_to, created_at, properties) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+    "ON CONFLICT(source_id, target_id, edge_type) DO UPDATE SET "
+    "    memory_type = COALESCE(excluded.memory_type, edges.memory_type), "
+    "    valid_from  = COALESCE(excluded.valid_from,  edges.valid_from), "
+    "    valid_to    = COALESCE(excluded.valid_to,    edges.valid_to), "
+    "    created_at  = COALESCE(excluded.created_at,  edges.created_at), "
+    "    properties  = excluded.properties"
+)
+
 
 class SQLiteBackend(SmartGraphBackend):
     """Graph backend backed by SQLite. Adjacency-list model, WAL mode, no network required."""
@@ -85,6 +112,14 @@ class SQLiteBackend(SmartGraphBackend):
         self._journal_mode = result[0] if result else "unknown"
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._create_tables()
+        # GraphComputeLayer mirrors SQL state into an in-memory nx.DiGraph.
+        # NetworkXAlgos delegates algorithmic operations to that DiGraph.
+        self._compute = GraphComputeLayer(self)
+        self._algos: GraphAlgos = NetworkXAlgos(self._compute)
+
+    @property
+    def algos(self) -> GraphAlgos:
+        return self._algos
 
     def _create_tables(self) -> None:
         with self._lock:
@@ -127,6 +162,19 @@ class SQLiteBackend(SmartGraphBackend):
         props["created_at"] = created_at
         return props
 
+    @staticmethod
+    def _row_to_edge(row: Any) -> Dict[str, Any]:
+        return {
+            "source_id": row[0],
+            "target_id": row[1],
+            "edge_type": row[2],
+            "memory_type": row[3],
+            "valid_from": row[4],
+            "valid_to": row[5],
+            "created_at": row[6],
+            "properties": json.loads(row[7]),
+        }
+
     def close(self) -> None:
         """Close the SQLite connection, flushing WAL to the main database file."""
         try:
@@ -155,15 +203,7 @@ class SQLiteBackend(SmartGraphBackend):
         with self._lock:
             with self._conn:
                 self._conn.execute(
-                    "INSERT INTO nodes "
-                    "(item_id, memory_type, valid_from, valid_to, created_at, properties) "
-                    "VALUES (?, ?, ?, ?, ?, ?) "
-                    "ON CONFLICT(item_id) DO UPDATE SET "
-                    "    memory_type = excluded.memory_type, "
-                    "    valid_from   = excluded.valid_from, "
-                    "    valid_to     = excluded.valid_to, "
-                    "    created_at   = excluded.created_at, "
-                    "    properties   = excluded.properties",
+                    _UPSERT_NODE_SQL,
                     (
                         item_id,
                         mem_type,
@@ -173,6 +213,7 @@ class SQLiteBackend(SmartGraphBackend):
                         json.dumps(props_to_store),
                     ),
                 )
+        self._compute.sync_add_node(item_id, properties)
         result = dict(properties)
         result["item_id"] = item_id
         return result
@@ -182,6 +223,7 @@ class SQLiteBackend(SmartGraphBackend):
             with self._conn:
                 self._conn.execute("DELETE FROM edges")
                 self._conn.execute("DELETE FROM nodes")
+        self._compute.sync_clear()
 
     def add_edge(
         self,
@@ -197,15 +239,7 @@ class SQLiteBackend(SmartGraphBackend):
         with self._lock:
             with self._conn:
                 self._conn.execute(
-                    "INSERT INTO edges "
-                    "(source_id, target_id, edge_type, memory_type, valid_from, valid_to, created_at, properties) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
-                    "ON CONFLICT(source_id, target_id, edge_type) DO UPDATE SET "
-                    "    memory_type = COALESCE(excluded.memory_type, edges.memory_type), "
-                    "    valid_from  = COALESCE(excluded.valid_from,  edges.valid_from), "
-                    "    valid_to    = COALESCE(excluded.valid_to,    edges.valid_to), "
-                    "    created_at  = COALESCE(excluded.created_at,  edges.created_at), "
-                    "    properties  = excluded.properties",
+                    _UPSERT_EDGE_SQL,
                     (
                         source_id,
                         target_id,
@@ -217,6 +251,7 @@ class SQLiteBackend(SmartGraphBackend):
                         json.dumps(properties),
                     ),
                 )
+        self._compute.sync_add_edge(source_id, target_id, edge_type, properties)
         return True
 
     def get_node(self, item_id: str, as_of_time: Optional[str] = None) -> Optional[Dict[str, Any]]:
@@ -268,6 +303,8 @@ class SQLiteBackend(SmartGraphBackend):
         with self._lock:
             with self._conn:
                 cursor = self._conn.execute("DELETE FROM nodes WHERE item_id=?", (item_id,))
+        if cursor.rowcount > 0:
+            self._compute.sync_remove_node(item_id)
         return cursor.rowcount > 0
 
     def remove_edge(self, source_id: str, target_id: str, edge_type: Optional[str] = None) -> bool:
@@ -283,6 +320,8 @@ class SQLiteBackend(SmartGraphBackend):
                         "DELETE FROM edges WHERE source_id=? AND target_id=?",
                         (source_id, target_id),
                     )
+        if cursor.rowcount > 0:
+            self._compute.sync_remove_edge(source_id, target_id, edge_type)
         return cursor.rowcount > 0
 
     # Top-level columns that can be filtered directly without going through properties JSON.
@@ -320,6 +359,10 @@ class SQLiteBackend(SmartGraphBackend):
         return [self._row_to_node(r) for r in rows]
 
     def serialize(self) -> Any:
+        # NOTE: serialize() intentionally does NOT use _row_to_node() because
+        # deserialize() expects a nested "properties" key.  _row_to_node()
+        # flattens properties into top-level keys for API consumers — different
+        # contract than the round-trip format used here.
         with self._lock:
             nodes = self._conn.execute(
                 "SELECT item_id, memory_type, valid_from, valid_to, created_at, properties FROM nodes"
@@ -340,19 +383,7 @@ class SQLiteBackend(SmartGraphBackend):
                 }
                 for r in nodes
             ],
-            "edges": [
-                {
-                    "source_id": r[0],
-                    "target_id": r[1],
-                    "edge_type": r[2],
-                    "memory_type": r[3],
-                    "valid_from": r[4],
-                    "valid_to": r[5],
-                    "created_at": r[6],
-                    "properties": json.loads(r[7]),
-                }
-                for r in edges
-            ],
+            "edges": [self._row_to_edge(r) for r in edges],
         }
 
     def get_all_edges(self) -> list[dict]:
@@ -362,19 +393,7 @@ class SQLiteBackend(SmartGraphBackend):
                 "SELECT source_id, target_id, edge_type, memory_type, "
                 "valid_from, valid_to, created_at, properties FROM edges"
             ).fetchall()
-        return [
-            {
-                "source_id": r[0],
-                "target_id": r[1],
-                "edge_type": r[2],
-                "memory_type": r[3],
-                "valid_from": r[4],
-                "valid_to": r[5],
-                "created_at": r[6],
-                "properties": json.loads(r[7]),
-            }
-            for r in rows
-        ]
+        return [self._row_to_edge(r) for r in rows]
 
     def get_edges_for_node(self, node_id: str) -> list[dict]:
         """Return all edges where node_id appears as source or target."""
@@ -385,19 +404,7 @@ class SQLiteBackend(SmartGraphBackend):
                 "FROM edges WHERE source_id=? OR target_id=?",
                 (node_id, node_id),
             ).fetchall()
-        return [
-            {
-                "source_id": r[0],
-                "target_id": r[1],
-                "edge_type": r[2],
-                "memory_type": r[3],
-                "valid_from": r[4],
-                "valid_to": r[5],
-                "created_at": r[6],
-                "properties": json.loads(r[7]),
-            }
-            for r in rows
-        ]
+        return [self._row_to_edge(r) for r in rows]
 
     def get_counts(self) -> dict[str, int]:
         """Return node and edge counts without loading full graph data."""
@@ -420,15 +427,7 @@ class SQLiteBackend(SmartGraphBackend):
             with self._conn:
                 for node in data.get("nodes", []):
                     self._conn.execute(
-                        "INSERT INTO nodes "
-                        "(item_id, memory_type, valid_from, valid_to, created_at, properties) "
-                        "VALUES (?, ?, ?, ?, ?, ?) "
-                        "ON CONFLICT(item_id) DO UPDATE SET "
-                        "    memory_type = excluded.memory_type, "
-                        "    valid_from   = excluded.valid_from, "
-                        "    valid_to     = excluded.valid_to, "
-                        "    created_at   = excluded.created_at, "
-                        "    properties   = excluded.properties",
+                        _UPSERT_NODE_SQL,
                         (
                             node["item_id"],
                             node.get("memory_type"),
@@ -444,15 +443,7 @@ class SQLiteBackend(SmartGraphBackend):
                 for edge in data.get("edges", []):
                     try:
                         self._conn.execute(
-                            "INSERT INTO edges "
-                            "(source_id, target_id, edge_type, memory_type, valid_from, valid_to, created_at, properties) "
-                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
-                            "ON CONFLICT(source_id, target_id, edge_type) DO UPDATE SET "
-                            "    memory_type = COALESCE(excluded.memory_type, edges.memory_type), "
-                            "    valid_from  = COALESCE(excluded.valid_from,  edges.valid_from), "
-                            "    valid_to    = COALESCE(excluded.valid_to,    edges.valid_to), "
-                            "    created_at  = COALESCE(excluded.created_at,  edges.created_at), "
-                            "    properties  = excluded.properties",
+                            _UPSERT_EDGE_SQL,
                             (
                                 edge["source_id"],
                                 edge["target_id"],
@@ -471,6 +462,63 @@ class SQLiteBackend(SmartGraphBackend):
                             edge.get("target_id"),
                             e,
                         )
+        # Re-read all nodes/edges from SQL into the in-memory DiGraph.
+        self._compute.reload()
+
+    # ── DIST-LITE-PARITY-1 Phase 1: missing query methods ─────────────────────
+
+    def get_all_nodes(self) -> List[Dict[str, Any]]:
+        """Return all nodes."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT item_id, memory_type, valid_from, valid_to, created_at, properties FROM nodes"
+            ).fetchall()
+        return [self._row_to_node(r) for r in rows]
+
+    def count_nodes(self) -> int:
+        """Return total number of nodes."""
+        with self._lock:
+            return self._conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
+
+    def count_edges(self) -> int:
+        """Return total number of edges."""
+        with self._lock:
+            return self._conn.execute("SELECT COUNT(*) FROM edges").fetchone()[0]
+
+    def get_node_types(self) -> List[str]:
+        """Return distinct memory_type values across all nodes."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT DISTINCT memory_type FROM nodes WHERE memory_type IS NOT NULL"
+            ).fetchall()
+        return [r[0] for r in rows]
+
+    def get_edge_types(self) -> List[str]:
+        """Return distinct edge_type values across all edges."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT DISTINCT edge_type FROM edges WHERE edge_type IS NOT NULL"
+            ).fetchall()
+        return [r[0] for r in rows]
+
+    def search_nodes_by_type_or_tag(self, type_or_tag: str, is_global: bool = False) -> List[Dict[str, Any]]:
+        """Return nodes whose memory_type matches OR whose tags property contains the value.
+
+        Uses json_each() for exact element matching within the tags JSON array,
+        avoiding substring false positives (e.g. "note" matching "notebook").
+        """
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT item_id, memory_type, valid_from, valid_to, created_at, properties "
+                "FROM nodes "
+                "WHERE memory_type = ? "
+                "   OR EXISTS ("
+                "       SELECT 1 FROM json_each(json_extract(properties, '$.tags')) "
+                "       WHERE value = ?"
+                "   )",
+                (type_or_tag, type_or_tag),
+            ).fetchall()
+        return [self._row_to_node(r) for r in rows]
 
     def execute_query(self, *args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError(

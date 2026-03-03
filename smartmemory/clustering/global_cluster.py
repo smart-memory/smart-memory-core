@@ -95,6 +95,9 @@ class GlobalClustering:
                 canonical_id = member_ids[0]  # First one is canonical
                 source_ids = member_ids[1:]
 
+                if not hasattr(self.memory._graph.backend, "merge_nodes"):
+                    logger.warning("Graph backend %s has no merge_nodes; skipping cluster merge", type(self.memory._graph.backend).__name__)
+                    break
                 success = self.memory._graph.backend.merge_nodes(canonical_id, source_ids)
                 if success:
                     merged_count += len(source_ids)
@@ -113,6 +116,9 @@ class GlobalClustering:
                     continue
 
                 # Merge in graph
+                if not hasattr(self.memory._graph.backend, "merge_nodes"):
+                    logger.warning("Graph backend %s has no merge_nodes; skipping cluster merge", type(self.memory._graph.backend).__name__)
+                    break
                 success = self.memory._graph.backend.merge_nodes(canonical_id, source_ids)
                 if success:
                     merged_count += len(source_ids)

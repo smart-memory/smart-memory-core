@@ -1,4 +1,4 @@
-"""Comprehensive tests for SQLiteBackend (DIST-LITE-1 + DIST-LITE-4). No Docker required.
+"""Comprehensive tests for SQLiteBackend (DIST-LITE-1 + DIST-LITE-4 + DIST-LITE-PARITY-1). No Docker required.
 
 Covers:
 - All 10 abstract methods
@@ -11,6 +11,8 @@ Covers:
 - Persistence: data survives across backend instances
 - serialize/deserialize: full round-trip including edges
 - Foreign key enforcement
+- DIST-LITE-PARITY-1 Phase 1: get_all_nodes, count_nodes, count_edges,
+  get_node_types, get_edge_types, search_nodes_by_type_or_tag
 """
 
 import threading
@@ -210,7 +212,7 @@ def test_search_nodes_empty_query_returns_all(backend):
 
 
 def test_serialize_clear_deserialize_preserves_nodes(backend):
-    """serialize → clear → deserialize: nodes restored."""
+    """serialize → clear → deserialize: nodes restored with content intact."""
     backend.add_node("persist", {"content": "keep me", "memory_type": "semantic"})
     data = backend.serialize()
     backend.clear()
@@ -219,6 +221,24 @@ def test_serialize_clear_deserialize_preserves_nodes(backend):
     result = backend.get_node("persist")
     assert result is not None
     assert result["item_id"] == "persist"
+    assert result["content"] == "keep me", "content must survive serialize round-trip"
+
+
+def test_serialize_clear_deserialize_preserves_properties(backend):
+    """Regression: serialize round-trip must preserve content and custom properties."""
+    backend.add_node("n1", {
+        "content": "Alice leads Project Atlas",
+        "memory_type": "semantic",
+        "custom_key": "custom_value",
+        "tags": ["important", "project"],
+    })
+    data = backend.serialize()
+    backend.clear()
+    backend.deserialize(data)
+    result = backend.get_node("n1")
+    assert result["content"] == "Alice leads Project Atlas", "content lost in round-trip"
+    assert result["custom_key"] == "custom_value", "custom property lost in round-trip"
+    assert result["tags"] == ["important", "project"], "tags lost in round-trip"
 
 
 def test_serialize_clear_deserialize_preserves_edges(backend):
@@ -650,3 +670,124 @@ class TestGetNeighborsDirection:
         explicit = self.backend.get_neighbors("b", direction="both")
         default = self.backend.get_neighbors("b")
         assert {n["item_id"] for n in explicit} == {n["item_id"] for n in default}
+
+
+# ── DIST-LITE-PARITY-1 Phase 1: new query methods ────────────────────────────
+
+
+class TestGetAllNodes:
+    def test_returns_all_nodes(self, mem_backend):
+        mem_backend.add_node("a", {"content": "A", "memory_type": "semantic"})
+        mem_backend.add_node("b", {"content": "B", "memory_type": "episodic"})
+        nodes = mem_backend.get_all_nodes()
+        ids = {n["item_id"] for n in nodes}
+        assert ids == {"a", "b"}
+
+    def test_node_dict_has_expected_keys(self, mem_backend):
+        mem_backend.add_node("x", {"content": "X", "memory_type": "working"})
+        nodes = mem_backend.get_all_nodes()
+        assert len(nodes) == 1
+        for key in ("item_id", "memory_type", "valid_from", "valid_to", "created_at", "content"):
+            assert key in nodes[0], f"missing key: {key}"
+
+    def test_empty_graph(self, mem_backend):
+        assert mem_backend.get_all_nodes() == []
+
+
+class TestCountNodesEdges:
+    def test_count_nodes_empty(self, mem_backend):
+        assert mem_backend.count_nodes() == 0
+
+    def test_count_edges_empty(self, mem_backend):
+        assert mem_backend.count_edges() == 0
+
+    def test_count_nodes_after_adds(self, mem_backend):
+        mem_backend.add_node("a", {"memory_type": "semantic"})
+        mem_backend.add_node("b", {"memory_type": "semantic"})
+        assert mem_backend.count_nodes() == 2
+
+    def test_count_edges_after_adds(self, mem_backend):
+        mem_backend.add_node("a", {"memory_type": "semantic"})
+        mem_backend.add_node("b", {"memory_type": "semantic"})
+        mem_backend.add_edge("a", "b", "rel", {})
+        assert mem_backend.count_edges() == 1
+
+    def test_count_decreases_after_remove(self, mem_backend):
+        mem_backend.add_node("a", {"memory_type": "semantic"})
+        mem_backend.add_node("b", {"memory_type": "semantic"})
+        mem_backend.add_edge("a", "b", "rel", {})
+        mem_backend.remove_node("a")
+        assert mem_backend.count_nodes() == 1
+        assert mem_backend.count_edges() == 0  # cascade
+
+
+class TestGetNodeTypes:
+    def test_distinct_types(self, mem_backend):
+        mem_backend.add_node("a", {"memory_type": "semantic"})
+        mem_backend.add_node("b", {"memory_type": "episodic"})
+        mem_backend.add_node("c", {"memory_type": "semantic"})
+        types = set(mem_backend.get_node_types())
+        assert types == {"semantic", "episodic"}
+
+    def test_empty_graph(self, mem_backend):
+        assert mem_backend.get_node_types() == []
+
+
+class TestGetEdgeTypes:
+    def test_distinct_types(self, mem_backend):
+        mem_backend.add_node("a", {"memory_type": "semantic"})
+        mem_backend.add_node("b", {"memory_type": "semantic"})
+        mem_backend.add_node("c", {"memory_type": "semantic"})
+        mem_backend.add_edge("a", "b", "LINKS", {})
+        mem_backend.add_edge("b", "c", "RELATES_TO", {})
+        mem_backend.add_edge("a", "c", "LINKS", {})
+        types = set(mem_backend.get_edge_types())
+        assert types == {"LINKS", "RELATES_TO"}
+
+    def test_empty_graph(self, mem_backend):
+        assert mem_backend.get_edge_types() == []
+
+
+class TestSearchNodesByTypeOrTag:
+    def test_matches_by_memory_type(self, mem_backend):
+        mem_backend.add_node("s1", {"content": "S1", "memory_type": "semantic"})
+        mem_backend.add_node("e1", {"content": "E1", "memory_type": "episodic"})
+        results = mem_backend.search_nodes_by_type_or_tag("semantic")
+        ids = [r["item_id"] for r in results]
+        assert "s1" in ids
+        assert "e1" not in ids
+
+    def test_matches_by_tag(self, mem_backend):
+        mem_backend.add_node("tagged", {"content": "T", "memory_type": "working", "tags": ["important", "project"]})
+        mem_backend.add_node("untagged", {"content": "U", "memory_type": "working"})
+        results = mem_backend.search_nodes_by_type_or_tag("important")
+        ids = [r["item_id"] for r in results]
+        assert "tagged" in ids
+        assert "untagged" not in ids
+
+    def test_matches_type_or_tag_union(self, mem_backend):
+        """Node matches if EITHER memory_type OR tags match (OR semantics)."""
+        mem_backend.add_node("by_type", {"content": "A", "memory_type": "note"})
+        mem_backend.add_node("by_tag", {"content": "B", "memory_type": "working", "tags": ["note"]})
+        mem_backend.add_node("neither", {"content": "C", "memory_type": "episodic"})
+        results = mem_backend.search_nodes_by_type_or_tag("note")
+        ids = {r["item_id"] for r in results}
+        assert "by_type" in ids
+        assert "by_tag" in ids
+        assert "neither" not in ids
+
+    def test_no_substring_false_positive(self, mem_backend):
+        """Regression: 'note' must NOT match tag 'notebook' (exact element match only)."""
+        mem_backend.add_node("nb", {"content": "NB", "memory_type": "working", "tags": ["notebook"]})
+        mem_backend.add_node("actual", {"content": "N", "memory_type": "working", "tags": ["note"]})
+        results = mem_backend.search_nodes_by_type_or_tag("note")
+        ids = [r["item_id"] for r in results]
+        assert "actual" in ids
+        assert "nb" not in ids, "Substring false positive: 'note' matched tag 'notebook'"
+
+    def test_no_match_returns_empty(self, mem_backend):
+        mem_backend.add_node("a", {"content": "A", "memory_type": "semantic"})
+        assert mem_backend.search_nodes_by_type_or_tag("nonexistent") == []
+
+    def test_empty_graph(self, mem_backend):
+        assert mem_backend.search_nodes_by_type_or_tag("anything") == []

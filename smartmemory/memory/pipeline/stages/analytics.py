@@ -80,7 +80,10 @@ class MemoryAnalytics:
         recent_cutoff = now - timedelta(days=time_window_days)
 
         # Get recent and historical items
-        all_items = self._graph.search_nodes({})
+        # search_nodes() returns MemoryItem objects (via SmartGraph) or dicts (via raw backend).
+        # Normalize to dicts so downstream code can use .get() and `in` uniformly.
+        all_items = [item.to_dict() if hasattr(item, 'to_dict') else item
+                     for item in self._graph.search_nodes({})]
         recent_items = [
             item for item in all_items
             if self._get_item_timestamp(item) >= recent_cutoff
@@ -139,7 +142,16 @@ class MemoryAnalytics:
         Returns:
             List of item dicts augmented with a `similarity` score (1.0 is identical).
         """
-        results = self._graph.vector_similarity_search(embedding, top_k, prop_key)
+        # vector_similarity_search lives on the backend (e.g. FalkorDBBackend),
+        # not on SmartGraph itself.  Check backend first, then _graph for backward
+        # compatibility when a raw backend is passed as the graph argument.
+        backend = getattr(self._graph, "backend", None)
+        if backend is not None and hasattr(backend, "vector_similarity_search"):
+            results = backend.vector_similarity_search(embedding, top_k, prop_key)
+        elif hasattr(self._graph, "vector_similarity_search"):
+            results = self._graph.vector_similarity_search(embedding, top_k, prop_key)
+        else:
+            return []
         out: List[Dict] = []
         for item_id, score in results:
             node = self._graph.get_node(item_id)
@@ -180,7 +192,8 @@ class MemoryAnalytics:
             else:
                 protected_attributes = ['gender', 'race', 'age_group', 'nationality', 'religion']
 
-        items = self._graph.search_nodes({})
+        items = [item.to_dict() if hasattr(item, 'to_dict') else item
+                 for item in self._graph.search_nodes({})]
         if not items:
             return {"status": "no_data", "message": "No items found for analysis"}
 

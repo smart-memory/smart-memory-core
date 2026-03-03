@@ -18,14 +18,7 @@ from smartmemory.models.memory_item import MemoryItem
 
 logger = logging.getLogger(__name__)
 
-# NetworkX import with fallback for graph analysis
-try:
-    import networkx as nx
-
-    HAS_NETWORKX = True
-except ImportError:
-    HAS_NETWORKX = False
-    logger.warning("NetworkX not available - some advanced graph analysis features will be disabled")
+import networkx as nx
 
 
 @dataclass
