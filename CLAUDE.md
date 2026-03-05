@@ -117,6 +117,7 @@ memory = SmartMemory()  # _default_public_knowledge_store() handles it
 - `smartmemory/memory/pipeline/`: Processing stages (classification, extraction, enrichment, linking, grounding)
 - `smartmemory/grounding/`: Entity grounding (PublicKnowledgeStore, SPARQL client, grounder, type map, benchmark)
 - `smartmemory/observability/`: Tracing (`trace_span`), events (Redis Stream), logging filter, instrumentation (deprecated)
+- `smartmemory/search/`: Query decomposition (`decompose()`) and cross-query RRF merge (`rrf_merge()`)
 - `smartmemory/stores/`: Storage backends (vector, persistence)
 - `smartmemory/models/`: Data models (MemoryItem, Entity, Opinion, Reasoning)
 - `examples/`: Working demonstrations
@@ -136,6 +137,7 @@ memory.add(MemoryItem(content="...", memory_type="semantic"))
 
 # Search and retrieval
 results = memory.search("query", top_k=5)
+results = memory.search("auth flow and caching strategy", top_k=5, decompose_query=True)  # multi-topic
 item = memory.get(item_id)
 ```
 

@@ -1179,6 +1179,7 @@ class SmartMemory(MemoryBase):
         top_k: int = 5,
         memory_type: str = None,
         conversation_context: Optional[Union[ConversationContext, Dict[str, Any]]] = None,
+        decompose_query: bool = False,
         **kwargs,
     ):
         """
@@ -1273,7 +1274,10 @@ class SmartMemory(MemoryBase):
                     "memory_type": memory_type,
                 },
             ) as span:
-                results = self._search.search(query, top_k=top_k, memory_type=memory_type, **kwargs)
+                if decompose_query:
+                    results = self._decomposed_search(query, top_k, memory_type, **kwargs)
+                else:
+                    results = self._search.search(query, top_k=top_k, memory_type=memory_type, **kwargs)
                 span.attributes["results_count"] = len(results) if results else 0
                 final_results = results[:top_k]
                 try:
@@ -1283,6 +1287,26 @@ class SmartMemory(MemoryBase):
                 except Exception:
                     pass  # observability failure must never affect search() return
                 return final_results
+
+    def _decomposed_search(self, query: str, top_k: int, memory_type: str = None, **kwargs) -> list:
+        """Run decomposed search: split query into sub-queries, fan-out, RRF merge."""
+        from smartmemory.search.query_decomposer import decompose
+        from smartmemory.search.rrf_merge import rrf_merge
+
+        sub_queries = decompose(query)
+
+        if len(sub_queries) <= 1:
+            return self._search.search(query, top_k=top_k, memory_type=memory_type, **kwargs)
+
+        # Fan-out: pass top_k directly — no additional over-fetch here because
+        # the downstream stack (Search → SmartGraphSearch → VectorStore) already
+        # applies its own 2x multipliers at each level.
+        result_lists = []
+        for sq in sub_queries:
+            results = self._search.search(sq, top_k=top_k, memory_type=memory_type, **kwargs)
+            result_lists.append(results or [])
+
+        return rrf_merge(result_lists, top_k=top_k)
 
     # Linking
     def link(self, source_id: str, target_id: str, link_type: Union[str, "LinkType"] = "RELATED") -> str:
