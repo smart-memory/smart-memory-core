@@ -87,7 +87,8 @@ class TestWorkingMemoryDecomposeBypass:
         sm = self._make_sm()
         with caplog.at_level(logging.WARNING, logger="smartmemory.smart_memory"):
             sm.search("auth and caching", memory_type="working", decompose_query=True)
-        assert any("working_memory_exempt" in r.message or getattr(r, "reason", None) == "working_memory_exempt" for r in caplog.records)
+        exempt_records = [r for r in caplog.records if "working_memory_exempt" in r.message or getattr(r, "reason", None) == "working_memory_exempt"]
+        assert len(exempt_records) == 1, f"Expected exactly 1 warning, got {len(exempt_records)}"
 
     @patch("smartmemory.utils.get_config", return_value={"persist": True})
     def test_non_working_memory_no_exemption_warning(self, _cfg, caplog):
