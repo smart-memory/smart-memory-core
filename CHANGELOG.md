@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`smartmemory/search/query_decomposer.py`** (new): heuristic regex-based decomposition of compound queries on `and`/`or`/`,`/`;`. Returns original query first + up to 3 fragments (4 sub-queries max). Fragments shorter than 3 chars filtered. No LLM calls, < 1ms overhead.
 - **`smartmemory/search/rrf_merge.py`** (new): cross-query Reciprocal Rank Fusion with `rrf_k=60` (matching `VectorStore.search`). Deduplicates by `item_id`, falls back to `id(item)` for items without that attribute.
 - **`SmartMemory.search(decompose_query=True)`**: opt-in query decomposition. Dispatches to `_decomposed_search()` which fans out sub-queries to the existing pipeline and merges results. Passes `top_k` directly (no additional over-fetch). Working memory path silently exempted.
-- **`contracts/search.json`** (new): canonical `SearchRequest` shape with `decompose` field. Documents pre-existing `enable_hybrid` default divergence across API surfaces.
+- **`docs/features/CORE-SEARCH-1/search-contract.json`** (new): canonical `SearchRequest` shape with `decompose` field. Documents pre-existing `enable_hybrid` default divergence across API surfaces.
 - **39 unit tests** across `smart-memory-core`, `smart-memory-service`, and `smart-memory-mcp`.
 
 #### CORE-STALE-1 — Memory Staleness Tracking (COMPLETE)
