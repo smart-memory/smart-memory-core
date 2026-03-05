@@ -1197,7 +1197,7 @@ class SmartMemory(MemoryBase):
                         "reason": "working_memory_exempt",
                         "memory_type": memory_type,
                         "decompose_query": decompose_query,
-                        "query_hash": hashlib.sha256((query or "").encode()).hexdigest()[:12],
+                        "query_hash": hashlib.sha256(str(query or "").encode()).hexdigest()[:12],
                     },
                 )
             # Check if persistence is enabled; if so, use canonical search on persisted working items
