@@ -75,3 +75,19 @@ def test_registered_in_factory(tmp_path):
 
     b = create_backend("usearch", "factory_col", str(tmp_path))
     assert isinstance(b, UsearchVectorBackend)
+
+
+def test_add_with_numpy_embedding_persists(tmp_path):
+    """add() with np.ndarray embedding must JSON-serialize on save (DIST-QA-1 F2)."""
+    vec = np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
+    b1 = UsearchVectorBackend("np_col", str(tmp_path))
+    # Should not raise TypeError on _save()
+    b1.add(item_id="np_item", embedding=vec, metadata={"content": "numpy test"})
+    del b1
+    # Reload from disk — proves JSON round-trip worked
+    b2 = UsearchVectorBackend("np_col", str(tmp_path))
+    result = b2.get("np_item")
+    assert result is not None
+    assert result["id"] == "np_item"
+    assert isinstance(result["embedding"], list)
+    assert len(result["embedding"]) == 4

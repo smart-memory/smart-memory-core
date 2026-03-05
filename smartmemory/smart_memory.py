@@ -1189,6 +1189,17 @@ class SmartMemory(MemoryBase):
         This ensures consistent isolation across all search operations.
         """
         if memory_type == "working":
+            if decompose_query:
+                import hashlib
+                logger.warning(
+                    "decompose_query ignored for working memory",
+                    extra={
+                        "reason": "working_memory_exempt",
+                        "memory_type": memory_type,
+                        "decompose_query": decompose_query,
+                        "query_hash": hashlib.sha256(query.encode()).hexdigest()[:12],
+                    },
+                )
             # Check if persistence is enabled; if so, use canonical search on persisted working items
             persist_enabled = False
             try:

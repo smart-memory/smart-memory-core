@@ -9,6 +9,9 @@ from typing import Any, Dict
 logger = logging.getLogger(__name__)
 
 
+SYSTEM_NODE_TYPES = frozenset({"Version"})
+
+
 class SmartGraphSearch:
     """Handles all search-related operations for SmartGraph."""
 
@@ -83,7 +86,16 @@ class SmartGraphSearch:
                 if results is not None and len(results) > 0:
                     if i > 0:  # Log if we had to use fallback
                         logger.info(f"Search succeeded using fallback method {i}: {fallback_method.__name__}")
-                    return results
+                    # Filter out system-internal nodes (Version, etc.) that should
+                    # never appear in user-facing search results.
+                    results = [
+                        r for r in results
+                        if getattr(r, "memory_type", None) not in SYSTEM_NODE_TYPES
+                    ]
+                    if results:
+                        return results
+                    # All results were system nodes — continue to next fallback
+                    continue
                 elif results is not None:
                     logger.debug(f"Fallback method {i} ({fallback_method.__name__}) returned empty results")
             except Exception as e:
@@ -268,11 +280,15 @@ class SmartGraphSearch:
             if hasattr(self.backend, 'get_all_nodes'):
                 nodes = self.backend.get_all_nodes()
                 results = []
-                for n in nodes[:top_k]:
+                for n in nodes:
+                    if not self._is_user_node(n):
+                        continue
                     try:
                         item = self.nodes._from_node_dict(self.nodes.item_cls, n)
                         if item:
                             results.append(item)
+                            if len(results) >= top_k:
+                                break
                     except Exception as e:
                         logger.warning(f"Failed to convert node to MemoryItem: {e}")
                         continue
@@ -288,6 +304,8 @@ class SmartGraphSearch:
             logger.info(f"Searching through {len(nodes)} nodes for query: {query_str}")
 
             for node in nodes:
+                if not self._is_user_node(node):
+                    continue
                 try:
                     # Convert node to MemoryItem
                     node_dict = self.nodes._from_node_dict(self.nodes.item_cls, node)
@@ -333,6 +351,8 @@ class SmartGraphSearch:
             scored_nodes = []
 
             for node in nodes:
+                if not self._is_user_node(node):
+                    continue
                 node_dict = self.nodes._from_node_dict(self.nodes.item_cls, node)
                 content = getattr(node_dict, 'content', '').lower()
                 title = getattr(node_dict, 'metadata', {}).get('title', '').lower()
@@ -355,11 +375,18 @@ class SmartGraphSearch:
 
         return None
 
+    @staticmethod
+    def _is_user_node(node_dict) -> bool:
+        """Return False for system-internal nodes (Version, etc.) that should not appear in search results."""
+        mt = node_dict.get("memory_type") or node_dict.get("type") or ""
+        return mt not in SYSTEM_NODE_TYPES
+
     def _get_all_nodes_fallback(self, query_str: str, top_k: int = 5, **kwargs):
         """Final fallback - just return all available nodes."""
         if hasattr(self.backend, 'get_all_nodes'):
             nodes = self.backend.get_all_nodes()
-            return [self.nodes._from_node_dict(self.nodes.item_cls, n) for n in nodes[:top_k]]
+            user_nodes = [n for n in nodes if self._is_user_node(n)]
+            return [self.nodes._from_node_dict(self.nodes.item_cls, n) for n in user_nodes[:top_k]]
         return []
 
     def _manage_cache_size(self):

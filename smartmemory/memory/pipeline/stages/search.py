@@ -11,6 +11,9 @@ from smartmemory.similarity.framework import EnhancedSimilarityFramework
 
 logger = logging.getLogger(__name__)
 
+# System-internal node types that should never appear in user-facing search results.
+_SYSTEM_NODE_TYPES = frozenset({"Version"})
+
 
 class Search:
     """Search component for SmartMemory system."""
@@ -57,6 +60,13 @@ class Search:
                 # Use SmartGraph's search method which handles text queries efficiently
                 results = self.graph.search(query, top_k=top_k * 2, **kwargs)  # Get more for filtering
 
+                # Exclude system-internal nodes (Version, etc.)
+                if results:
+                    results = [
+                        item for item in results
+                        if getattr(item, 'memory_type', None) not in _SYSTEM_NODE_TYPES
+                    ]
+
                 # Filter by memory type if specified
                 if memory_type and results:
                     results = [item for item in results if getattr(item, 'memory_type', None) == memory_type]
@@ -84,6 +94,9 @@ class Search:
         except Exception:
             # If even fallback fails, return empty results
             return []
+
+        # Exclude system-internal nodes (Version, etc.)
+        all_items = [item for item in all_items if getattr(item, 'memory_type', None) not in _SYSTEM_NODE_TYPES]
 
         # Filter by memory type if specified
         if memory_type:

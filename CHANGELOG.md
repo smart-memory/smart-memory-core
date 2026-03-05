@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.5.4] — 2026-03-05
+
+### Changed
+
+#### TECHDEBT-SEARCH-1 — Search Defaults + Working-Memory Decompose Transparency
+
+- **Working-memory decompose bypass logging**: `search()` now emits a structured warning (`reason=working_memory_exempt`, `query_hash`) when `decompose_query=True` is silently bypassed for `memory_type="working"`. No functional change to bypass behavior.
+
+### Fixed
+
+#### DIST-QA-1 — Lite Mode Acceptance Test Fixes
+
+- **Version nodes leak into search results**: `VersionTracker` creates internal `Version` nodes for temporal versioning. These appeared as duplicates in `search()` and `recall` results. Added `SYSTEM_NODE_TYPES` filter in `Search` component (`stages/search.py`) and `SmartGraphSearch` fallback chain (`graph/core/search.py`). Affects all backends (SQLite and FalkorDB).
+- **UsearchVectorBackend missing `get()` method**: SSG traversal crashed with `KeyError: 'embedding'` because usearch doesn't expose stored vectors. Added `get()` method that returns embeddings stored alongside metadata. Fixes `recall --top-k N` returning empty in lite mode.
 
 ### Added
 

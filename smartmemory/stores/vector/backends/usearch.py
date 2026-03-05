@@ -170,7 +170,11 @@ class UsearchVectorBackend(VectorBackend):
         self._next_key += 1
         self._id_map[key] = item_id
         self._rev_map[item_id] = key
-        self._metadata[item_id] = dict(metadata) if metadata else {}
+        meta = dict(metadata) if metadata else {}
+        # Store embedding in metadata so get() can return it (usearch doesn't
+        # expose stored vectors). Stored as list[float] for JSON serialization.
+        meta["_embedding"] = embedding.tolist() if hasattr(embedding, "tolist") else list(embedding)
+        self._metadata[item_id] = meta
         assert self._index is not None
         self._index.add(key, vec)
 
@@ -182,6 +186,18 @@ class UsearchVectorBackend(VectorBackend):
     def upsert(self, *, item_id: str, embedding: List[float], metadata: Dict) -> None:
         """Insert or replace an item by item_id."""
         self.add(item_id=item_id, embedding=embedding, metadata=metadata)
+
+    def get(self, item_id: str) -> Optional[Dict]:
+        """Retrieve a stored item by id, including its embedding vector."""
+        if item_id not in self._rev_map:
+            return None
+        meta = self._metadata.get(item_id, {})
+        embedding = meta.get("_embedding")
+        # Return in the same shape that SSG/VectorStore expects
+        result: Dict[str, Any] = {"id": item_id, "metadata": {k: v for k, v in meta.items() if k != "_embedding"}}
+        if embedding is not None:
+            result["embedding"] = embedding
+        return result
 
     def search(self, *, query_embedding: List[float], top_k: int) -> List[Dict]:
         """Return up to top_k nearest neighbours by cosine similarity."""
