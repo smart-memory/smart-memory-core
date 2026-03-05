@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### CORE-STALE-1 — Memory Staleness Tracking (COMPLETE)
+
+- **`StaleMemoryEvolver`** (`smartmemory/plugins/evolvers/stale_memory.py`, new): samples non-code memories carrying `source_code_refs` snapshots; flags `metadata["stale"] = True` when a snapshotted commit hash diverges from the current code index. Per-item exception isolation — bad items are logged and skipped without aborting the cycle.
+- **`StaleMemoryConfig`**: `enabled: bool = True`, `batch_size: int = 100` (random-sampled items per evolution run).
+- **`LinkingConfig.stale_tracking_enabled: bool = False`** (`smartmemory/memory/pipeline/config.py`): opt-in field; default off to avoid ingest overhead.
+- **`source_code_refs` snapshot** in `LinkingEngine.run()` (`smartmemory/memory/pipeline/linking.py`): when `stale_tracking_enabled=True`, snapshots `{repo, file_path, commit_hash}` for each unambiguously matched code entity into `memory_item.metadata["source_code_refs"]`. Wrapped in best-effort `try/except` — snapshot failure never aborts ingestion.
+- **Registry**: `EVOLVER_REGISTRY.get("stale_memory")` resolves to `StaleMemoryEvolver`. Tags: `maintenance`, `code`, `staleness`, `builtin`.
+- **11 unit tests** (`tests/unit/plugins/evolvers/test_stale_memory_evolver.py`): metadata, config defaults, type guard, stale detection, commit match, missing refs, deleted-file no-false-positive, exception isolation (with and without logger), disabled no-op.
+
 #### CORE-EXT-2 — Unified PatternManager Backend (COMPLETE)
 
 - **`PatternStore` protocol** (`@runtime_checkable`) in `smartmemory/ontology/pattern_manager.py`: `load(workspace_id) → list[tuple[str, str]]`, `save(name, label, confidence, count, workspace_id, source) → None`, `delete(name, label, workspace_id) → None`.

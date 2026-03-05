@@ -55,6 +55,7 @@ class LinkingConfig(MemoryBaseModel):
     clustering_mode: str = "basic"  # "basic" | "semantic"
     clustering_model: Optional[str] = None  # LLM model for semantic clustering
     clustering_context: Optional[str] = None  # Domain context hint for clustering
+    stale_tracking_enabled: bool = False  # opt-in; default off to avoid ingest overhead
 
     def __post_init__(self):
         # Validate threshold range

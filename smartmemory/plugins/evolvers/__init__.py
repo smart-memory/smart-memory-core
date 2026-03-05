@@ -22,6 +22,7 @@ from .semantic_decay import SemanticDecayEvolver
 from .episodic_to_zettel import EpisodicToZettelEvolver
 from .observation_synthesis import ObservationSynthesisEvolver
 from .opinion_reinforcement import OpinionReinforcementEvolver
+from .stale_memory import StaleMemoryEvolver
 
 # Synthesis evolvers
 from .opinion_synthesis import OpinionSynthesisEvolver
@@ -43,6 +44,7 @@ __all__ = [
     # Maintenance
     'EpisodicDecayEvolver',
     'SemanticDecayEvolver',
+    'StaleMemoryEvolver',
 
     # Synthesis
     'OpinionSynthesisEvolver',

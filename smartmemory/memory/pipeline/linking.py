@@ -380,6 +380,35 @@ class LinkingEngine(PipelineComponent[LinkingConfig]):
                     for op in proposed_ops
                 ]
 
+            # --- CORE-STALE-1: snapshot source_code_refs on non-code memories ---
+            # Wrapped in best-effort try/except: any failure must NOT abort ingestion.
+            # stale_tracking_enabled is opt-in metadata enrichment, not a required stage.
+            if getattr(config, "stale_tracking_enabled", False):
+                try:
+                    if memory_item and getattr(memory_item, "memory_type", None) not in ("code",):
+                        refs = []
+                        for entity in context.get("entity_ids", {}).get("semantic_entities", []):
+                            name = entity.get("name", "")
+                            if not name:
+                                continue
+                            # search_nodes returns MemoryItem list (smartgraph.py:380)
+                            matches = self.memory._graph.search_nodes({"memory_type": "code", "name": name})
+                            # Skip ambiguous names: only snapshot when exactly one code entity matches.
+                            if len(matches) != 1:
+                                continue
+                            match = matches[0]
+                            repo = match.metadata.get("repo", "")
+                            file_path = match.metadata.get("file_path", "")
+                            commit_hash = match.metadata.get("commit_hash", "")
+                            if repo and file_path and commit_hash:
+                                refs.append({"repo": repo, "file_path": file_path, "commit_hash": commit_hash})
+                        if refs:
+                            memory_item.metadata["source_code_refs"] = refs
+                            self.memory.update(memory_item)
+                except Exception:
+                    logger.warning("stale_tracking: failed to snapshot source_code_refs, continuing", exc_info=True)
+            # --- end CORE-STALE-1 ---
+
             return ComponentResult(
                 success=True,
                 data=result_data,

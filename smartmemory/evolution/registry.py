@@ -183,6 +183,14 @@ def register_builtin_evolvers() -> None:
         tags=("decision", "confidence", "decay", "reinforcement", "builtin"),
     )
 
+    # Staleness tracking
+    R.register(
+        "stale_memory",
+        "smartmemory.plugins.evolvers.stale_memory.StaleMemoryEvolver",
+        description="Mark non-code memories stale when referenced source files change",
+        tags=("maintenance", "code", "staleness", "builtin"),
+    )
+
 
 # Auto-register builtins on import
 register_builtin_evolvers()
