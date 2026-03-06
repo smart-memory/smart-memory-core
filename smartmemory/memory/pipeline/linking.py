@@ -401,10 +401,32 @@ class LinkingEngine(PipelineComponent[LinkingConfig]):
                             file_path = match.metadata.get("file_path", "")
                             commit_hash = match.metadata.get("commit_hash", "")
                             if repo and file_path and commit_hash:
-                                refs.append({"repo": repo, "file_path": file_path, "commit_hash": commit_hash})
+                                refs.append({
+                                    "repo": repo,
+                                    "file_path": file_path,
+                                    "commit_hash": commit_hash,
+                                    "code_item_id": str(match.item_id),
+                                })
                         if refs:
                             memory_item.metadata["source_code_refs"] = refs
                             self.memory.update(memory_item)
+                            # Create REFERENCES_CODE edges so graph traversal
+                            # (PPR, spreading activation) can cross the
+                            # memory ↔ code boundary.
+                            for ref in refs:
+                                try:
+                                    self.memory._graph.add_edge(
+                                        str(memory_item.item_id),
+                                        ref["code_item_id"],
+                                        edge_type="REFERENCES_CODE",
+                                        properties={"repo": ref["repo"]},
+                                    )
+                                except Exception:
+                                    logger.debug(
+                                        "REFERENCES_CODE edge failed for %s -> %s",
+                                        memory_item.item_id,
+                                        ref["code_item_id"],
+                                    )
                 except Exception:
                     logger.warning("stale_tracking: failed to snapshot source_code_refs, continuing", exc_info=True)
             # --- end CORE-STALE-1 ---
