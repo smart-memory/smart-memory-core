@@ -81,28 +81,29 @@ SmartMemory implements a multi-layered memory architecture with the following co
 
 ### Processing Pipeline
 
-The memory ingestion flow processes data through several stages:
+`ingest()` runs an 11-stage pipeline:
 
-1. **Input Adaptation**: Convert input data to MemoryItem format
-2. **Classification**: Determine appropriate memory type
-3. **Extraction**: Extract entities and relationships
-4. **Storage**: Persist to appropriate memory stores
-5. **Linking**: Create connections between related memories
-6. **Enrichment**: Enhance memories with additional context
-7. **Evolution**: Transform memories based on configured rules
+```
+classify → coreference → simplify → entity_ruler → llm_extract → ontology_constrain → store → link → enrich → ground → evolve
+```
+
+Each stage implements the `StageCommand` protocol (`execute(state, config) → state`, `undo(state) → state`). The pipeline supports breakpoint execution (`run_to()`, `run_from()`, `undo_to()`) for debugging and resumption.
+
+`add()` is simple storage: normalize → store → embed (use for internal/derived items).
 
 ## Key Features
 
-- **Multi-Type Memory System**: Working, Semantic, Episodic, and Procedural memory types
+- **9 Memory Types**: Working, Semantic, Episodic, Procedural, Zettelkasten, Reasoning, Opinion, Observation, Decision
+- **11-Stage NLP Pipeline**: classify → coreference → simplify → entity_ruler → llm_extract → ontology_constrain → store → link → enrich → ground → evolve
+- **Self-Learning EntityRuler**: Pattern-matching NER that improves with use — LLM discoveries feed back into rules (96.9% entity F1 at 4ms)
+- **Evolver Framework**: Core auto-registered evolvers plus specialist lifecycle evolvers for decay, consolidation, opinion synthesis, retrieval-based strengthening, Hebbian co-retrieval, and stale memory detection
+- **Code Indexer**: AST-based Python + TypeScript parser with cross-file call resolution, semantic code search, and memory↔code graph bridging
 - **Zero-Infra Lite Mode**: SQLite + usearch backend — `pip install smartmemory-core[lite]` and go
 - **Server Mode**: FalkorDB graph + Redis caching for production-scale deployments
-- **Graph-Based Storage**: Complex relationship modeling with vector similarity search
-- **Extensible Pipeline**: Modular processing stages for ingestion and evolution
-- **Plugin Architecture**: 30+ built-in plugins with external plugin support
+- **Hybrid Search**: Graph-structured search + BM25/embedding RRF fusion with query decomposition for compound queries
+- **20 Auto-Registered Plugins**: 4 extractors, 5 enrichers, 10 evolvers, and 1 grounder loaded by default, with additional specialist plugins available for opt-in use
 - **Plugin Security**: Sandboxing, permissions, and resource limits for safe plugin execution
 - **Flexible Scoping**: Optional `ScopeProvider` for multi-tenancy or unrestricted OSS usage
-- **Zero Configuration**: Works out-of-the-box for single-user applications
-- **Configuration Management**: Flexible configuration with environment variable support
 
 ## 📦 Installation
 
@@ -125,9 +126,9 @@ pip install smartmemory-core[all]           # All optional features
 ### From Source (Development)
 
 ```bash
-git clone https://github.com/smart-memory/smart-memory.git
+git clone https://github.com/smart-memory/smart-memory-core.git
 cd smart-memory-core
-pip install -e ".[dev]"
+pip install -e ".[dev,lite,cli,watch]"
 
 # Install spaCy model for entity extraction
 python -m spacy download en_core_web_sm
@@ -237,10 +238,16 @@ memory.add(zettel_item)
 pip install smartmemory-core[cli]
 
 # Add a memory
-smartmemory-core add "Python is great for AI" --memory-type semantic
+smartmemory-core add "Python is great for AI"
+
+# Add without creating a markdown file
+smartmemory-core add "Quick note" --no-markdown
 
 # Search memories
 smartmemory-core search "Python programming" --top-k 5
+
+# Search with JSON output
+smartmemory-core search "Python programming" --json
 
 # Rebuild the vector index from graph data
 smartmemory-core rebuild
@@ -275,14 +282,14 @@ smartmemory-core watch /path/to/vault
 
 ## Examples
 
-The `examples/` directory contains several demonstration scripts:
+The `examples/` directory contains a broader set of demonstration scripts than the highlights below. See [`examples/README.md`](examples/README.md) for the full catalog and setup notes.
 
-- `memory_system_usage_example.py`: Basic memory operations (add, search, delete)
-- `zettelkasten_example.py`: Complete Zettelkasten system demonstration
-- `conversational_assistant_example.py`: Conversational AI with memory
-- `advanced_programming_tutor.py`: Educational application example
-- `working_holistic_example.py`: Comprehensive multi-session demo
-- `background_processing_demo.py`: Asynchronous processing example
+- `memory_system_usage_example.py`: Basic memory operations (ingest, search, delete)
+- `factory_usage_example.py`: Factory helpers for creating memory and store instances
+- `pipeline_v2_example.py`: Breakpoints, resumption, rollback, and stage timing inspection
+- `reasoning_trace_example.py`: System 2 reasoning traces and storage patterns
+- `self_learning_ontology_example.py`: Ontology promotion and governance workflow
+- `working_holistic_example.py`: Multi-memory demo across semantic, episodic, procedural, and working memory
 
 ## Configuration
 
@@ -317,6 +324,7 @@ SmartMemory includes built-in evolvers that automatically transform memories:
 
 ### Available Evolvers
 
+**Core evolvers** — memory type transitions and lifecycle:
 - **WorkingToEpisodicEvolver**: Converts working memory to episodic when buffer is full
 - **WorkingToProceduralEvolver**: Extracts repeated patterns as procedures
 - **EpisodicToSemanticEvolver**: Promotes stable facts to semantic memory
@@ -325,6 +333,17 @@ SmartMemory includes built-in evolvers that automatically transform memories:
 - **SemanticDecayEvolver**: Prunes low-relevance semantic facts
 - **ZettelPruneEvolver**: Merges duplicate or low-quality notes
 - **DecisionConfidenceEvolver**: Decays confidence on stale decisions, auto-retracts below threshold
+- **OpinionSynthesisEvolver**: Synthesizes opinions from accumulated observations
+- **ObservationSynthesisEvolver**: Creates entity summaries from scattered facts
+- **OpinionReinforcementEvolver**: Adjusts opinion confidence based on new evidence
+- **StaleMemoryEvolver**: Flags memories as stale when referenced source code changes
+
+**Enhanced evolvers** — neuroscience-inspired dynamics:
+- **ExponentialDecayEvolver**: Time-based activation decay with configurable half-life
+- **RetrievalBasedStrengtheningEvolver**: Memories accessed more frequently become harder to forget
+- **HebbianCoRetrievalEvolver**: Reinforces edges between memories retrieved together ("neurons that fire together wire together")
+- **InterferenceBasedConsolidationEvolver**: Similar competing memories interfere, strengthening the dominant one
+- **EnhancedWorkingToEpisodicEvolver**: Context-aware working→episodic transition with richer metadata
 
 Evolvers run automatically as part of the memory lifecycle. See the [examples](examples/) directory for evolution demonstrations.
 
@@ -334,16 +353,19 @@ SmartMemory features a **unified, extensible plugin architecture** that allows y
 
 ### Built-in Plugins
 
-SmartMemory includes **30+ built-in plugins** across 4 types:
+SmartMemory includes **20 auto-registered plugins** with additional specialist plugins available for opt-in use:
 
-- **7 Extractors**: Extract entities and relationships
-  - `LLMExtractor`, `LLMSingleExtractor`, `ConversationAwareLLMExtractor`, `SpacyExtractor`, `HybridExtractor`, `DecisionExtractor`, `ReasoningExtractor`
-- **7 Enrichers**: Add context and metadata to memories
-  - `BasicEnricher`, `SentimentEnricher`, `TemporalEnricher`, `TopicEnricher`, `SkillsToolsEnricher`, `WikipediaEnricher`, `LinkExpansionEnricher`
-- **1 Grounder**: Connect to external knowledge
-  - `WikipediaGrounder`
-- **13 Evolvers**: Transform memories based on rules
-  - `WorkingToEpisodicEvolver`, `WorkingToProceduralEvolver`, `EpisodicToSemanticEvolver`, `EpisodicToZettelEvolver`, `EpisodicDecayEvolver`, `SemanticDecayEvolver`, `ZettelPruneEvolver`, `DecisionConfidenceEvolver`, `OpinionSynthesisEvolver`, `ObservationSynthesisEvolver`, `OpinionReinforcementEvolver`, etc.
+**Auto-registered by default** (loaded by `PluginManager`):
+- **4 Extractors**: `LLMExtractor`, `LLMSingleExtractor`, `ConversationAwareLLMExtractor`, `SpacyExtractor`
+- **5 Enrichers**: `BasicEnricher`, `SentimentEnricher`, `TemporalEnricher`, `ExtractSkillsToolsEnricher`, `TopicEnricher`
+- **10 Evolvers**: `WorkingToEpisodicEvolver`, `WorkingToProceduralEvolver`, `EpisodicToSemanticEvolver`, `EpisodicToZettelEvolver`, `EpisodicDecayEvolver`, `SemanticDecayEvolver`, `ZettelPruneEvolver`, `ExponentialDecayEvolver`, `InterferenceBasedConsolidationEvolver`, `RetrievalBasedStrengtheningEvolver`
+- **1 Grounder**: `WikipediaGrounder`
+
+**Specialist plugins** (used by specific pipeline stages or opt-in features):
+- **Extractors**: `GroqExtractor`, `DecisionExtractor`, `ReasoningExtractor`
+- **Enrichers**: `LinkExpansionEnricher`
+- **Evolvers**: `DecisionConfidenceEvolver`, `OpinionSynthesisEvolver`, `ObservationSynthesisEvolver`, `OpinionReinforcementEvolver`, `StaleMemoryEvolver`, `HebbianCoRetrievalEvolver`, `EnhancedWorkingToEpisodicEvolver`
+- **Grounders**: `PublicKnowledgeGrounder` (Wikidata QIDs)
 
 ### Creating Custom Plugins
 
@@ -419,7 +441,7 @@ PluginMetadata(
 )
 ```
 
-See `docs/PLUGIN_SECURITY.md` for complete security documentation.
+See the [full documentation](https://docs.smartmemory.ai/smartmemory/intro) for complete security documentation.
 
 ### Examples
 
@@ -491,7 +513,7 @@ class SmartMemory:
 **Scoping:**
 - OSS mode: No scoping needed, all data accessible
 - For multi-tenant applications, pass a `ScopeProvider` to enable automatic filtering
-- See `docs/SECURITY_AND_AUTH.md` for complete details
+- See the [documentation](https://docs.smartmemory.ai/smartmemory/intro) for complete details
 
 ### MemoryItem Class
 
@@ -515,7 +537,7 @@ class MemoryItem:
 **Security Metadata:**
 - For OSS usage, security metadata fields are not needed
 - For multi-tenant applications, use a `ScopeProvider` for automatic metadata injection
-- See `docs/SECURITY_AND_AUTH.md` for details
+- See the [documentation](https://docs.smartmemory.ai/smartmemory/intro) for details
 
 ## Dependencies
 
@@ -584,16 +606,16 @@ SmartMemory takes plugin security seriously. All plugins run in a sandboxed envi
 - ✅ **Execution isolation** - Sandboxed plugin execution
 - ✅ **Static analysis** - Security validation before execution
 
-External plugins use the `standard` security profile by default. See `docs/PLUGIN_SECURITY.md` for details.
+External plugins use the `standard` security profile by default.
 
 ## 🔗 Links
 
 - **📦 PyPI Package**: https://pypi.org/project/smartmemory-core/
 - **📚 Documentation**: https://docs.smartmemory.ai
-- **🐙 GitHub Repository**: https://github.com/smart-memory/smart-memory
-- **🐛 Issue Tracker**: https://github.com/smart-memory/smart-memory/issues
-- **🔒 Security & Auth**: See `docs/SECURITY_AND_AUTH.md`
-- **🔐 Plugin Security**: See `docs/PLUGIN_SECURITY.md`
+- **🐙 GitHub Repository**: https://github.com/smart-memory/smart-memory-core
+- **🐛 Issue Tracker**: https://github.com/smart-memory/smart-memory-core/issues
+- **🔒 Security & Auth**: See [documentation](https://docs.smartmemory.ai/smartmemory/intro)
+- **🔐 Plugin Security**: See [documentation](https://docs.smartmemory.ai/smartmemory/intro)
 
 ---
 
@@ -609,46 +631,39 @@ Explore the [examples](examples/) directory for complete demonstrations and use 
 
 ## ✅ Recently Completed
 
-### Zero-Infra Lite Mode (v0.3.9+)
-- ✅ **`smartmemory[lite]`**: SQLite + usearch backend — no Docker, no FalkorDB, no Redis required
+### Code Indexer (v0.5.x)
+- ✅ **AST-based Python parser**: Extracts modules, classes, functions, FastAPI routes, pytest tests
+- ✅ **TypeScript/JavaScript parser**: tree-sitter-based with React component/hook detection
+- ✅ **Cross-file call resolution**: Symbol table resolves import aliases to entity `item_id`s
+- ✅ **Semantic code search**: Vector embeddings on code entities for intent-based queries
+- ✅ **Git-anchored staleness**: `commit_hash` on entities + query-time drift detection
+- ✅ **Memory↔code bridging**: `REFERENCES_CODE` edges link semantic memories to code entities
+- ✅ **EntityRuler seeding**: Code class/function names auto-added to pattern dictionary
+
+### Query Decomposition (v0.5.x)
+- ✅ **Compound query splitting**: "auth flow and caching strategy" → 2 sub-queries
+- ✅ **Cross-query RRF merge**: Independent search per sub-query, reciprocal rank fusion
+- ✅ **`decompose_query=True`** on `SmartMemory.search()`, REST, and MCP surfaces
+
+### Zero-Infra Lite Mode (v0.4.x)
+- ✅ **`smartmemory-core[lite]`**: SQLite + usearch backend — no Docker, no FalkorDB, no Redis required
 - ✅ **`create_lite_memory()`**: Factory function from `smartmemory.tools.factory` for zero-config setup
-- ✅ **`lite_context()`**: Context manager that cleans up globals and closes SQLite on exit
-- ✅ **`PipelineConfig.lite(llm_enabled=None)`**: Named preset disabling coreference, network enrichers, and evolution. LLM extraction auto-detected from `OPENAI_API_KEY`/`GROQ_API_KEY` env vars; override with `llm_enabled=True/False`
-- ✅ **`smartmemory[watch]`**: Vault watcher for auto-ingesting new/changed Markdown files
-- ✅ **Constructor injection**: `vector_backend`, `cache`, `observability`, `pipeline_profile`, `entity_ruler_patterns` params added to `SmartMemory.__init__` — no monkey-patching required
+- ✅ **`PipelineConfig.lite(llm_enabled=None)`**: LLM extraction auto-detected from `OPENAI_API_KEY`/`GROQ_API_KEY`
+- ✅ **Graceful degradation**: VersionTracker, TemporalQueries, Grounding all work on SQLite backend
+- ✅ **Constructor injection**: `vector_backend`, `cache`, `observability`, `pipeline_profile`, `entity_ruler_patterns`
 
-### Unified Pipeline v2 (v0.3.5)
+### Unified Pipeline v2 (v0.3.x)
 - ✅ **11-stage composable pipeline**: classify → coreference → simplify → entity_ruler → llm_extract → ontology_constrain → store → link → enrich → ground → evolve
+- ✅ **Self-learning ontology**: OntologyGraph with three-tier status (seed → provisional → confirmed), six-gate promotion, hot-reloadable patterns
 - ✅ **Breakpoint execution**: `run_to()`, `run_from()`, `undo_to()` for debugging and resumption
-- ✅ **Per-stage retry**: Configurable retry policies with exponential backoff
 - ✅ **Async mode**: `ingest(sync=False)` with Redis Streams transport
-- ✅ **Pipeline metrics**: Fire-and-forget metrics emission via Redis Streams
 
-### Self-Learning Ontology (v0.3.4)
-- ✅ **OntologyGraph**: Dedicated FalkorDB graph for entity types with three-tier status (seed → provisional → confirmed)
-- ✅ **Promotion pipeline**: Six-gate evaluation (name length, blocklist, confidence, frequency, consistency, LLM validation)
-- ✅ **Pattern manager**: Hot-reloadable learned entity patterns with Redis pub/sub
-- ✅ **Layered ontology**: Base + overlay subscription system with hide/unhide, pin/unpin
-- ✅ **Template catalog**: 3 built-in templates (General, Software Engineering, Business & Finance)
-
-### Reasoning & Validation (v0.3.2)
-- ✅ **Graph validation**: `MemoryValidator`, `EdgeValidator` for schema enforcement
-- ✅ **Health metrics**: `GraphHealthChecker` with orphan ratio, provenance coverage
-- ✅ **Inference engine**: Pattern-matching rules for automatic edge creation
-- ✅ **Symbolic reasoning**: Residuation, query routing, proof trees, fuzzy confidence
-
-### Decision Memory (v0.3.0)
-- ✅ **First-class decisions**: Confidence tracking, provenance chains, lifecycle management
-- ✅ **DecisionConfidenceEvolver**: Evidence-based reinforcement/contradiction with decay
-- ✅ **Conflict detection**: Semantic search + content overlap heuristic
-- ✅ **Causal chains**: Recursive traversal of DERIVED_FROM, CAUSED_BY, INFLUENCES edges
-
-
-### Synthesis Memory (v0.2.6+)
-- ✅ **Opinion memory**: Beliefs with confidence scores, reinforced/contradicted over time
-- ✅ **Observation memory**: Synthesized entity summaries from scattered facts
-- ✅ **Reasoning memory**: Chain-of-thought traces capturing "why" decisions were made
+### Memory Types & Reasoning (v0.2.x–v0.3.x)
+- ✅ **Decision memory**: Confidence tracking, provenance chains, causal chain traversal
+- ✅ **Opinion/Observation synthesis**: Beliefs with confidence scores, entity summaries from scattered facts
+- ✅ **Reasoning traces**: Chain-of-thought capture with auto-detection via classify stage
+- ✅ **Graph validation**: Schema enforcement, health metrics, inference engine, symbolic reasoning
 
 **See `CHANGELOG.md` for complete version history.**
 
-Check the [GitHub repository](https://github.com/smart-memory/smart-memory) for the latest updates.
+Check the [GitHub repository](https://github.com/smart-memory/smart-memory-core) for the latest updates.

@@ -6,7 +6,13 @@ This directory contains example scripts demonstrating SmartMemory's features and
 
 ### Core Dependencies
 ```bash
-pip install smartmemory-core
+pip install smartmemory-core[server]
+```
+
+For zero-infra local experiments with `create_lite_memory()`, install:
+
+```bash
+pip install smartmemory-core[lite]
 ```
 
 ### Optional Dependencies
@@ -58,8 +64,8 @@ PYTHONPATH=. python examples/<example_name>.py
 |---------|-------------|
 | [zettelkasten_example.py](zettelkasten_example.py) | Zettelkasten note system with bidirectional linking and discovery |
 | [conversational_assistant_example.py](conversational_assistant_example.py) | Memory-enhanced conversational AI with context continuity |
-| [decision_memory_example.py](decision_memory_example.py) | **NEW** - Decision Memory with confidence tracking and lifecycle |
-| [reasoning_trace_example.py](reasoning_trace_example.py) | **NEW** - System 2 Memory for chain-of-thought reasoning traces |
+| [decision_memory_example.py](decision_memory_example.py) | Decision Memory with confidence tracking and lifecycle |
+| [reasoning_trace_example.py](reasoning_trace_example.py) | System 2 Memory for chain-of-thought reasoning traces |
 
 ---
 
@@ -67,7 +73,7 @@ PYTHONPATH=. python examples/<example_name>.py
 
 | Example | Description |
 |---------|-------------|
-| [pipeline_v2_example.py](pipeline_v2_example.py) | **NEW** - Pipeline v2 with breakpoints, resumption, and rollback |
+| [pipeline_v2_example.py](pipeline_v2_example.py) | Pipeline v2 with breakpoints, resumption, and rollback |
 | [background_processing_demo.py](background_processing_demo.py) | Async/background processing with Celery |
 | [conversation_aware_extraction_demo.py](conversation_aware_extraction_demo.py) | Context-aware entity extraction from conversations |
 
@@ -77,7 +83,7 @@ PYTHONPATH=. python examples/<example_name>.py
 
 | Example | Description |
 |---------|-------------|
-| [self_learning_ontology_example.py](self_learning_ontology_example.py) | **NEW** - Self-learning ontology with promotion and governance |
+| [self_learning_ontology_example.py](self_learning_ontology_example.py) | Self-learning ontology with promotion and governance |
 | [ontology_demo.py](ontology_demo.py) | Basic ontology management |
 | [ontology_inference_e2e.py](ontology_inference_e2e.py) | End-to-end ontology inference |
 | [demo_hitl_governance.py](demo_hitl_governance.py) | Human-in-the-loop governance for ontology changes |
@@ -127,7 +133,7 @@ PYTHONPATH=. python examples/<example_name>.py
 
 ### 1. Basic Memory Usage
 ```python
-from smartmemory.smart_memory import SmartMemory
+from smartmemory import MemoryItem, SmartMemory
 
 memory = SmartMemory()
 
@@ -140,13 +146,15 @@ for r in results:
     print(r.content)
 
 # Simple storage (no pipeline)
-memory.add("Quick note without extraction")
+memory.add(MemoryItem(content="Quick note without extraction", memory_type="semantic"))
 ```
 
 ### 2. Decision Memory
 ```python
+from smartmemory import SmartMemory
 from smartmemory.decisions import DecisionManager
 
+memory = SmartMemory()
 manager = DecisionManager(memory)
 
 # Create a decision
@@ -175,6 +183,11 @@ trace = ReasoningTrace(
 
 ### 4. Pipeline with Breakpoints
 ```python
+from smartmemory import SmartMemory
+from smartmemory.pipeline.config import PipelineConfig
+
+memory = SmartMemory()
+text = "John Smith leads the API migration for Project Atlas."
 runner = memory.create_pipeline_runner()
 config = PipelineConfig.preview()
 
@@ -190,6 +203,5 @@ state = runner.run_from(state, config)
 
 ## Notes
 
-- Examples marked **NEW** were added to demonstrate recent API features
 - Some examples require external services (FalkorDB, LLM provider)
 - Use `environment_check.py` to verify your setup
