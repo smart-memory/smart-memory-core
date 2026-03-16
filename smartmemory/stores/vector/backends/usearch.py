@@ -129,7 +129,23 @@ class UsearchVectorBackend(VectorBackend):
     # ── Internal helpers ───────────────────────────────────────────────────────
 
     def _ensure_index(self, dim: int) -> None:
-        """Lazily create the usearch index on first add."""
+        """Lazily create the usearch index, rebuilding if dimension changed."""
+        if self._index is not None and self._dim == dim:
+            return
+        if self._index is not None and self._dim != dim:
+            logger.warning(
+                "Embedding dimension changed (%d → %d). Rebuilding vector index. "
+                "Existing vectors will be re-embedded on next search.",
+                self._dim,
+                dim,
+            )
+            self._index = None
+            self._id_map = {}
+            self._rev_map = {}
+            # Keep _metadata (text content still valid), just drop _embedding keys
+            for meta in self._metadata.values():
+                meta.pop("_embedding", None)
+            self._next_key = 0
         if self._index is None:
             self._dim = dim
             self._index = _usearch_index.Index(ndim=dim, metric="cos")

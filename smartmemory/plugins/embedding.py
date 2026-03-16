@@ -7,6 +7,7 @@ Provides embedding generation with:
 """
 
 import logging
+import os
 import threading
 from dataclasses import dataclass
 from typing import Any
@@ -66,9 +67,26 @@ class EmbeddingService:
                 config = MemoryConfig().vector.get("embedding", {})
             except Exception:
                 config = {}
-        self.provider = config.get("provider", "openai")
+
+        # SMARTMEMORY_EMBEDDING_PROVIDER pins the provider from the app config,
+        # preventing env var changes (e.g. OPENAI_API_KEY) from silently switching
+        # providers and causing vector dimension mismatches.
+        pinned = os.environ.get("SMARTMEMORY_EMBEDDING_PROVIDER")
+        if pinned == "local":
+            self.provider = "local"
+            self.api_key = None
+        elif pinned == "openai":
+            self.provider = "openai"
+            self.api_key = config.get("openai_api_key") or os.environ.get("OPENAI_API_KEY")
+        elif pinned == "ollama":
+            self.provider = "ollama"
+            self.api_key = None
+        else:
+            # No pin — legacy behaviour (auto-detect from config)
+            self.provider = config.get("provider", "openai")
+            self.api_key = config.get("openai_api_key")
+
         self.model = config.get("models", "text-embedding-ada-002")
-        self.api_key = config.get("openai_api_key")
         self.ollama_url = config.get("ollama_url", "http://localhost:11434")
         self.hf_api_key = config.get("huggingface_api_key")
         self.hf_model = config.get("huggingface_model", "sentence-transformers/all-MiniLM-L6-v2")
@@ -107,28 +125,38 @@ class EmbeddingService:
             logger.debug(f"Redis cache unavailable for embeddings: {e}")
             cache = None
 
-        # Generate embedding via API
+        # Generate embedding
         usage = EmbeddingUsage(model=self.model, cached=False)
+
+        if self.provider == "local":
+            # Pinned local provider — sentence-transformers > spaCy, never calls an API.
+            embedding = self._embed_local(text)
+            if embedding is not None:
+                if cache is not None:
+                    try:
+                        cache.set_embedding(text, embedding.tolist())
+                    except Exception:
+                        pass
+                return embedding
+            raise RuntimeError(
+                "Local embedding failed. Install sentence-transformers or "
+                "ensure spaCy en_core_web_sm is available."
+            )
 
         if self.provider == "openai":
             if not self.api_key:
-                # No API key — fall back to spaCy document vectors (96-dim).
-                # These provide real semantic similarity from word2vec averaged
-                # over the document, at zero cost and zero latency.
-                embedding = self._embed_spacy(text)
+                # No API key — fall back to local embedding model.
+                embedding = self._embed_local(text)
                 if embedding is not None:
-                    _set_last_usage(EmbeddingUsage(model="spacy/en_core_web_sm", cached=False))
                     if cache is not None:
                         try:
                             cache.set_embedding(text, embedding.tolist())
                         except Exception:
                             pass
                     return embedding
-                # spaCy unavailable — this shouldn't happen since spaCy is a
-                # core dep, but guard against broken installs
                 raise RuntimeError(
                     "No embedding provider available. Set OPENAI_API_KEY for API "
-                    "embeddings or install spaCy with: python -m spacy download en_core_web_sm"
+                    "embeddings or install sentence-transformers for local embeddings."
                 )
             else:
                 import openai
@@ -233,8 +261,41 @@ class EmbeddingService:
             raise RuntimeError(f"Failed to generate HuggingFace embedding: {e}") from e
 
 
-    # Singleton spaCy nlp instance — loaded once, reused across calls.
+    # Singleton local model instances — loaded once, reused across calls.
+    _st_model = None
+    _st_attempted = False
     _spacy_nlp = None
+
+    def _embed_local(self, text):
+        """Generate embedding using the best available local model.
+
+        Tries sentence-transformers first (384-dim, contextual, good quality),
+        falls back to spaCy word vectors (96-dim, bag-of-words, weak).
+        """
+        embedding = self._embed_sentence_transformers(text)
+        if embedding is not None:
+            return embedding
+        return self._embed_spacy(text)
+
+    def _embed_sentence_transformers(self, text):
+        """Generate embedding using sentence-transformers (all-MiniLM-L6-v2, 384-dim)."""
+        if EmbeddingService._st_attempted and EmbeddingService._st_model is None:
+            return None  # Already tried and failed to import
+        try:
+            if EmbeddingService._st_model is None:
+                EmbeddingService._st_attempted = True
+                from sentence_transformers import SentenceTransformer
+                EmbeddingService._st_model = SentenceTransformer("all-MiniLM-L6-v2")
+                logger.info("Using sentence-transformers (all-MiniLM-L6-v2, 384-dim) for local embeddings")
+            embedding = EmbeddingService._st_model.encode(text)
+            _set_last_usage(EmbeddingUsage(model="sentence-transformers/all-MiniLM-L6-v2", cached=False))
+            return embedding
+        except ImportError:
+            logger.debug("sentence-transformers not installed, falling back to spaCy")
+            return None
+        except Exception as e:
+            logger.debug(f"sentence-transformers embedding failed: {e}")
+            return None
 
     def _embed_spacy(self, text):
         """Generate embedding using spaCy's built-in word vectors (96-dim).
@@ -252,6 +313,7 @@ class EmbeddingService:
             if doc.vector_norm == 0:
                 logger.debug("spaCy produced zero vector (no word vectors for input)")
                 return None
+            _set_last_usage(EmbeddingUsage(model="spacy/en_core_web_sm", cached=False))
             return doc.vector
         except Exception as e:
             logger.debug(f"spaCy embedding failed: {e}")
