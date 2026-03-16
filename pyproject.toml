@@ -42,18 +42,27 @@ dependencies = [
     "spacy>=3.0.0",
     "vaderSentiment>=3.3.0",
     "jinja2>=3.0.0",
-    "litellm>=1.0.0",
-    "openai>=1.0.0",
-    "scikit-learn>=1.0.0",
     "networkx>=3.0",
     "pydantic>=2.0.0",
     "tomli>=2.0.0; python_version < '3.11'",
-    "dspy>=3.0.0",
 ]
 
 [project.optional-dependencies]
-# Full server mode: FalkorDB graph database + Redis cache/observability
+# LLM extraction & embedding (litellm, openai, dspy)
+llm = [
+    "litellm>=1.0.0",
+    "openai>=1.0.0",
+    "dspy>=3.0.0",
+]
+
+# ML features (clustering, topic modeling, hybrid retrieval cosine similarity)
+ml = [
+    "scikit-learn>=1.0.0",
+]
+
+# Full server mode: FalkorDB graph database + Redis cache/observability + LLM + ML
 server = [
+    "smartmemory-core[llm,ml]",
     "falkordb>=1.0.0",
     "redis>=4.0.0",
     "requests>=2.28.0",
@@ -104,20 +113,7 @@ dev = [
 
 # All optional dependencies
 all = [
-    "falkordb>=1.0.0",
-    "redis>=4.0.0",
-    "transformers>=4.0.0",
-    "relik>=0.1.0",
-    "fastcoref>=2.1.0",
-    "slack-sdk>=3.0.0",
-    "boto3>=1.26.0",
-    "wikipedia-api>=0.6.0",
-    "smolagents>=0.1.0",
-    "click>=8.0.0",
-    "rich>=13.0.0",
-    "tabulate>=0.9.0",
-    "usearch>=2.0.0",
-    "watchdog>=3.0.0",
+    "smartmemory-core[server,lite,cli,rebel,relik,coreference,slack,aws,wikipedia,smolagents,watch]",
 ]
 
 [project.urls]

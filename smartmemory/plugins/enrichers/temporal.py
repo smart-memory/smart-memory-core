@@ -1,6 +1,5 @@
 import json
 import logging
-import openai
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 
@@ -49,11 +48,19 @@ class TemporalEnricher(EnricherPlugin):
         self.config = config or TemporalEnricherConfig()
         if not isinstance(self.config, TemporalEnricherConfig):
             raise TypeError("TemporalEnricher requires a typed config (TemporalEnricherConfig)")
-        if self.config.openai_api_key:
-            openai.api_key = self.config.openai_api_key
+        try:
+            import openai as _openai
+
+            self._openai = _openai
+            if self.config.openai_api_key:
+                _openai.api_key = self.config.openai_api_key
+        except ImportError:
+            self._openai = None
         self.model = self.config.model_name
 
     def enrich(self, item, node_ids=None, prompt_template=None):
+        if self._openai is None:
+            return {"temporal": {}}
         content = getattr(item, "content", str(item))
         entities = node_ids.get("semantic_entities", []) if isinstance(node_ids, dict) else []
         memory_id = getattr(item, "item_id", None)
@@ -64,7 +71,7 @@ class TemporalEnricher(EnricherPlugin):
         prompt = apply_placeholders(template, {"TEXT": content, "ENTITIES": json.dumps(entities)})
         with trace_span("pipeline.enrich.temporal_enricher", {"memory_id": memory_id, "entity_count": len(entities)}):
             try:
-                response = openai.chat.completions.create(
+                response = self._openai.chat.completions.create(
                     model=self.model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.0,

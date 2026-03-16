@@ -111,6 +111,49 @@ class TestImportTimeWithoutInfra:
     def test_cache_importable_without_redis(self):
         self._assert_importable("smartmemory.utils.cache", "redis")
 
+    # -- LLM/ML packages (optional since DIST-LITE-7) --
+
+    def test_litellm_client_importable_without_litellm(self):
+        self._assert_importable("smartmemory.utils.llm_client.litellm", "litellm")
+
+    def test_openai_client_importable_without_openai(self):
+        self._assert_importable("smartmemory.utils.llm_client.openai", "openai")
+
+    def test_dspy_client_importable_without_dspy(self):
+        self._assert_importable("smartmemory.utils.llm_client.dspy", "dspy")
+
+    def test_temporal_enricher_importable_without_openai(self):
+        self._assert_importable("smartmemory.plugins.enrichers.temporal", "openai")
+
+    def test_clustering_importable_without_sklearn(self):
+        self._assert_importable("smartmemory.clustering.embedding", "sklearn", "sklearn.cluster")
+
+    def test_hybrid_retrieval_importable_without_sklearn(self):
+        self._assert_importable("smartmemory.utils.hybrid_retrieval", "sklearn", "sklearn.metrics", "sklearn.metrics.pairwise")
+
+    def test_analytics_stage_importable_without_sklearn(self):
+        self._assert_importable(
+            "smartmemory.memory.pipeline.stages.analytics",
+            "sklearn", "sklearn.feature_extraction", "sklearn.feature_extraction.text",
+            "sklearn.decomposition",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Instantiation behavior — soft fail (LLM/ML enrichers without deps)
+# ---------------------------------------------------------------------------
+
+class TestSoftFailLLMML:
+    """Enrichers that need LLM/ML packages must degrade gracefully, not crash."""
+
+    def test_temporal_enricher_returns_empty_without_openai(self):
+        with _absent_package("openai"):
+            from smartmemory.plugins.enrichers.temporal import TemporalEnricher
+            enricher = TemporalEnricher()
+            assert enricher._openai is None
+            result = enricher.enrich("test content")
+            assert result == {"temporal": {}}
+
 
 # ---------------------------------------------------------------------------
 # Instantiation behavior — hard fail (FalkorDB backends + RedisCache)
