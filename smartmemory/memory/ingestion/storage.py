@@ -8,11 +8,14 @@ This module handles all storage operations including:
 - Entity node creation and management
 """
 
+import logging
 from typing import Dict, List, Any
 
 from smartmemory.memory.ingestion import utils as ingestion_utils
 from smartmemory.models.memory_item import MemoryItem
 from smartmemory.plugins.embedding import create_embeddings
+
+logger = logging.getLogger(__name__)
 
 
 class StoragePipeline:
@@ -46,7 +49,7 @@ class StoragePipeline:
             try:
                 item.embedding = create_embeddings(str(item.content))
             except Exception as e:
-                print(f"Warning: Failed to generate embedding: {e}")
+                logger.debug(f"Failed to generate embedding: {e}")
                 # Continue without embedding - graph storage will still work
                 item.embedding = None
 
@@ -60,11 +63,11 @@ class StoragePipeline:
                     node_ids=[str(item.item_id)],  # Link vector to graph node
                     is_global=True,  # Make searchable globally
                 )
-                print(f"✅ Upserted embedding to vector store for item: {item.item_id}")
+                logger.debug(f"Upserted embedding to vector store for item: {item.item_id}")
             except Exception as e:
-                print(f"Warning: Failed to upsert embedding to vector store: {e}")
+                logger.warning(f"Failed to upsert embedding to vector store: {e}")
         else:
-            print(f"⚠️  No embedding generated for item: {item.item_id}")
+            logger.debug(f"No embedding generated for item: {item.item_id}")
 
         # Graph storage is handled separately by the memory system
         # No need to duplicate storage here
@@ -160,7 +163,7 @@ class StoragePipeline:
                 )
 
             except Exception as e:
-                print(f"⚠️  Failed to process triple {relation}: {e}")
+                logger.debug(f"Failed to process triple {relation}: {e}")
                 continue  # Skip failed triples but continue processing others
 
     def ensure_entity_node(self, entity_name: str, context: Dict[str, Any]) -> str:

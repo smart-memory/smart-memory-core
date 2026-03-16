@@ -45,9 +45,12 @@ class ConfigManager:
         Args:
             config_path: Path to configuration file (optional)
         """
-        # Resolve config path (param > env > default) and propagate to process env
+        # Resolve config path (param > env > default) and propagate to process env.
+        # Only treat as explicit if the USER provided a path (constructor arg or env var
+        # set before our process started). The auto-propagation below must not flip this
+        # flag for subsequent ConfigManager instances.
         candidate_path = config_path or os.environ.get("SMARTMEMORY_CONFIG", "config.json")
-        self._is_explicit_path = config_path is not None or "SMARTMEMORY_CONFIG" in os.environ
+        self._is_explicit_path = config_path is not None
         self._config_path = EnvironmentHandler.resolve_config_path(candidate_path)
         EnvironmentHandler.set_config_path_env(self._config_path)
 

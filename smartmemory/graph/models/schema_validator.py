@@ -663,6 +663,12 @@ class GraphSchemaValidator:
         }
         node_type = alias_map.get(node_type_lc, node_type_lc)
 
+        # System node types created by internal infrastructure (e.g. VersionTracker)
+        # are not user-facing and don't need schema validation.
+        _SYSTEM_NODE_TYPES = {"version"}
+        if node_type in _SYSTEM_NODE_TYPES:
+            return True
+
         # Check if we have a schema for this node type
         if node_type not in self.node_schemas:
             message = f"No schema registered for node type: {original_node_type}"

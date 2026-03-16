@@ -62,7 +62,10 @@ class EmbeddingService:
 
     def __init__(self, config=None):
         if config is None:
-            config = MemoryConfig().vector["embedding"]
+            try:
+                config = MemoryConfig().vector.get("embedding", {})
+            except Exception:
+                config = {}
         self.provider = config.get("provider", "openai")
         self.model = config.get("models", "text-embedding-ada-002")
         self.api_key = config.get("openai_api_key")
@@ -101,7 +104,7 @@ class EmbeddingService:
 
             logger.debug(f"Cache miss for embedding: {text[:50]}...")
         except Exception as e:
-            logger.warning(f"Redis cache unavailable for embeddings: {e}")
+            logger.debug(f"Redis cache unavailable for embeddings: {e}")
             cache = None
 
         # Generate embedding via API
@@ -109,22 +112,24 @@ class EmbeddingService:
 
         if self.provider == "openai":
             if not self.api_key:
-                # Generate mock embedding for testing when no API key is available
-                logger.warning("No OpenAI API key provided, generating mock embedding for testing")
-                # Generate deterministic mock embedding based on text hash
-                import hashlib
-
-                text_hash = hashlib.md5(text.encode()).hexdigest()
-                # Convert hash to 1536-dimensional vector (OpenAI embedding size)
-                mock_embedding = []
-                for i in range(1536):
-                    # Use hash characters cyclically to generate values between -1 and 1
-                    char_val = ord(text_hash[i % len(text_hash)]) / 255.0 * 2 - 1
-                    mock_embedding.append(char_val)
-                embedding = np.array(mock_embedding)
-                # Mock usage for testing
-                usage.prompt_tokens = len(text.split())  # Rough estimate
-                usage.total_tokens = usage.prompt_tokens
+                # No API key — fall back to spaCy document vectors (96-dim).
+                # These provide real semantic similarity from word2vec averaged
+                # over the document, at zero cost and zero latency.
+                embedding = self._embed_spacy(text)
+                if embedding is not None:
+                    _set_last_usage(EmbeddingUsage(model="spacy/en_core_web_sm", cached=False))
+                    if cache is not None:
+                        try:
+                            cache.set_embedding(text, embedding.tolist())
+                        except Exception:
+                            pass
+                    return embedding
+                # spaCy unavailable — this shouldn't happen since spaCy is a
+                # core dep, but guard against broken installs
+                raise RuntimeError(
+                    "No embedding provider available. Set OPENAI_API_KEY for API "
+                    "embeddings or install spaCy with: python -m spacy download en_core_web_sm"
+                )
             else:
                 import openai
 
@@ -226,6 +231,31 @@ class EmbeddingService:
             ) from e
         except Exception as e:
             raise RuntimeError(f"Failed to generate HuggingFace embedding: {e}") from e
+
+
+    # Singleton spaCy nlp instance — loaded once, reused across calls.
+    _spacy_nlp = None
+
+    def _embed_spacy(self, text):
+        """Generate embedding using spaCy's built-in word vectors (96-dim).
+
+        Uses the already-installed en_core_web_sm model. Averages word vectors
+        over the document to produce a fixed-size embedding. Quality is lower
+        than transformer-based models but provides real semantic similarity
+        at zero cost and zero additional dependencies.
+        """
+        try:
+            if EmbeddingService._spacy_nlp is None:
+                import spacy
+                EmbeddingService._spacy_nlp = spacy.load("en_core_web_sm")
+            doc = EmbeddingService._spacy_nlp(text)
+            if doc.vector_norm == 0:
+                logger.debug("spaCy produced zero vector (no word vectors for input)")
+                return None
+            return doc.vector
+        except Exception as e:
+            logger.debug(f"spaCy embedding failed: {e}")
+            return None
 
 
 def create_embeddings(text):
