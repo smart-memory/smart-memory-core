@@ -655,7 +655,7 @@ class SmartMemory(MemoryBase):
                 queued = True
             except Exception:
                 queued = False
-            return {"item_id": item_id, "queued": queued}
+            return {"item_id": item_id, "queued": queued, "entity_ids": entity_ids}
         # Normalize item using CRUD component (eliminates mixed abstraction)
         normalized_item = self._crud.normalize_item(item)
 
