@@ -20,7 +20,8 @@ class NetworkXAlgos:
 
     @property
     def _g(self) -> nx.MultiDiGraph:
-        return self._compute.nx_graph
+        """Get a point-in-time snapshot of the graph for algorithmic passes."""
+        return self._compute.snapshot()
 
     # ── Aggregate queries ─────────────────────────────────────────────
 
