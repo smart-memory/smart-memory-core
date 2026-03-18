@@ -129,6 +129,11 @@ class GraphComputeLayer:
 
     # ── Thread-safe public access ──────────────────────────────────────
 
+    @property
+    def nx_graph(self) -> nx.MultiDiGraph:
+        """Deprecated: returns a snapshot copy. Use snapshot() or locked accessors instead."""
+        return self.snapshot()
+
     def snapshot(self) -> nx.MultiDiGraph:
         """Return a frozen copy of the graph for algorithms needing full-graph access.
 
