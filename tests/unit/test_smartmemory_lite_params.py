@@ -192,8 +192,8 @@ def test_pipeline_profile_applied_in_build():
         # 1c: wikidata enabled but sparql disabled
         assert config.enrich.wikidata.enabled is True
         assert config.enrich.wikidata.sparql_enabled is False
-        # 1e: evolution disabled
-        assert config.evolve.run_evolution is False
+        # 1e: CORE-EVO-LIVE-1 — evolution enabled (incremental worker handles it), clustering disabled
+        assert config.evolve.run_evolution is True
         assert config.evolve.run_clustering is False
 
 
@@ -207,14 +207,14 @@ def test_profile_propagates_sparql_enabled():
         assert config.enrich.wikidata.sparql_enabled is False
 
 
-def test_profile_propagates_evolution_disabled():
-    """_apply_pipeline_profile propagates run_evolution=False from lite profile."""
+def test_profile_propagates_evolution_enabled():
+    """CORE-EVO-LIVE-1: _apply_pipeline_profile propagates run_evolution=True from lite profile."""
     from smartmemory.pipeline.config import PipelineConfig
 
     with ExitStack() as stack:
         mem = _make_sm(stack, pipeline_profile=PipelineConfig.lite())
         config = mem._build_pipeline_config()
-        assert config.evolve.run_evolution is False
+        assert config.evolve.run_evolution is True
 
 
 def test_profile_propagates_clustering_disabled():

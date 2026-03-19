@@ -128,9 +128,18 @@ class SmartMemory(MemoryBase):
         else:
             self._public_knowledge_store = self._default_public_knowledge_store()
 
+        # CORE-EVO-LIVE-1: Evolution queue for incremental evolution
+        self._evolution_queue = None
+        self._evolution_worker = None
+        try:
+            from smartmemory.evolution.queue import EvolutionQueue
+            self._evolution_queue = EvolutionQueue()
+        except Exception:
+            pass
+
         # Initialize stages with proper delegation (use injected or create defaults)
         self._graph_ops = GraphOperations(self._graph)
-        self._crud = crud or CRUD(self._graph)
+        self._crud = crud or CRUD(self._graph, evolution_queue=self._evolution_queue, smart_memory=self)
         self._linking = linking or Linking(self._graph)
         self._enrichment = enrichment or Enrichment(self._graph)
         self._grounding = grounding or Grounding(self._graph)
@@ -174,10 +183,97 @@ class SmartMemory(MemoryBase):
         self._debug_mgr = DebugManager(self._graph, self._search, self.scope_provider)
         self._enrichment_mgr = EnrichmentManager(self._enrichment, self._grounding, self._external_resolver)
 
+        # CORE-EVO-LIVE-1: Do NOT start worker eagerly in __init__.
+        # Worker is lazy-started on first CRUD mutation via _ensure_evolution_worker().
+
     @property
     def graph(self):
         """Access to underlying graph storage."""
         return self._graph
+
+    # =========================================================================
+    # CORE-EVO-LIVE-1: Evolution worker lifecycle
+    # =========================================================================
+
+    def _ensure_evolution_worker(self) -> None:
+        """Lazy-start the evolution worker daemon thread on first mutation.
+
+        Respects the pipeline profile's run_evolution flag — if evolution is
+        disabled (e.g. preview mode), the worker is not started.
+        """
+        if self._evolution_worker is not None and self._evolution_worker.is_active:
+            return
+        if self._evolution_queue is None:
+            return
+        # Respect evolution config — don't start if explicitly disabled
+        if self._pipeline_profile is not None and not self._pipeline_profile.evolve.run_evolution:
+            return
+        try:
+            from smartmemory.evolution.router import EvolutionRouter
+            from smartmemory.evolution.worker import EvolutionWorker
+            from smartmemory.plugins.manager import get_plugin_manager
+
+            # Collect evolver instances with TRIGGERS
+            plugin_manager = get_plugin_manager()
+            registry = plugin_manager.registry
+            evolver_names = registry.list_plugins("evolver")
+            evolvers = []
+            for name in evolver_names:
+                evolver_class = registry.get_evolver(name)
+                if evolver_class and getattr(evolver_class, "TRIGGERS", set()):
+                    try:
+                        evolvers.append(evolver_class())
+                    except Exception as exc:
+                        logger.debug("SmartMemory: failed to instantiate evolver %s: %s", name, exc)
+
+            if not evolvers:
+                return  # No incremental evolvers registered
+
+            router = EvolutionRouter(evolvers)
+
+            # Get backend and compute layer
+            backend = getattr(self._graph, "backend", None)
+            if backend is None:
+                return
+            graph_compute = getattr(backend, "_compute", None)
+            if graph_compute is None:
+                return
+
+            self._evolution_worker = EvolutionWorker(
+                queue=self._evolution_queue,
+                router=router,
+                backend=backend,
+                graph=graph_compute,
+                memory=self,
+            )
+            self._evolution_worker.ensure_started()
+            logger.debug("SmartMemory: evolution worker started")
+        except Exception as exc:
+            logger.debug("SmartMemory: failed to start evolution worker: %s", exc)
+
+    def close(self) -> None:
+        """Shutdown background workers and release resources.
+
+        Shuts down the evolution worker first (drain + join), then closes
+        the backend. This ensures no worker thread operates on a closed
+        connection.
+        """
+        if self._evolution_worker is not None:
+            self._evolution_worker.shutdown(drain=True, timeout=10.0)
+            # Block until thread actually exits before closing backend
+            if self._evolution_worker.is_alive():
+                logger.warning("SmartMemory.close: evolution worker still alive after shutdown — forcing")
+            self._evolution_worker = None
+
+        backend = getattr(self._graph, "backend", None)
+        if backend is not None and hasattr(backend, "close"):
+            backend.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
 
     # =========================================================================
     # Pipeline v2 assembly

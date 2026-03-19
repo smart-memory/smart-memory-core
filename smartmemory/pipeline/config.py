@@ -308,7 +308,9 @@ class PipelineConfig(MemoryBaseModel):
         - entity_ruler: pattern-matched NER at ~4ms (no network)
         - basic_enricher, sentiment_enricher, temporal_enricher, topic_enricher
         - store, link stages
-        - evolution/clustering: disabled (HebbianCoRetrievalEvolver uses raw Cypher)
+        - evolution: enabled (CORE-EVO-LIVE-1 provides incremental evolution via
+          daemon thread; EvolveStage skips batch when worker is active)
+        - clustering: disabled (requires full graph scan)
         """
         if llm_enabled is None:
             llm_enabled = bool(os.getenv("OPENAI_API_KEY") or os.getenv("GROQ_API_KEY"))
@@ -322,7 +324,7 @@ class PipelineConfig(MemoryBaseModel):
                 enricher_names=["basic_enricher", "sentiment_enricher", "temporal_enricher", "topic_enricher"],
                 wikidata=WikidataConfig(sparql_enabled=False),
             ),
-            evolve=EvolveConfig(run_evolution=False, run_clustering=False),
+            evolve=EvolveConfig(run_evolution=True, run_clustering=False),
         )
 
     @classmethod

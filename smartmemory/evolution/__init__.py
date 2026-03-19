@@ -25,6 +25,13 @@ from smartmemory.evolution.registry import (
     register_builtin_evolvers,
 )
 
+# CORE-EVO-LIVE-1: Incremental evolution components
+from smartmemory.evolution.events import EvolutionAction, EvolutionContext, MutationEvent
+from smartmemory.evolution.queue import EvolutionQueue
+from smartmemory.evolution.router import EvolutionRouter
+from smartmemory.evolution.batcher import WriteBatcher
+from smartmemory.evolution.worker import EvolutionWorker
+
 # EvolutionEventStore and EvolutionTracker require pymongo (service-mode only).
 # Lazy import so `import smartmemory` works without pymongo installed.
 _LAZY_IMPORTS = {"EvolutionEventStore": "store", "EvolutionTracker": "tracker"}
@@ -56,4 +63,12 @@ __all__ = [
     "get_evolver_by_key",
     "list_evolver_specs",
     "register_builtin_evolvers",
+    # CORE-EVO-LIVE-1
+    "MutationEvent",
+    "EvolutionAction",
+    "EvolutionContext",
+    "EvolutionQueue",
+    "EvolutionRouter",
+    "WriteBatcher",
+    "EvolutionWorker",
 ]

@@ -92,6 +92,20 @@ class FalkorDBBackend(SmartGraphBackend):
 
     # ---------- Utility ----------
 
+    # ── CORE-EVO-LIVE-1: transaction support ────────────────────────────────
+
+    def transaction_context(self):
+        """No-op context manager — FalkorDB auto-commits each query."""
+        from contextlib import contextmanager
+
+        @contextmanager
+        def _noop():
+            yield
+
+        return _noop()
+
+    # ── Cypher query interface ────────────────────────────────────────────
+
     def execute_cypher(self, cypher: str, params: Optional[Dict[str, Any]] = None) -> List[Any]:
         """Execute a raw Cypher query."""
         return self._query(cypher, params)

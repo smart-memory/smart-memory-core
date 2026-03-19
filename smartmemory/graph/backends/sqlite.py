@@ -13,8 +13,9 @@ import logging
 import sqlite3
 import threading
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 from smartmemory.graph.algos import GraphAlgos
 from smartmemory.graph.backends.backend import SmartGraphBackend
@@ -106,7 +107,9 @@ class SQLiteBackend(SmartGraphBackend):
                 "Use FalkorDB-backed SmartMemory for multi-tenant deployments."
             )
         self._scope_provider = scope_provider
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()  # RLock: transaction_context() + nested mutators
+        self._in_transaction = False  # CORE-EVO-LIVE-1: suppress nested auto-commit
+        self._deferred_syncs: list = []  # CORE-EVO-LIVE-1: compute syncs deferred until commit
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         result = self._conn.execute("PRAGMA journal_mode=WAL").fetchone()
         self._journal_mode = result[0] if result else "unknown"
@@ -123,7 +126,7 @@ class SQLiteBackend(SmartGraphBackend):
 
     def _create_tables(self) -> None:
         with self._lock:
-            with self._conn:
+            with self._auto_commit():
                 self._conn.execute(_CREATE_NODES)
                 self._conn.execute(_CREATE_EDGES)
                 for idx in _CREATE_INDEXES:
@@ -185,6 +188,90 @@ class SQLiteBackend(SmartGraphBackend):
     def __del__(self) -> None:
         self.close()
 
+    # ── CORE-EVO-LIVE-1: property merge + transaction support ────────────────
+
+    def set_properties(self, item_id: str, properties: Dict[str, Any]) -> bool:
+        """Merge properties into an existing node (partial update).
+
+        Reads the current JSON blob, merges the new keys, writes back.
+        Syncs the compute layer after the write.
+        """
+        if not properties:
+            return True
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT memory_type, properties FROM nodes WHERE item_id=?", (item_id,)
+            ).fetchone()
+            if row is None:
+                return False
+            memory_type, props_json = row
+            existing = json.loads(props_json)
+            existing.update(properties)
+            with self._auto_commit():
+                self._conn.execute(
+                    "UPDATE nodes SET properties=? WHERE item_id=?",
+                    (json.dumps(existing), item_id),
+                )
+        # Sync compute layer with the full merged property set
+        full_props = dict(existing)
+        full_props["item_id"] = item_id
+        full_props["memory_type"] = memory_type
+        self._sync_compute("sync_add_node", item_id, full_props)
+        return True
+
+    def _sync_compute(self, fn_name: str, *args, **kwargs) -> None:
+        """Execute a compute layer sync immediately, or defer if inside a transaction."""
+        if self._in_transaction:
+            self._deferred_syncs.append((fn_name, args, kwargs))
+        else:
+            getattr(self._compute, fn_name)(*args, **kwargs)
+
+    def _flush_deferred_syncs(self) -> None:
+        """Replay all deferred compute syncs (called after COMMIT)."""
+        for fn_name, args, kwargs in self._deferred_syncs:
+            try:
+                getattr(self._compute, fn_name)(*args, **kwargs)
+            except Exception as exc:
+                logger.warning("SQLiteBackend: deferred sync %s failed: %s", fn_name, exc)
+        self._deferred_syncs.clear()
+
+    @contextmanager
+    def _auto_commit(self) -> Generator[None, None, None]:
+        """Context manager that wraps in ``with self._conn:`` only when no outer transaction is active.
+
+        When ``self._in_transaction`` is True (inside ``transaction_context()``),
+        this yields without any commit/rollback — the outer transaction handles it.
+        """
+        if self._in_transaction:
+            yield
+        else:
+            with self._conn:
+                yield
+
+    @contextmanager
+    def transaction_context(self) -> Generator[None, None, None]:
+        """Wrap multiple operations in a single SQLite transaction.
+
+        Uses BEGIN IMMEDIATE for write-ahead locking. Rolls back on exception.
+        Mutators called inside this context use ``_auto_commit()`` which
+        becomes a no-op, preventing premature commits.
+        """
+        with self._lock:
+            self._conn.execute("BEGIN IMMEDIATE")
+            self._in_transaction = True
+            self._deferred_syncs.clear()
+            try:
+                yield
+                self._conn.execute("COMMIT")
+                # Replay compute syncs only after successful commit
+                self._flush_deferred_syncs()
+            except Exception:
+                self._conn.execute("ROLLBACK")
+                self._deferred_syncs.clear()  # Discard phantom syncs
+                raise
+            finally:
+                self._in_transaction = False
+
     # ── SmartGraphBackend abstract methods ───────────────────────────────────
 
     def add_node(
@@ -201,7 +288,7 @@ class SQLiteBackend(SmartGraphBackend):
         mem_type = memory_type or properties.get("memory_type")
         props_to_store = {k: v for k, v in properties.items() if k not in ("item_id", "memory_type")}
         with self._lock:
-            with self._conn:
+            with self._auto_commit():
                 self._conn.execute(
                     _UPSERT_NODE_SQL,
                     (
@@ -213,17 +300,17 @@ class SQLiteBackend(SmartGraphBackend):
                         json.dumps(props_to_store),
                     ),
                 )
-        self._compute.sync_add_node(item_id, properties)
+        self._sync_compute("sync_add_node", item_id, properties)
         result = dict(properties)
         result["item_id"] = item_id
         return result
 
     def clear(self) -> None:
         with self._lock:
-            with self._conn:
+            with self._auto_commit():
                 self._conn.execute("DELETE FROM edges")
                 self._conn.execute("DELETE FROM nodes")
-        self._compute.sync_clear()
+        self._sync_compute("sync_clear")
 
     def add_edge(
         self,
@@ -237,7 +324,7 @@ class SQLiteBackend(SmartGraphBackend):
         is_global: bool = False,
     ) -> bool:
         with self._lock:
-            with self._conn:
+            with self._auto_commit():
                 self._conn.execute(
                     _UPSERT_EDGE_SQL,
                     (
@@ -251,7 +338,7 @@ class SQLiteBackend(SmartGraphBackend):
                         json.dumps(properties),
                     ),
                 )
-        self._compute.sync_add_edge(source_id, target_id, edge_type, properties)
+        self._sync_compute("sync_add_edge", source_id, target_id, edge_type, properties)
         return True
 
     def get_node(self, item_id: str, as_of_time: Optional[str] = None) -> Optional[Dict[str, Any]]:
@@ -301,15 +388,15 @@ class SQLiteBackend(SmartGraphBackend):
 
     def remove_node(self, item_id: str) -> bool:
         with self._lock:
-            with self._conn:
+            with self._auto_commit():
                 cursor = self._conn.execute("DELETE FROM nodes WHERE item_id=?", (item_id,))
         if cursor.rowcount > 0:
-            self._compute.sync_remove_node(item_id)
+            self._sync_compute("sync_remove_node", item_id)
         return cursor.rowcount > 0
 
     def remove_edge(self, source_id: str, target_id: str, edge_type: Optional[str] = None) -> bool:
         with self._lock:
-            with self._conn:
+            with self._auto_commit():
                 if edge_type:
                     cursor = self._conn.execute(
                         "DELETE FROM edges WHERE source_id=? AND target_id=? AND edge_type=?",
@@ -321,7 +408,7 @@ class SQLiteBackend(SmartGraphBackend):
                         (source_id, target_id),
                     )
         if cursor.rowcount > 0:
-            self._compute.sync_remove_edge(source_id, target_id, edge_type)
+            self._sync_compute("sync_remove_edge", source_id, target_id, edge_type)
         return cursor.rowcount > 0
 
     # Top-level columns that can be filtered directly without going through properties JSON.
@@ -424,7 +511,7 @@ class SQLiteBackend(SmartGraphBackend):
         """
         # Phase 1: nodes — committed as one transaction
         with self._lock:
-            with self._conn:
+            with self._auto_commit():
                 for node in data.get("nodes", []):
                     self._conn.execute(
                         _UPSERT_NODE_SQL,
@@ -439,7 +526,7 @@ class SQLiteBackend(SmartGraphBackend):
                     )
         # Phase 2: edges — separate transaction so FK violations don't roll back nodes
         with self._lock:
-            with self._conn:
+            with self._auto_commit():
                 for edge in data.get("edges", []):
                     try:
                         self._conn.execute(
@@ -544,7 +631,7 @@ class SQLiteBackend(SmartGraphBackend):
                 if not target_exists:
                     logger.error("merge_nodes: target %s does not exist", target_id)
                     return False
-                with self._conn:
+                with self._auto_commit():
                     for source_id in source_ids:
                         if source_id == target_id:
                             continue
@@ -628,7 +715,7 @@ class SQLiteBackend(SmartGraphBackend):
                 json.dumps(props),
             ))
         with self._lock:
-            with self._conn:
+            with self._auto_commit():
                 self._conn.executemany(_UPSERT_NODE_SQL, rows)
         self._compute.reload()
         return len(rows)
@@ -659,7 +746,7 @@ class SQLiteBackend(SmartGraphBackend):
                     json.dumps(props),
                 )
                 try:
-                    with self._conn:
+                    with self._auto_commit():
                         self._conn.execute(_UPSERT_EDGE_SQL, row)
                     created += 1
                 except sqlite3.IntegrityError:

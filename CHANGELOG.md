@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.5] — 2026-03-19
+
+### Added
+
+#### CORE-EVO-LIVE-1 — Event-Driven Incremental Evolution (Lite Mode)
+
+- **`smartmemory/evolution/events.py`** (new): `MutationEvent`, `EvolutionAction`, `EvolutionContext` dataclasses for the event-driven evolution system.
+- **`smartmemory/evolution/queue.py`** (new): Thread-safe `EvolutionQueue` with `collections.deque` and state machine coalescing (add+delete→noop, update+update→merge, delete wins).
+- **`smartmemory/evolution/router.py`** (new): `EvolutionRouter` dispatches mutation events to evolvers via `TRIGGERS` class attribute lookup.
+- **`smartmemory/evolution/batcher.py`** (new): `WriteBatcher` collects `EvolutionAction`s and flushes through `backend.transaction_context()` in a single atomic write.
+- **`smartmemory/evolution/worker.py`** (new): `EvolutionWorker` daemon thread — 50ms debounce, coalescing, selective routing, idle catch-up (full batch cycle after 60s silence), graceful shutdown with drain.
+- **`SmartGraphBackend.set_properties()`**: Partial property merge on both SQLite and FalkorDB backends.
+- **`SmartGraphBackend.transaction_context()`**: Context manager wrapping multiple ops in a single transaction (SQLite: `BEGIN IMMEDIATE`/`COMMIT`, FalkorDB: no-op).
+- **`EvolverPlugin.TRIGGERS`**: Class attribute declaring which `(memory_type, operation)` pairs trigger incremental evolution.
+- **`EvolverPlugin.evolve_incremental(ctx)`**: Method for event-driven incremental evolution, returns `list[EvolutionAction]`.
+- **`SmartMemory.close()` + context manager**: Graceful shutdown — drains evolution queue, stops worker thread, closes backend.
+- **CRUD mutation event emission**: `add()`, `update()`, `delete()` emit `MutationEvent`s to the evolution queue. Delete captures pre-mutation snapshot (properties + normalized neighbors).
+
+### Changed
+
+- **`PipelineConfig.lite()`**: `run_evolution` flipped from `False` to `True` — incremental evolution via daemon thread is now safe in lite mode. EvolveStage skips batch when worker is active.
+- **`HebbianCoRetrievalEvolver`**: Rewritten from raw Cypher (`memory.execute_cypher`) to backend API (`get_all_edges`, `get_node`, `set_properties`). Now works on both SQLite and FalkorDB.
+- **`WorkingToEpisodicEvolver`**: Added `TRIGGERS = {("working", "add")}` and `evolve_incremental()` — threshold check delegates to batch `evolve()`.
+- **`OpinionReinforcementEvolver`**: Added `TRIGGERS = {("episodic", "add"), ("semantic", "add")}` and `evolve_incremental()` — new-evidence reinforcement only (decay/archive on idle).
+
+---
+
 ## [0.5.4] — 2026-03-05
 
 ### Changed

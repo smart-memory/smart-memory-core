@@ -20,6 +20,8 @@ class TestEvolveStage:
         memory = MagicMock()
         memory._evolution = MagicMock()
         memory._clustering = MagicMock()
+        # CORE-EVO-LIVE-1: ensure no evolution worker so batch path runs
+        memory._evolution_worker = None
         return EvolveStage(memory), memory
 
     def test_evolve_preview_mode_noop(self):

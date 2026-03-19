@@ -2,14 +2,18 @@ import importlib
 import inspect
 import json
 import logging
-from typing import Union, Any, Dict, List
+from typing import TYPE_CHECKING, Union, Any, Dict, List, Optional
 
 from smartmemory.graph.models.node_types import NodeTypeProcessor, EntityNodeType
 from smartmemory.models.memory_item import MemoryItem
 from smartmemory.stores.base import BaseHandler
 from smartmemory.utils import get_config
 
+if TYPE_CHECKING:
+    from smartmemory.evolution.queue import EvolutionQueue
+
 logger = logging.getLogger(__name__)
+
 
 class CRUD(BaseHandler):
     """
@@ -17,10 +21,19 @@ class CRUD(BaseHandler):
     Handles both memory nodes (for system processing) and entity nodes (for domain modeling).
     """
 
-    def __init__(self, graph):
-        """Initialize CRUD with graph backend and node type processor."""
+    def __init__(self, graph, evolution_queue: Optional["EvolutionQueue"] = None, smart_memory=None):
+        """Initialize CRUD with graph backend and node type processor.
+
+        Args:
+            graph: SmartGraph instance.
+            evolution_queue: Optional EvolutionQueue for CORE-EVO-LIVE-1
+                mutation event emission.
+            smart_memory: Optional SmartMemory instance for lazy worker start.
+        """
         self._graph = graph
         self.node_processor = NodeTypeProcessor(graph)
+        self._evolution_queue = evolution_queue
+        self._smart_memory = smart_memory  # For lazy worker start
 
     def normalize_item(self, item: Union[MemoryItem, dict, Any]) -> MemoryItem:
         """
@@ -91,6 +104,9 @@ class CRUD(BaseHandler):
             except Exception as e:
                 logger.warning(f"Failed to generate embedding for {memory_node_id}: {e}")
                 # Non-fatal: item is still in graph, searchable via text fallback
+
+        # Emit evolution event for the new memory node
+        self._emit_mutation("add", memory_node_id, normalized_item.memory_type or "semantic")
 
         # Always return the full creation result (including entity_node_ids)
         # so that flow.py can map extraction-time entity IDs to graph node IDs
@@ -198,7 +214,16 @@ class CRUD(BaseHandler):
 
         # Memory nodes are the supported path; update properties
         self._update_memory_node(normalized_item, existing_dict)
-        
+
+        # Emit evolution event for update
+        memory_type = existing_dict.get("memory_type", "semantic")
+        changed_props = {}
+        if normalized_item.content is not None:
+            changed_props["content"] = normalized_item.content
+        if normalized_item.metadata:
+            changed_props.update(normalized_item.metadata)
+        self._emit_mutation("update", key, memory_type, properties=changed_props)
+
         # Return the item_id to indicate success
         return key
 
@@ -234,9 +259,44 @@ class CRUD(BaseHandler):
         """Delete memory item and cascade to vector store and Vec_* nodes."""
         import logging
         logger = logging.getLogger(__name__)
-        
+
+        # CORE-EVO-LIVE-1: capture pre-delete snapshot for evolution events
+        pre_delete_props = None
+        pre_delete_neighbors = None
+        pre_delete_memory_type = "semantic"
+        if self._evolution_queue is not None:
+            try:
+                node = self._graph.get_node(item_id)
+                if node:
+                    if isinstance(node, MemoryItem):
+                        pre_delete_props = node.to_dict() if hasattr(node, "to_dict") else {"content": node.content}
+                        pre_delete_memory_type = node.memory_type or "semantic"
+                    elif isinstance(node, dict):
+                        pre_delete_props = dict(node)
+                        pre_delete_memory_type = node.get("memory_type", "semantic")
+                    # Get edges before deletion
+                    backend = getattr(self._graph, "backend", None)
+                    if backend and hasattr(backend, "get_edges_for_node"):
+                        raw_edges = backend.get_edges_for_node(item_id)
+                        pre_delete_neighbors = [
+                            {
+                                "id": e["target_id"] if e["source_id"] == item_id else e["source_id"],
+                                "edge_type": e.get("edge_type", ""),
+                                "direction": "outgoing" if e["source_id"] == item_id else "incoming",
+                            }
+                            for e in raw_edges
+                        ]
+            except Exception as exc:
+                logger.debug("CRUD.delete: failed to capture pre-delete snapshot: %s", exc)
+
         # 1. Delete from graph (DETACH DELETE removes edges automatically)
         self._graph.remove_node(item_id)
+
+        # Emit evolution event with pre-delete snapshot
+        self._emit_mutation(
+            "delete", item_id, pre_delete_memory_type,
+            properties=pre_delete_props, neighbors=pre_delete_neighbors,
+        )
         
         # 2. Delete from vector store
         try:
@@ -350,6 +410,41 @@ class CRUD(BaseHandler):
         # Write back via graph add_node (upsert semantics)
         self._graph.add_node(item_id=item_id, properties=new_props, memory_type=new_props.get('memory_type', existing_memory_type))
         return new_props
+
+    # ── CORE-EVO-LIVE-1: mutation event emission ────────────────────────────
+
+    def _emit_mutation(
+        self,
+        operation: str,
+        item_id: str,
+        memory_type: str,
+        properties: Optional[Dict[str, Any]] = None,
+        neighbors: Optional[List[Dict[str, Any]]] = None,
+    ) -> None:
+        """Emit a MutationEvent to the evolution queue (if wired)."""
+        if self._evolution_queue is None:
+            return
+        try:
+            from smartmemory.evolution.events import MutationEvent
+
+            # Lazy-start the evolution worker on first mutation
+            if self._smart_memory is not None:
+                self._smart_memory._ensure_evolution_worker()
+                # Don't enqueue if no worker started (evolution disabled) — prevents unbounded backlog
+                if self._smart_memory._evolution_worker is None:
+                    return
+
+            event = MutationEvent(
+                item_id=item_id,
+                memory_type=memory_type,
+                operation=operation,
+                workspace_id="default",  # Lite mode is single-tenant
+                properties=properties,
+                neighbors=neighbors,
+            )
+            self._evolution_queue.put(event)
+        except Exception as exc:
+            logger.debug("CRUD._emit_mutation: failed to emit %s event: %s", operation, exc)
 
     def search(self, query: Any, **kwargs) -> List[MemoryItem]:
         """Search for items in the store by delegating to graph search."""

@@ -20,7 +20,7 @@ from smartmemory.models.opinion import OpinionMetadata
 from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EvolverPlugin, PluginMetadata
 
-logger = logging.getLogger(__name__)
+_module_logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -50,14 +50,21 @@ class OpinionReinforcementRequest(StageRequest):
 class OpinionReinforcementEvolver(EvolverPlugin):
     """
     Updates opinion confidence scores based on new evidence.
-    
-    Operations:
+
+    Operations (batch):
     1. Find new episodic memories since last run
     2. Match against existing opinions
     3. Reinforce or contradict based on semantic similarity
     4. Archive opinions that fall below threshold
     5. Apply decay to stale opinions
+
+    Incremental (CORE-EVO-LIVE-1):
+    Handles new-evidence reinforcement path only (steps 2-3).
+    Decay (step 4) and archive (step 5) run on idle catch-up.
     """
+
+    # CORE-EVO-LIVE-1: Trigger on new episodic/semantic evidence
+    TRIGGERS = {("episodic", "add"), ("semantic", "add")}
 
     @classmethod
     def metadata(cls) -> PluginMetadata:
@@ -75,15 +82,16 @@ class OpinionReinforcementEvolver(EvolverPlugin):
     def __init__(self, config: Optional[OpinionReinforcementConfig] = None):
         self.config = config or OpinionReinforcementConfig()
 
-    def evolve(self, memory, log=None):
+    def evolve(self, memory, log=None, logger=None):
         """
         Main evolution method - reinforces/contradicts opinions based on evidence.
 
         Args:
             memory: SmartMemory instance
-            log: Optional logger
+            log: Optional logger (legacy parameter name)
+            logger: Optional logger (used by evolution/cycle.py)
         """
-        log = log or logger
+        log = log or logger or _module_logger
         cfg = self.config
         memory_id = getattr(memory, 'item_id', None)
         with trace_span("pipeline.evolve.opinion_reinforcement", {"memory_id": memory_id, "lookback_days": cfg.lookback_days}):
@@ -162,7 +170,7 @@ class OpinionReinforcementEvolver(EvolverPlugin):
                 return results if results else []
             return []
         except Exception as e:
-            logger.error(f"Failed to get opinions: {e}")
+            _module_logger.error(f"Failed to get opinions: {e}")
             return []
 
     def _get_recent_evidence(self, memory, days: int) -> List[MemoryItem]:
@@ -180,7 +188,7 @@ class OpinionReinforcementEvolver(EvolverPlugin):
                 return results if results else []
             return []
         except Exception as e:
-            logger.error(f"Failed to get recent evidence: {e}")
+            _module_logger.error(f"Failed to get recent evidence: {e}")
             return []
 
     def _get_opinion_metadata(self, opinion: MemoryItem) -> Optional[OpinionMetadata]:
@@ -190,7 +198,7 @@ class OpinionReinforcementEvolver(EvolverPlugin):
                 return OpinionMetadata.from_dict(opinion.metadata)
             return None
         except Exception as e:
-            logger.error(f"Failed to parse opinion metadata: {e}")
+            _module_logger.error(f"Failed to parse opinion metadata: {e}")
             return None
 
     def _find_matching_evidence(
@@ -255,7 +263,7 @@ class OpinionReinforcementEvolver(EvolverPlugin):
             if hasattr(memory, 'update'):
                 memory.update(opinion)
         except Exception as e:
-            logger.error(f"Failed to update opinion: {e}")
+            _module_logger.error(f"Failed to update opinion: {e}")
 
     def _archive_opinion(self, memory, opinion: MemoryItem):
         """Archive an opinion (soft delete)."""
@@ -263,8 +271,66 @@ class OpinionReinforcementEvolver(EvolverPlugin):
             opinion.metadata['archived'] = True
             opinion.metadata['archive_reason'] = 'confidence_below_threshold'
             opinion.metadata['archive_timestamp'] = datetime.now(timezone.utc).isoformat()
-            
+
             if hasattr(memory, 'update'):
                 memory.update(opinion)
         except Exception as e:
-            logger.error(f"Failed to archive opinion: {e}")
+            _module_logger.error(f"Failed to archive opinion: {e}")
+
+    # ── CORE-EVO-LIVE-1: Incremental evolution ────────────────────────────
+
+    def evolve_incremental(self, ctx) -> list:
+        """Handle new-evidence reinforcement path only.
+
+        When a new episodic or semantic item is added, check if it contains
+        evidence for or against existing opinions. Apply reinforcement or
+        contradiction. Does NOT run decay or archive — those are time-based
+        and run on idle catch-up.
+        """
+        from smartmemory.evolution.events import EvolutionAction
+
+        new_item_props = ctx.get_item(ctx.event.item_id)
+        if not new_item_props:
+            return []
+
+        new_content = (new_item_props.get("content") or "").lower()
+        if not new_content:
+            return []
+
+        # Find all opinion nodes in the workspace
+        opinions = ctx.search(memory_type="opinion")
+        if not opinions:
+            return []
+
+        cfg = self.config
+        actions: list = []
+
+        for opinion in opinions:
+            opinion_subject = (opinion.get("subject") or opinion.get("metadata", {}).get("subject", "")).lower()
+            if not opinion_subject:
+                continue
+
+            # Check if new evidence mentions the opinion's subject
+            if opinion_subject not in new_content:
+                continue
+
+            opinion_id = opinion.get("item_id", "")
+            confidence = float(opinion.get("confidence", opinion.get("metadata", {}).get("confidence", 0.5)))
+
+            # Detect contradiction signals
+            contradiction_signals = ["not", "never", "stopped", "changed", "no longer", "unlike"]
+            is_contradiction = any(signal in new_content for signal in contradiction_signals)
+
+            if is_contradiction:
+                new_confidence = max(0.0, confidence - cfg.contradiction_penalty)
+            else:
+                new_confidence = min(1.0, confidence + cfg.reinforcement_boost)
+
+            if new_confidence != confidence:
+                actions.append(EvolutionAction(
+                    operation="update_property",
+                    target_id=opinion_id,
+                    properties={"confidence": new_confidence},
+                ))
+
+        return actions

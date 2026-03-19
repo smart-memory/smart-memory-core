@@ -64,10 +64,13 @@ def test_lite_wikidata_enabled_with_sparql_disabled():
     assert config.enrich.wikidata.sparql_enabled is False, "lite mode must disable sparql_enabled (no HTTP calls)"
 
 
-def test_lite_evolution_disabled():
-    """PipelineConfig.lite() disables evolution (HebbianCoRetrievalEvolver uses Cypher)."""
+def test_lite_evolution_enabled():
+    """CORE-EVO-LIVE-1: PipelineConfig.lite() enables evolution (incremental worker handles it)."""
     config = PipelineConfig.lite()
-    assert config.evolve.run_evolution is False, "lite mode must disable evolution (blocked evolver uses raw Cypher)"
+    assert config.evolve.run_evolution is True, (
+        "lite mode must enable evolution — CORE-EVO-LIVE-1 provides incremental "
+        "evolution via daemon thread; EvolveStage skips batch when worker is active"
+    )
 
 
 def test_lite_clustering_disabled():

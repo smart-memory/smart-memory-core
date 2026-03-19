@@ -32,12 +32,18 @@ class EvolveStage:
         results = {}
 
         if config.evolve.run_evolution:
-            try:
-                self._memory._evolution.run_evolution_cycle()
-                results["evolution"] = "completed"
-            except Exception as e:
-                logger.warning("Evolution cycle failed (non-fatal): %s", e)
-                results["evolution"] = f"failed: {e}"
+            # CORE-EVO-LIVE-1: skip batch evolution when incremental worker is active
+            worker = getattr(self._memory, "_evolution_worker", None)
+            if worker is not None and getattr(worker, "is_active", False):
+                results["evolution"] = "skipped (incremental worker active)"
+                logger.debug("EvolveStage: skipping batch evolution — incremental worker is active")
+            else:
+                try:
+                    self._memory._evolution.run_evolution_cycle()
+                    results["evolution"] = "completed"
+                except Exception as e:
+                    logger.warning("Evolution cycle failed (non-fatal): %s", e)
+                    results["evolution"] = f"failed: {e}"
 
         if config.evolve.run_clustering:
             try:

@@ -77,50 +77,64 @@ class HebbianCoRetrievalEvolver(EvolverPlugin):
             self._evolve_impl(memory, logger or _logger)
 
     def _evolve_impl(self, memory: Any, log: Any) -> None:
-        cfg = self.config
+        """Apply Hebbian co-retrieval retention boost using backend API.
 
-        query = """
-            MATCH (a)-[r:CO_RETRIEVED]-(b)
-            WHERE r.co_retrieval_count >= $threshold
-            RETURN a.item_id AS id_a, b.item_id AS id_b, r.co_retrieval_count AS cnt
-            ORDER BY r.co_retrieval_count DESC
-            LIMIT $limit
+        CORE-EVO-LIVE-1: Rewritten from raw Cypher to backend API calls
+        (get_edges_for_node, get_node, set_properties) so this works on
+        both SQLite and FalkorDB via the same protocol.
         """
-        params = {
-            "threshold": cfg.weight_threshold,
-            "limit": cfg.max_edges_per_cycle,
-        }
+        cfg = self.config
+        backend = getattr(memory, "_graph", None)
+        if backend is None:
+            log.warning("HebbianCoRetrievalEvolver: no graph backend available")
+            return
+        backend = getattr(backend, "backend", backend)
 
+        # Get all edges and filter for CO_RETRIEVED with sufficient count
         try:
-            rows = memory.execute_cypher(query, params)
+            all_edges = backend.get_all_edges()
         except Exception as exc:
-            log.warning("HebbianCoRetrievalEvolver: query failed — %s", exc)
+            log.warning("HebbianCoRetrievalEvolver: get_all_edges failed — %s", exc)
             return
 
-        if not rows:
+        # Filter CO_RETRIEVED edges above threshold, sorted by count descending
+        co_retrieved = []
+        for edge in all_edges:
+            if edge.get("edge_type") != "CO_RETRIEVED":
+                continue
+            props = edge.get("properties", {})
+            count = float(props.get("co_retrieval_count", 0))
+            if count >= cfg.weight_threshold:
+                co_retrieved.append((edge["source_id"], edge["target_id"], count))
+
+        co_retrieved.sort(key=lambda x: x[2], reverse=True)
+        co_retrieved = co_retrieved[: cfg.max_edges_per_cycle]
+
+        if not co_retrieved:
             log.debug("HebbianCoRetrievalEvolver: no qualifying CO_RETRIEVED edges found")
             return
 
         seen: set[str] = set()
         boosted = 0
 
-        for row in rows:
-            for item_id in (row[0], row[1]):  # id_a, id_b
+        for src_id, tgt_id, cnt in co_retrieved:
+            for item_id in (src_id, tgt_id):
                 if not item_id or item_id in seen:
                     continue
                 seen.add(item_id)
                 try:
-                    item = memory.get(item_id)
-                    if item is None:
+                    node = backend.get_node(item_id)
+                    if node is None:
                         continue
-                    base = float(item.metadata.get("retention_score", 1.0))
-                    cnt = float(row[2])
+                    # Read retention_score from node properties
+                    props = node if isinstance(node, dict) else {}
+                    base = float(props.get("retention_score", 1.0))
                     boost = min(
                         cfg.max_boost,
                         (cnt - cfg.weight_threshold) * cfg.retention_boost_per_unit,
                     )
                     new_score = min(1.0, base + boost)
-                    memory.update_properties(item_id, {"retention_score": new_score})
+                    backend.set_properties(item_id, {"retention_score": new_score})
                     boosted += 1
                 except Exception as exc:
                     log.warning("HebbianCoRetrievalEvolver: skipping %s — %s", item_id, exc)

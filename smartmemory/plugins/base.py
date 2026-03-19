@@ -201,49 +201,43 @@ class EnricherPlugin(PluginBase):
 class EvolverPlugin(PluginBase):
     """
     Base class for evolver plugins.
-    
+
     Evolvers transform memory over time, moving items between memory types,
     pruning old memories, or consolidating related memories.
-    
-    Example:
-        >>> class WorkingToEpisodicEvolver(EvolverPlugin):
-        ...     @classmethod
-        ...     def metadata(cls) -> PluginMetadata:
-        ...         return PluginMetadata(
-        ...             name="working_to_episodic",
-        ...             version="1.0.0",
-        ...             author="SmartMemory Team",
-        ...             description="Moves working memories to episodic",
-        ...             plugin_type="evolver"
-        ...         )
-        ...     
-        ...     def evolve(self, memory, logger=None):
-        ...         # Move old working memories to episodic
-        ...         old_items = memory.working.get_old_items(threshold=3600)
-        ...         for item in old_items:
-        ...             memory.episodic.add(item)
-        ...             memory.working.remove(item.item_id)
+
+    CORE-EVO-LIVE-1: Subclasses may declare ``TRIGGERS`` (a set of
+    ``(memory_type, operation)`` tuples) and implement ``evolve_incremental()``
+    for event-driven incremental evolution. The default ``TRIGGERS`` is empty
+    (batch-only evolver), and the default ``evolve_incremental()`` raises
+    ``NotImplementedError``.
     """
-    
+
+    # CORE-EVO-LIVE-1: Mutation types this evolver cares about.
+    # Set of (memory_type, operation) tuples, e.g. {("working", "add")}.
+    # Empty set = batch-only evolver (runs during idle catch-up).
+    TRIGGERS: set = set()
+
     def __init__(self, config: Optional[Any] = None):
-        """
-        Initialize the evolver with optional configuration.
-        
-        Args:
-            config: Configuration object or dict
-        """
         self.config = config or {}
-    
+
     @abstractmethod
     def evolve(self, memory, logger=None):
-        """
-        Apply evolution logic to the memory system.
-        
-        Args:
-            memory: The SmartMemory instance to evolve
-            logger: Optional logger for tracking evolution activities
-        """
+        """Apply batch evolution logic to the memory system."""
         pass
+
+    def evolve_incremental(self, ctx: Any) -> list:
+        """Apply incremental evolution in response to a single mutation event.
+
+        Args:
+            ctx: EvolutionContext with event, graph, backend, workspace_id.
+
+        Returns:
+            List of EvolutionAction objects to be flushed by WriteBatcher.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement evolve_incremental(). "
+            "Declare TRIGGERS and override this method for event-driven evolution."
+        )
 
 
 class ExtractorPlugin(PluginBase):

@@ -137,10 +137,9 @@ class TestWorkingToEpisodicEvolve:
 
         evolver.evolve(memory, logger=None)
 
-    def test_raises_without_typed_config(self):
-        """Evolve should raise TypeError if config lacks 'threshold' attribute."""
+    def test_defaults_to_typed_config_when_empty(self):
+        """CORE-EVO-LIVE-1: Passing config={} defaults to WorkingToEpisodicConfig."""
         evolver = WorkingToEpisodicEvolver(config={})
-        memory = self._make_memory()
-
-        with pytest.raises(TypeError, match="threshold"):
-            evolver.evolve(memory)
+        # Should not raise — defaults to typed config with threshold=40
+        assert hasattr(evolver.config, "threshold")
+        assert evolver.config.threshold == 40

@@ -320,7 +320,7 @@ export REDIS_PORT=9012
 
 ## Memory Evolution
 
-SmartMemory includes built-in evolvers that automatically transform memories:
+SmartMemory includes built-in evolvers that automatically transform memories. In lite mode, evolution runs incrementally in the background — memories evolve as they're added, not just at the end of each pipeline run.
 
 ### Available Evolvers
 
@@ -504,6 +504,9 @@ class SmartMemory:
     def run_evolution_cycle(self) -> None
     def personalize(self, traits: dict = None, preferences: dict = None) -> None
     def get_all_items_debug(self) -> Dict[str, Any]
+
+    # Lifecycle
+    def close(self) -> None                              # Clean shutdown (optional)
 ```
 
 **API Design:**
@@ -630,6 +633,11 @@ Explore the [examples](examples/) directory for complete demonstrations and use 
 ---
 
 ## ✅ Recently Completed
+
+### Incremental Evolution (v0.5.5)
+- ✅ **Event-driven evolution in lite mode**: Memories evolve incrementally in the background as they're added, not just at pipeline end
+- ✅ **Backend API unification**: `HebbianCoRetrievalEvolver` rewritten from Cypher to backend API — works on both SQLite and FalkorDB
+- ✅ **`SmartMemory.close()`**: Optional clean shutdown for long-running scripts
 
 ### Code Indexer (v0.5.x)
 - ✅ **AST-based Python parser**: Extracts modules, classes, functions, FastAPI routes, pytest tests

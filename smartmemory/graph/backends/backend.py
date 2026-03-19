@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from smartmemory.graph.algos import GraphAlgos
@@ -120,6 +121,25 @@ class SmartGraphBackend(ABC):
     def deserialize(self, data: Any) -> None:
         """Load the graph from a serialized format."""
         ...
+
+    def set_properties(self, item_id: str, properties: Dict[str, Any]) -> bool:
+        """Merge properties into an existing node.
+
+        Only updates the provided keys — existing properties not in ``properties``
+        are preserved.  Returns True on success, False if node not found.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not implement set_properties()")
+
+    @contextmanager
+    def transaction_context(self) -> Generator[None, None, None]:
+        """Context manager wrapping multiple backend ops in a single transaction.
+
+        - SQLiteBackend: ``BEGIN IMMEDIATE`` / ``COMMIT`` (``ROLLBACK`` on exception).
+        - FalkorDBBackend: no-op yield (each query auto-commits).
+
+        Subclasses should override for backend-specific transaction semantics.
+        """
+        yield  # default: no-op (backwards-compatible)
 
     def add_nodes_bulk(self, nodes: List[Dict[str, Any]], batch_size: int = 500, is_global: bool = False) -> int:
         """Bulk upsert nodes. Default: loop over add_node(). Override for performance."""
