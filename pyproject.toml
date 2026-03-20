@@ -137,6 +137,7 @@ Repository = "https://github.com/smart-memory/smart-memory"
 
 [project.scripts]
 smartmemory-core = "smartmemory.cli:main"
+sm-eval = "smartmemory.evaluation.cli:main"
 
 [tool.setuptools]
 packages = {find = {}}  # Auto-discover all packages

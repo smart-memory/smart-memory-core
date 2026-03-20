@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.6] — 2026-03-19
+
+### Added
+
+#### EVAL-APP-1 — Application-Level Memory Quality Evaluation
+
+- **`smartmemory/evaluation/`** (new package): Offline quality measurement for memory retrieval. JSONL interaction logging at MCP layer, LLM-as-judge relevance scoring, session grouping, metrics (relevance@k, hit rate, repetition rate, redundancy rate).
+- **`smart-memory-mcp/smartmemory_mcp/eval_logger.py`** (new): Thread-safe JSONL interaction logger, gated by `EVAL_LOGGING=true` env var.
+- **`sm-eval` CLI**: `run`, `report`, `export` subcommands for evaluation. Results persisted to `~/.smartmemory/eval/runs/`.
+- **`POST /memory/reindex`** endpoint on lite daemon: Re-embeds all memories with the current embedding model. Handles model upgrades without data loss.
+- **Daemon embedding warmup**: `viewer_server.main()` now warms the embedding model on startup so first ingest/search doesn't timeout.
+
+### Changed
+
+- **Embedding model**: Nomic Embed v1.5 (768-dim) now loads as priority 1 local embedding model. Previously fell through to MiniLM-L6-v2 (384-dim) due to missing `einops` dependency.
+- **MEMORY.md thinned**: 176 lines → 19 lines. Domain knowledge migrated to SmartMemory lite daemon; MEMORY.md retains only critical behavioral rules.
+- **`smart-memory-core` installed in editable mode**: Fixes stale package bug where daemon used installed `MemoryConfig().vector["embedding"]` (KeyError) instead of local source's `.get("embedding", {})`.
+
+### Fixed
+
+- **Embedding KeyError on lite daemon**: `EmbeddingService.__init__` crashed with `KeyError: 'embedding'` when no config.json existed. Fixed by editable install from local source (which already had the `.get()` fix).
+- **`memory_search` MCP tool**: Now measures and logs latency; eval logging is fail-safe (never breaks search).
+
+---
+
 ## [0.5.5] — 2026-03-19
 
 ### Added
