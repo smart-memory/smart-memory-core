@@ -66,7 +66,7 @@ class SmartGraphSearch:
                 self._search_with_regex,
                 self._search_with_simple_contains,
                 self._search_with_keyword_matching,
-                self._get_all_nodes_fallback
+                # _get_all_nodes_fallback removed: returning unrelated nodes is worse than empty results
             ]
         else:
             # Original fallback chain (backward compatible)
@@ -75,7 +75,7 @@ class SmartGraphSearch:
                 self._search_with_regex,
                 self._search_with_simple_contains,
                 self._search_with_keyword_matching,
-                self._get_all_nodes_fallback
+                # _get_all_nodes_fallback removed: returning unrelated nodes is worse than empty results
             ]
 
         for i, fallback_method in enumerate(fallback_attempts):

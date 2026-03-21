@@ -125,6 +125,10 @@ class Search:
                 # Continue processing other items, but don't silently ignore the error
                 continue
 
+        # Filter by similarity threshold — never return irrelevant results
+        min_threshold = 0.3  # Minimum relevance to be worth returning
+        scored_items = [(score, item) for score, item in scored_items if score >= min_threshold]
+
         # Sort by similarity (descending) and return top_k
         scored_items.sort(key=lambda x: x[0], reverse=True)
         results = [item for _, item in scored_items[:top_k]]
