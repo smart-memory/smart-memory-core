@@ -104,7 +104,18 @@ class SmartGraphSearch:
                         if getattr(r, "memory_type", None) not in SYSTEM_NODE_TYPES
                     ]
                     if results:
-                        return results
+                        # Apply sort_by before truncating so callers requesting
+                        # recency ordering get the correct top_k, not an
+                        # arbitrary slice later sorted too late.
+                        sort_by = kwargs.get("sort_by")
+                        if sort_by == "recency":
+                            def _recency_key(r):
+                                v = getattr(r, "created_at", None)
+                                if v is None:
+                                    return ""
+                                return v.isoformat() if hasattr(v, "isoformat") else str(v)
+                            results.sort(key=_recency_key, reverse=True)
+                        return results[:top_k]
                     # All results were system nodes — continue to next fallback
                     continue
                 elif results is not None:
@@ -297,7 +308,9 @@ class SmartGraphSearch:
     def _search_with_simple_contains(self, query_str: str, top_k: int = 5, **kwargs):
         """Fallback search using simple contains logic."""
         if query_str in ["*", "", None]:
-            # Get all nodes
+            # Get all nodes — collect ALL user nodes so the caller can sort
+            # (e.g. by recency) before truncating. Truncating early would
+            # return arbitrary nodes instead of the most recent ones.
             if hasattr(self.backend, 'get_all_nodes'):
                 nodes = self.backend.get_all_nodes()
                 results = []
@@ -308,12 +321,10 @@ class SmartGraphSearch:
                         item = self.nodes._from_node_dict(self.nodes.item_cls, n)
                         if item:
                             results.append(item)
-                            if len(results) >= top_k:
-                                break
                     except Exception as e:
                         logger.warning(f"Failed to convert node to MemoryItem: {e}")
                         continue
-                return results
+                return results[:max(top_k * 4, 200)]  # cap for safety, generous for sorting
             return []
 
         # Get all nodes and filter manually
