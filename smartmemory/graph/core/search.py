@@ -58,24 +58,35 @@ class SmartGraphSearch:
             use_ssg = ssg_config.get('enabled', True)
         
         # Multi-level fallback strategy
-        if use_ssg:
-            # SSG-enhanced fallback chain
+        # Text-first: simple_contains and keyword matching are deterministic and correct.
+        # Vector search on low-quality embeddings (spaCy 96-dim) returns false positives.
+        # Put text methods first, vector/SSG as enhancement for large corpora.
+        from smartmemory.graph.backends.sqlite import SQLiteBackend
+        is_lite = isinstance(self.backend, SQLiteBackend)
+
+        if is_lite:
+            # Lite mode: text-only. Vector search on low-dim embeddings (spaCy 96-dim)
+            # returns false positives on small corpora. Text matching is deterministic.
             fallback_attempts = [
-                self._search_with_ssg_traversal,  # Primary: SSG traversal
-                self._search_with_vector_embeddings,  # Fallback: Basic vector search
+                self._search_with_simple_contains,
+                self._search_with_keyword_matching,
+            ]
+        elif use_ssg:
+            # SSG-enhanced fallback chain (server mode with FalkorDB)
+            fallback_attempts = [
+                self._search_with_ssg_traversal,
+                self._search_with_vector_embeddings,
                 self._search_with_regex,
                 self._search_with_simple_contains,
                 self._search_with_keyword_matching,
-                # _get_all_nodes_fallback removed: returning unrelated nodes is worse than empty results
             ]
         else:
-            # Original fallback chain (backward compatible)
+            # Original fallback chain (server mode, backward compatible)
             fallback_attempts = [
-                self._search_with_vector_embeddings,  # Primary vector-based search
+                self._search_with_vector_embeddings,
                 self._search_with_regex,
                 self._search_with_simple_contains,
                 self._search_with_keyword_matching,
-                # _get_all_nodes_fallback removed: returning unrelated nodes is worse than empty results
             ]
 
         for i, fallback_method in enumerate(fallback_attempts):

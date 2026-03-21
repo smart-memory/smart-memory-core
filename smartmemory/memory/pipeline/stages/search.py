@@ -56,28 +56,39 @@ class Search:
             cache = None
         # First try SmartGraph's built-in search which is optimized
         try:
-            if hasattr(self.graph, 'search') and callable(getattr(self.graph, 'search', None)) and query.strip():
-                # Use SmartGraph's search method which handles text queries efficiently
-                results = self.graph.search(query, top_k=top_k * 2, **kwargs)  # Get more for filtering
+            graph_search = getattr(self.graph, 'search', None)
+            if graph_search and query.strip():
+                # SmartGraph.search is a SmartGraphSearch instance with a .search() method
+                if callable(graph_search):
+                    search_fn = graph_search
+                elif hasattr(graph_search, 'search'):
+                    search_fn = graph_search.search
+                else:
+                    search_fn = None
 
-                # Exclude system-internal nodes (Version, etc.)
-                if results:
-                    results = [
-                        item for item in results
-                        if getattr(item, 'memory_type', None) not in _SYSTEM_NODE_TYPES
-                    ]
+                if search_fn:
+                    results = search_fn(query, top_k=top_k * 2, **kwargs)
 
-                # Filter by memory type if specified
-                if memory_type and results:
-                    results = [item for item in results if getattr(item, 'memory_type', None) == memory_type]
+                    # Exclude system-internal nodes (Version, etc.)
+                    if results:
+                        results = [
+                            item for item in results
+                            if getattr(item, 'memory_type', None) not in _SYSTEM_NODE_TYPES
+                        ]
 
-                # Return top_k results if we got matches
-                if results:
-                    return results[:top_k]
-                # Empty results — fall through to manual search
+                    # Filter by memory type if specified
+                    if memory_type and results:
+                        results = [item for item in results if getattr(item, 'memory_type', None) == memory_type]
+
+                    # Return top_k results if we got matches
+                    if results:
+                        return results[:top_k]
+                    # Empty results — fall through to manual search
         except Exception as e:
             # Log the error but continue with fallback
             logger.warning(f"SmartGraph search failed: {e}, falling back to manual search")
+            import traceback
+            traceback.print_exc()
 
         # Fallback: Get all items manually and apply similarity
         all_items = []
