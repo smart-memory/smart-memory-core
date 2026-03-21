@@ -71,8 +71,10 @@ class Search:
                 if memory_type and results:
                     results = [item for item in results if getattr(item, 'memory_type', None) == memory_type]
 
-                # Return top_k results
-                return results[:top_k] if results else []
+                # Return top_k results if we got matches
+                if results:
+                    return results[:top_k]
+                # Empty results — fall through to manual search
         except Exception as e:
             # Log the error but continue with fallback
             logger.warning(f"SmartGraph search failed: {e}, falling back to manual search")
