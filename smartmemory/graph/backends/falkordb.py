@@ -336,15 +336,17 @@ class FalkorDBBackend(SmartGraphBackend):
         # Otherwise, calls like SmartGraph.add_node / SmartMemory._graph.add_node used for
         # enrichment will create a parallel node that backend.get_node() may not return,
         # causing properties (e.g. sentiment) to appear "missing".
-        try:
-            if self.node_exists(item_id):
-                # Update existing node by item_id (label-agnostic)
-                query = f"MATCH (n {{item_id: $item_id}}) {set_clause} RETURN n"
-            else:
-                # Create a new labeled node if it does not exist yet
-                query = f"MERGE (n:{label} {{item_id: $item_id}}) {set_clause} RETURN n"
-        except Exception:
-            # Best-effort fallback: preserve previous MERGE behavior
+        #
+        # On node_exists() failure: use label-agnostic MATCH (not labeled MERGE).
+        # A labeled MERGE would create a duplicate node with the same item_id under
+        # a different label, violating the backend's global item_id uniqueness model.
+        # Label-agnostic MATCH is safe: it either updates the existing node or is a
+        # no-op if the node doesn't exist, which we follow up with a labeled MERGE.
+        if self.node_exists(item_id):
+            # Update existing node by item_id (label-agnostic)
+            query = f"MATCH (n {{item_id: $item_id}}) {set_clause} RETURN n"
+        else:
+            # Create a new labeled node if it does not exist yet
             query = f"MERGE (n:{label} {{item_id: $item_id}}) {set_clause} RETURN n"
 
         self._query(query, params)
@@ -548,13 +550,15 @@ class FalkorDBBackend(SmartGraphBackend):
     # ---------- Read helpers for transactional layer ----------
 
     def node_exists(self, item_id: str) -> bool:
-        try:
-            res = self._query("MATCH (n {item_id: $item_id}) RETURN count(n)", {"item_id": item_id})
-            if res and res[0]:
-                val = res[0][0]
-                return int(val) > 0
-        except Exception:
-            return False
+        """Check if a node with this item_id exists (label-agnostic).
+
+        Exceptions propagate to the caller — silent False on transient errors
+        would cause add_node() to create duplicate nodes with different labels.
+        """
+        res = self._query("MATCH (n {item_id: $item_id}) RETURN count(n)", {"item_id": item_id})
+        if res and res[0]:
+            val = res[0][0]
+            return int(val) > 0
         return False
 
     def get_properties(self, item_id: str) -> Dict[str, Any]:
