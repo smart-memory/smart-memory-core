@@ -150,6 +150,7 @@ class TestProcessExtractJob:
             )
         assert result["status"] == "llm_failed"
         assert result["new_entities"] == 0
+        assert real_memory.get(stored_id) is not None, "LLM failure must not delete the stored Tier 1 item"
 
 
 # ---------------------------------------------------------------------------
