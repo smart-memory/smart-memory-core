@@ -23,6 +23,31 @@ _BLOCKLIST: Set[str] = {"it", "this", "that", "the", "a", "an", "he", "she", "th
 _RELATION_LABEL_BLOCKLIST: Set[str] = {"is", "has", "does", "was", "are", "were", "been", "be"}
 
 
+def _entity_for_storage(memory: Any, entity: MemoryItem) -> MemoryItem:
+    """Return a storage-safe entity item for the active backend.
+
+    LLMSingleExtractor emits deterministic SHA-based item_ids so relations can be
+    resolved within a single extraction result. Backends without real dual-node
+    support (notably SQLite/lite mode) persist via plain add_node() upserts, so
+    reusing extractor ids as storage primary keys can overwrite an existing node.
+
+    For those backends, clear item_id before persisting and keep the extractor id
+    only in the in-memory sha256_to_stored remap used later in this job.
+    """
+    backend = getattr(getattr(memory, "_graph", None), "backend", None)
+    if backend is not None and not hasattr(backend, "add_dual_node"):
+        return MemoryItem(
+            content=entity.content,
+            item_id=None,
+            memory_type=entity.memory_type,
+            embedding=entity.embedding,
+            entities=entity.entities,
+            relations=entity.relations,
+            metadata=dict(entity.metadata or {}),
+        )
+    return entity
+
+
 def _get_entity_type(entity_id: str | None, entities: list) -> str | None:
     """Look up entity_type by item_id from the LLM entity list."""
     if not entity_id:
@@ -134,11 +159,12 @@ def process_extract_job(
             continue
         # Net-new entity — write to graph via simple add()
         try:
-            result = memory._crud.add(entity)
+            stored_entity = _entity_for_storage(memory, entity)
+            result = memory._crud.add(stored_entity)
             if isinstance(result, dict):
-                net_new_node_id = result.get("memory_node_id") or entity.item_id
+                net_new_node_id = result.get("memory_node_id") or stored_entity.item_id or entity.item_id
             else:
-                net_new_node_id = result or entity.item_id
+                net_new_node_id = result or stored_entity.item_id or entity.item_id
             if net_new_node_id:
                 net_new_ids.add(net_new_node_id)
                 # Update sha256→stored so relations can resolve this entity too

@@ -112,7 +112,7 @@ class SmartGraphSearch:
                             def _recency_key(r):
                                 v = getattr(r, "created_at", None)
                                 if v is None:
-                                    return ""
+                                    return "0000-00-00"  # sort None timestamps last (before any real date)
                                 return v.isoformat() if hasattr(v, "isoformat") else str(v)
                             results.sort(key=_recency_key, reverse=True)
                         return results[:top_k]

@@ -88,7 +88,7 @@ class Search:
 
                 # Apply recency sort if requested (recall uses this)
                 if results and kwargs.get("sort_by") == "recency":
-                    results.sort(key=lambda item: getattr(item, "created_at", "") or "", reverse=True)
+                    results.sort(key=lambda item: getattr(item, "created_at", None) or "0000-00-00", reverse=True)
 
                 # Return top_k results if we got matches
                 if results:
@@ -128,7 +128,7 @@ class Search:
             return []
 
         if kwargs.get("sort_by") == "recency":
-            all_items.sort(key=lambda item: getattr(item, "created_at", "") or "", reverse=True)
+            all_items.sort(key=lambda item: getattr(item, "created_at", None) or "0000-00-00", reverse=True)
             return all_items[:top_k]
 
         # Create query item for similarity comparison
