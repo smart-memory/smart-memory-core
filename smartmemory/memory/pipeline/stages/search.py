@@ -86,6 +86,10 @@ class Search:
                 if memory_type and results:
                     results = [item for item in results if getattr(item, 'memory_type', None) == memory_type]
 
+                # Apply recency sort if requested (recall uses this)
+                if results and kwargs.get("sort_by") == "recency":
+                    results.sort(key=lambda item: getattr(item, "created_at", "") or "", reverse=True)
+
                 # Return top_k results if we got matches
                 if results:
                     return results[:top_k]
