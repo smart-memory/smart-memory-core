@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.0] — 2026-03-21
+
+### Fixed
+
+- **Search: text-first for lite mode.** SQLiteBackend now uses substring + keyword matching instead of vector search. spaCy 96-dim embeddings produced false positives on small corpora ("Alice" matched "Kubernetes"). Backend capability detection (`_is_text_only_backend()`) avoids circular imports.
+- **Search: SmartGraphSearch callable fix.** The Search stage called `graph.search` as if callable, but it's a `SmartGraphSearch` object. Graph search was silently skipped.
+- **Search: fall-through on empty.** Empty graph search results no longer short-circuit — manual substring fallback now runs.
+- **Ingest: disabled batch evolution in Tier 1.** `PipelineConfig.tier1()` sets `run_evolution=False`. Destructive evolvers were deleting nodes during rapid Tier 1 ingests.
+- **Search: recency sort in fallback.** `sort_by="recency"` works in manual search path, fixing `recall` returning empty.
+
+### Added
+
+- **Nomic Embed v1.5** as top-priority local embedding model (768-dim).
+- **Auto-detect OPENAI_API_KEY** for embedding provider default.
+
 ## [0.5.6] — 2026-03-19
 
 ### Added
