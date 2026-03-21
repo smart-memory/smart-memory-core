@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **Async enrichment: prevent entity ID collisions on SQLite.** Tier 2 LLM entities had deterministic SHA256[:16] item_ids for in-job relation resolution. On SQLite (no `add_dual_node`), these flowed into `ON CONFLICT DO UPDATE` upserts, silently overwriting existing memory nodes. Fix: strip extractor IDs before persist on backends without dual-node support.
+- **FalkorDB: prevent duplicate nodes from silent `node_exists()` failures.** `node_exists()` swallowed all exceptions and returned `False`, causing `add_node()` to issue a labeled MERGE that created duplicate nodes with the same item_id under different labels. Enricher writes landed on the duplicate while reads returned the original. Fix: let exceptions propagate.
+- **Recall: recency sort key fix.** Sort key returned `""` for `None` created_at, pushing items with missing timestamps to the end with `reverse=True`. Fixed to `"0000-00-00"`.
+- **Search: don't cap results before recency sort.** `_search_with_simple_contains` capped to 200 nodes before the caller's recency sort, so recall on larger corpora sorted an arbitrary subset. Now returns full set when `sort_by` is requested.
+
 ## [0.6.0] — 2026-03-21
 
 ### Fixed
