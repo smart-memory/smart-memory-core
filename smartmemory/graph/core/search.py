@@ -324,7 +324,12 @@ class SmartGraphSearch:
                     except Exception as e:
                         logger.warning(f"Failed to convert node to MemoryItem: {e}")
                         continue
-                return results[:max(top_k * 4, 200)]  # cap for safety, generous for sorting
+                # When sort_by is requested (e.g. recency), return all so the
+                # caller can sort the full set before truncating to top_k.
+                # Otherwise cap for safety.
+                if kwargs.get("sort_by"):
+                    return results
+                return results[:max(top_k * 4, 200)]
             return []
 
         # Get all nodes and filter manually
