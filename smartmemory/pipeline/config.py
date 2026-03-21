@@ -331,8 +331,21 @@ class PipelineConfig(MemoryBaseModel):
     def tier1(cls, workspace_id: Optional[str] = None) -> "PipelineConfig":
         """Tier 1 extraction profile: spaCy + EntityRuler only, no LLM call.
 
-        Runs the full pipeline except coreference resolution and LLM extraction.
-        All enrichment, linking, grounding, and evolution stages run normally.
+        Fast path (~4ms): classify → simplify → entity_ruler → store → link.
+        No coreference, no LLM extraction, no batch evolution, no clustering.
+
+        Batch evolution is disabled because:
+        1. **Latency**: Evolvers like episodic_decay and episodic_to_semantic scan
+           all nodes — inappropriate for a 4ms fast path.
+        2. **Safety**: Destructive evolvers (episodic_decay, working_to_episodic,
+           zettel_prune) can archive/delete/merge the node being stored, causing
+           data loss during rapid sequential ingests.
+        3. **Redundancy**: The CORE-EVO-LIVE-1 incremental EvolutionWorker daemon
+           thread handles reactive evolution via TRIGGERS for evolvers that
+           declare them (currently working_to_episodic, opinion_reinforcement).
+           Batch-only evolvers (decision_confidence, stale_memory, decay) run
+           during idle catch-up cycles, not during ingest.
+
         The caller enqueues the stored item_id for Tier 2 LLM processing.
         """
         return cls(
@@ -341,6 +354,7 @@ class PipelineConfig(MemoryBaseModel):
             extraction=ExtractionConfig(
                 llm_extract=LLMExtractConfig(enabled=False),
             ),
+            evolve=EvolveConfig(run_evolution=False, run_clustering=False),
         )
 
     @classmethod

@@ -4,7 +4,8 @@ Provides unified search interface across all memory types using enhanced similar
 """
 
 import logging
-from typing import List, Optional, Dict, Any
+from collections.abc import Iterable
+from typing import List, Optional, Dict, Any, cast
 
 from smartmemory.models.memory_item import MemoryItem
 from smartmemory.similarity.framework import EnhancedSimilarityFramework
@@ -36,6 +37,8 @@ class Search:
         Returns:
             List of MemoryItems ranked by similarity
         """
+        query_text = query or ""
+
         # Initialize cache variable
         cache = None
 
@@ -45,50 +48,51 @@ class Search:
             cache = get_cache()
 
             # Check cache for existing search results
-            cached_results = cache.get_search_results(query, top_k, memory_type)
+            cached_results = cache.get_search_results(query_text, top_k, memory_type)
             if cached_results is not None:
-                logger.debug(f"Cache hit for search: {query[:50]}...")
+                logger.debug(f"Cache hit for search: {query_text[:50]}...")
                 return cached_results
 
-            logger.debug(f"Cache miss for search: {query[:50]}...")
+            logger.debug(f"Cache miss for search: {query_text[:50]}...")
         except Exception as cache_error:
             logger.warning(f"Redis cache unavailable for search: {cache_error}")
             cache = None
         # First try SmartGraph's built-in search which is optimized
         try:
             graph_search = getattr(self.graph, 'search', None)
-            if graph_search and query.strip():
-                # SmartGraph.search is a SmartGraphSearch instance with a .search() method
-                if callable(graph_search):
-                    search_fn = graph_search
-                elif hasattr(graph_search, 'search'):
-                    search_fn = graph_search.search
+            search_fn = None
+            if callable(graph_search):
+                search_fn = graph_search
+            else:
+                candidate = getattr(graph_search, 'search', None)
+                if callable(candidate):
+                    search_fn = candidate
+
+            if search_fn:
+                results = search_fn(query_text, top_k=top_k * 2, **kwargs)
+                if results:
+                    results = list(cast(Iterable[MemoryItem], results))
                 else:
-                    search_fn = None
+                    results = []
 
-                if search_fn:
-                    results = search_fn(query, top_k=top_k * 2, **kwargs)
+                # Exclude system-internal nodes (Version, etc.)
+                if results:
+                    results = [
+                        item for item in results
+                        if getattr(item, 'memory_type', None) not in _SYSTEM_NODE_TYPES
+                    ]
 
-                    # Exclude system-internal nodes (Version, etc.)
-                    if results:
-                        results = [
-                            item for item in results
-                            if getattr(item, 'memory_type', None) not in _SYSTEM_NODE_TYPES
-                        ]
+                # Filter by memory type if specified
+                if memory_type and results:
+                    results = [item for item in results if getattr(item, 'memory_type', None) == memory_type]
 
-                    # Filter by memory type if specified
-                    if memory_type and results:
-                        results = [item for item in results if getattr(item, 'memory_type', None) == memory_type]
-
-                    # Return top_k results if we got matches
-                    if results:
-                        return results[:top_k]
-                    # Empty results — fall through to manual search
+                # Return top_k results if we got matches
+                if results:
+                    return results[:top_k]
+                # Empty results — fall through to manual search
         except Exception as e:
             # Log the error but continue with fallback
-            logger.warning(f"SmartGraph search failed: {e}, falling back to manual search")
-            import traceback
-            traceback.print_exc()
+            logger.warning(f"SmartGraph search failed: {e}, falling back to manual search", exc_info=True)
 
         # Fallback: Get all items manually and apply similarity
         all_items = []
@@ -119,9 +123,13 @@ class Search:
         if not all_items:
             return []
 
+        if kwargs.get("sort_by") == "recency":
+            all_items.sort(key=lambda item: getattr(item, "created_at", "") or "", reverse=True)
+            return all_items[:top_k]
+
         # Create query item for similarity comparison
         query_item = MemoryItem(
-            content=query,
+            content=query_text,
             memory_type="query",
             metadata={}
         )
@@ -149,8 +157,8 @@ class Search:
         # Cache the results for future use
         if cache is not None and results:
             try:
-                cache.set_search_results(query, top_k, results, memory_type)
-                logger.debug(f"Cached search results for: {query[:50]}...")
+                cache.set_search_results(query_text, top_k, results, memory_type)
+                logger.debug(f"Cached search results for: {query_text[:50]}...")
             except Exception as cache_error:
                 logger.warning(f"Failed to cache search results: {cache_error}")
 

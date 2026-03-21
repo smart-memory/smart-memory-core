@@ -4,7 +4,7 @@ SmartGraph Search Operations Module
 Handles all search-related operations for the SmartGraph system.
 """
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class SmartGraphSearch:
         nodes = self.backend.search_nodes(query)
         return [self.nodes._from_node_dict(self.nodes.item_cls, n) for n in nodes]
 
-    def search(self, query_str: str, top_k: int = 5, use_ssg: bool = None, **kwargs):
+    def search(self, query_str: str, top_k: int = 5, use_ssg: Optional[bool] = None, **kwargs):
         """
         Enhanced search method using vector embeddings as primary method with text-based fallbacks.
         Provides semantic similarity search for better relevance.
@@ -61,12 +61,12 @@ class SmartGraphSearch:
         # Text-first: simple_contains and keyword matching are deterministic and correct.
         # Vector search on low-quality embeddings (spaCy 96-dim) returns false positives.
         # Put text methods first, vector/SSG as enhancement for large corpora.
-        from smartmemory.graph.backends.sqlite import SQLiteBackend
-        is_lite = isinstance(self.backend, SQLiteBackend)
+        is_text_only_backend = self._is_text_only_backend()
 
-        if is_lite:
-            # Lite mode: text-only. Vector search on low-dim embeddings (spaCy 96-dim)
-            # returns false positives on small corpora. Text matching is deterministic.
+        if is_text_only_backend:
+            # Text-only backends do not expose native graph/Cypher search. Keep the
+            # fallback chain deterministic instead of attempting semantic/regex paths
+            # that are either unsupported or too noisy for Lite mode.
             fallback_attempts = [
                 self._search_with_simple_contains,
                 self._search_with_keyword_matching,
@@ -116,6 +116,16 @@ class SmartGraphSearch:
         # All fallbacks failed
         logger.error(f"All search fallbacks failed for query: {query_str}")
         return []
+
+    def _is_text_only_backend(self) -> bool:
+        """Return True when the backend only supports text-based local fallbacks.
+
+        Lite/SQLite backends do not expose the FalkorDB-style ``_query`` method used
+        by regex/native text search. Detecting by capability avoids importing a
+        concrete backend class inside ``search()`` and keeps future text-only
+        backends on the safe chain automatically.
+        """
+        return not callable(getattr(self.backend, "_query", None))
 
     def _search_with_ssg_traversal(self, query_str: str, top_k: int = 5, **kwargs):
         """
