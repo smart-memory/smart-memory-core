@@ -52,7 +52,7 @@
         "HETZNER_PROJECT": "smartmemory"
       }
     },
-    "smartmemory-memory": {
+    "smartmemory-api": {
       "command": "uv",
       "args": [
         "--directory",

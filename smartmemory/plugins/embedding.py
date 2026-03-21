@@ -262,6 +262,8 @@ class EmbeddingService:
 
 
     # Singleton local model instances — loaded once, reused across calls.
+    _nomic_model = None
+    _nomic_attempted = False
     _st_model = None
     _st_attempted = False
     _spacy_nlp = None
@@ -269,13 +271,42 @@ class EmbeddingService:
     def _embed_local(self, text):
         """Generate embedding using the best available local model.
 
-        Tries sentence-transformers first (384-dim, contextual, good quality),
-        falls back to spaCy word vectors (96-dim, bag-of-words, weak).
+        Priority: Nomic Embed v1.5 (768-dim, best quality) → sentence-transformers
+        (384-dim, good quality) → spaCy word vectors (96-dim, weak).
         """
+        embedding = self._embed_nomic(text)
+        if embedding is not None:
+            return embedding
         embedding = self._embed_sentence_transformers(text)
         if embedding is not None:
             return embedding
         return self._embed_spacy(text)
+
+    def _embed_nomic(self, text):
+        """Generate embedding using Nomic Embed v1.5 (768-dim, MTEB ~62%).
+
+        Uses sentence-transformers backend with trust_remote_code.
+        """
+        if EmbeddingService._nomic_attempted and EmbeddingService._nomic_model is None:
+            return None  # Already tried and failed
+        try:
+            if EmbeddingService._nomic_model is None:
+                EmbeddingService._nomic_attempted = True
+                from sentence_transformers import SentenceTransformer
+                EmbeddingService._nomic_model = SentenceTransformer(
+                    "nomic-ai/nomic-embed-text-v1.5",
+                    trust_remote_code=True,
+                )
+                logger.info("Using nomic-embed-text-v1.5 (768-dim) for local embeddings")
+            embedding = EmbeddingService._nomic_model.encode(text)
+            _set_last_usage(EmbeddingUsage(model="nomic-ai/nomic-embed-text-v1.5", cached=False))
+            return embedding
+        except ImportError:
+            logger.debug("sentence-transformers not installed, skipping Nomic")
+            return None
+        except Exception as e:
+            logger.debug(f"Nomic embedding failed: {e}, falling back")
+            return None
 
     def _embed_sentence_transformers(self, text):
         """Generate embedding using sentence-transformers (all-MiniLM-L6-v2, 384-dim)."""
