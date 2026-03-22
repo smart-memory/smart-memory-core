@@ -85,10 +85,11 @@ class SmartGraphSearch:
         is_text_only_backend = self._is_text_only_backend()
 
         if is_text_only_backend:
-            # Text-only backends do not expose native graph/Cypher search. Keep the
-            # fallback chain deterministic instead of attempting semantic/regex paths
-            # that are either unsupported or too noisy for Lite mode.
+            # Text-only backends (SQLite/lite) don't have Cypher/regex search.
+            # Vector search IS available — UsearchVectorBackend works independently
+            # of the graph backend. Text methods are fallbacks for when vectors miss.
             fallback_attempts = [
+                self._search_with_vector_embeddings,
                 self._search_with_simple_contains,
                 self._search_with_keyword_matching,
             ]
