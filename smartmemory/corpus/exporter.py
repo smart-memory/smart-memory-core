@@ -62,14 +62,48 @@ class CorpusExporter:
         return writer.count
 
     def _fetch_items(self) -> list[dict[str, Any]]:
-        """Fetch memory items from SmartMemory."""
-        # Use search with a broad query, or iterate the graph directly
-        if hasattr(self._sm, "graph"):
-            return self._fetch_from_graph()
-        return []
+        """Fetch memory items from SmartMemory.
+
+        Supports both FalkorDB (Cypher query) and SQLite (backend.get_all_nodes).
+        """
+        if not hasattr(self._sm, "graph"):
+            return []
+        graph = self._sm.graph
+        backend = getattr(graph, "backend", None)
+        # SQLite/lite backends don't have .query() — use get_all_nodes
+        if backend is not None and not callable(getattr(graph, "query", None)):
+            return self._fetch_from_backend(backend)
+        return self._fetch_from_graph()
+
+    def _fetch_from_backend(self, backend) -> list[dict[str, Any]]:
+        """Fetch items from SQLite backend via get_all_nodes()."""
+        try:
+            nodes = backend.get_all_nodes()
+            items = []
+            for node in nodes:
+                mt = node.get("memory_type", "")
+                if mt in ("Version",):
+                    continue
+                if self._memory_type and mt != self._memory_type:
+                    continue
+                content = node.get("content", node.get("properties", {}).get("content", ""))
+                if not content:
+                    continue
+                items.append({
+                    "item_id": node.get("item_id", ""),
+                    "content": content,
+                    "memory_type": mt or "semantic",
+                    "metadata": {},
+                })
+            if self._limit:
+                items = items[:self._limit]
+            return items
+        except Exception as e:
+            logger.error("Failed to fetch items from backend: %s", e)
+            return []
 
     def _fetch_from_graph(self) -> list[dict[str, Any]]:
-        """Fetch items via SmartGraph Cypher query."""
+        """Fetch items via SmartGraph Cypher query (FalkorDB only)."""
         graph = self._sm.graph
         type_filter = ""
         if self._memory_type:

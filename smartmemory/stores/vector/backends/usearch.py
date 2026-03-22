@@ -235,12 +235,28 @@ class UsearchVectorBackend(VectorBackend):
                 )
         return hits
 
+    @staticmethod
+    def _sanitize_fts_query(query: str) -> str:
+        """Escape characters that break FTS5 MATCH syntax.
+
+        FTS5 treats ' and " as phrase delimiters, and ? * as wildcards.
+        Strip them so user queries don't cause syntax errors.
+        """
+        # Remove characters that FTS5 interprets as syntax
+        for ch in ("'", '"', "?", "*", "(", ")", ":", "^", "{", "}", "~"):
+            query = query.replace(ch, " ")
+        # Collapse whitespace
+        return " ".join(query.split())
+
     def search_by_text(self, *, query_text: str, top_k: int) -> List[Dict]:
         """Full-text search via SQLite FTS5. Returns dicts with at least 'id'."""
+        sanitized = self._sanitize_fts_query(query_text)
+        if not sanitized.strip():
+            return []
         try:
             rows = self._fts_conn.execute(
                 f'SELECT item_id FROM "{self._fts_table}" WHERE "{self._fts_table}" MATCH ? LIMIT ?',
-                (query_text, top_k),
+                (sanitized, top_k),
             ).fetchall()
             return [{"id": row[0]} for row in rows]
         except Exception as exc:
