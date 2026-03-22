@@ -64,14 +64,17 @@ class SmartGraphSearch:
         """
         Enhanced search method using vector embeddings as primary method with text-based fallbacks.
         Provides semantic similarity search for better relevance.
-        
+
         Args:
             query_str: Search query string
-            top_k: Maximum number of results to return
+            top_k: Maximum number of results to return (clamped to >=1 to prevent segfaults)
             use_ssg: Use Similarity Graph Traversal (SSG) for better multi-hop reasoning.
                     If None, uses config default. If True, uses SSG. If False, uses basic vector search.
             **kwargs: Additional arguments passed to search methods
         """
+        # Clamp top_k to prevent segfaults in C extensions (usearch)
+        top_k = max(1, top_k)
+
         # Determine if SSG should be used
         if use_ssg is None:
             from smartmemory.utils import get_config
