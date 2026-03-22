@@ -4,12 +4,33 @@ SmartGraph Search Operations Module
 Handles all search-related operations for the SmartGraph system.
 """
 import logging
+import re
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 
 SYSTEM_NODE_TYPES = frozenset({"Version"})
+
+# Strip possessives, trailing punctuation, and common noise from search tokens.
+_POSSESSIVE_RE = re.compile(r"['']s$")
+_PUNCT_RE = re.compile(r"[''\"?!.,;:()]+")
+
+
+def _normalize_tokens(text: str) -> set[str]:
+    """Split text into lowercase tokens with punctuation and possessives stripped.
+
+    Handles possessives (Sarah's → sarah), trailing punctuation (work? → work),
+    and other noise that breaks exact-match keyword search.
+    """
+    raw = text.lower().split()
+    tokens = set()
+    for w in raw:
+        w = _POSSESSIVE_RE.sub("", w)  # Sarah's → Sarah
+        w = _PUNCT_RE.sub("", w)       # work? → work
+        if w:
+            tokens.add(w)
+    return tokens
 
 
 class SmartGraphSearch:
@@ -361,9 +382,18 @@ class SmartGraphSearch:
                             if isinstance(value, str):
                                 searchable_text += f" {value}"
 
-                    # Check if query matches (case-insensitive)
-                    if query_lower in searchable_text.lower():
+                    # Check if query matches (case-insensitive, punctuation-tolerant).
+                    # First try exact substring, then try normalized token overlap
+                    # so "Sarah's" matches content containing "Sarah".
+                    searchable_lower = searchable_text.lower()
+                    if query_lower in searchable_lower:
                         filtered_nodes.append(node_dict)
+                    else:
+                        query_tokens = _normalize_tokens(query_str)
+                        text_tokens = _normalize_tokens(searchable_text)
+                        overlap = len(query_tokens & text_tokens)
+                        if overlap >= max(1, len(query_tokens) // 2):
+                            filtered_nodes.append(node_dict)
                         logger.debug(f"Found match: {getattr(node_dict, 'item_id', 'No ID')}")
                         if len(filtered_nodes) >= top_k:
                             break
@@ -384,7 +414,7 @@ class SmartGraphSearch:
         # Get all nodes and use keyword matching
         if hasattr(self.backend, 'get_all_nodes'):
             nodes = self.backend.get_all_nodes()
-            query_words = set(query_str.lower().split())
+            query_words = _normalize_tokens(query_str)
             scored_nodes = []
 
             for node in nodes:
@@ -396,7 +426,7 @@ class SmartGraphSearch:
                 description = getattr(node_dict, 'metadata', {}).get('description', '').lower()
 
                 all_text = f"{content} {title} {description}"
-                text_words = set(all_text.split())
+                text_words = _normalize_tokens(all_text)
 
                 if query_words and text_words:
                     intersection = len(query_words & text_words)
