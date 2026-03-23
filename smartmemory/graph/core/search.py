@@ -120,18 +120,21 @@ class SmartGraphSearch:
             # search supplements with semantically related memories that
             # don't have direct entity edges.
             graph_results = self._search_with_graph_entities(query_str, top_k, **kwargs) or []
+            graph_found_exact = len(graph_results) > 0
             if len(graph_results) < top_k:
-                # Fill remaining slots with vector/text matches
+                # Fill remaining slots with text matches only.
+                # Vector search is excluded when graph found exact matches —
+                # it has no quality threshold and fills with irrelevant results
+                # on small corpora ("Alice" search returning Django, Kubernetes).
+                # Vector only runs when nothing else found anything.
                 seen_ids = {getattr(r, "item_id", None) for r in graph_results}
-                # Text methods first — they use stop word filtering and are
-                # precise for small corpora. Vector search last — it always
-                # returns top_k results regardless of relevance, which floods
-                # results when the corpus is small.
-                for fill_method in [
+                fill_methods = [
                     self._search_with_simple_contains,
                     self._search_with_keyword_matching,
-                    self._search_with_vector_embeddings,
-                ]:
+                ]
+                if not graph_found_exact:
+                    fill_methods.append(self._search_with_vector_embeddings)
+                for fill_method in fill_methods:
                     try:
                         fill = fill_method(query_str, top_k, **kwargs)
                         if fill:
