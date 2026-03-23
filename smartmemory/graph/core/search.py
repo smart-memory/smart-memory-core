@@ -114,10 +114,12 @@ class SmartGraphSearch:
         is_text_only_backend = self._is_text_only_backend()
 
         if is_text_only_backend:
-            # Text-only backends (SQLite/lite) don't have Cypher/regex search.
-            # Vector search IS available — UsearchVectorBackend works independently
-            # of the graph backend. Text methods are fallbacks for when vectors miss.
+            # Graph-first: entity lookup via graph edges is exact and avoids
+            # the false-positive problem of returning all memories for queries
+            # like "What is Django?" where vector similarity is above zero
+            # for everything.  Vector search fills remaining slots.
             fallback_attempts = [
+                self._search_with_graph_entities,
                 self._search_with_vector_embeddings,
                 self._search_with_simple_contains,
                 self._search_with_keyword_matching,
@@ -235,6 +237,74 @@ class SmartGraphSearch:
             logger.warning(f"SSG traversal search failed: {e}", exc_info=True)
             return None  # Fallback to next method
     
+    def _search_with_graph_entities(self, query_str: str, top_k: int = 5, **kwargs):
+        """Graph-first search: find entity nodes matching query tokens, traverse edges to memories.
+
+        This is the most precise search method — entity matches are exact, not
+        probabilistic. "What is Django?" → entity node "Django" → MENTIONED_IN
+        edges → linked memory items.
+        """
+        if query_str in ["*", "", None]:
+            return None  # Wildcard handled by simple_contains
+
+        if not hasattr(self.backend, "get_all_nodes") or not hasattr(self.backend, "get_edges_for_node"):
+            return None  # Backend doesn't support graph traversal
+
+        q_tokens = _query_tokens(query_str)
+        if not q_tokens:
+            return None  # All stop words
+
+        try:
+            # Find entity nodes whose content matches any query token
+            all_nodes = self.backend.get_all_nodes()
+            matched_entity_ids = []
+            for node in all_nodes:
+                mt = node.get("memory_type", "")
+                if mt not in ("entity", "relation"):
+                    continue
+                content = (node.get("content") or node.get("name") or "").lower()
+                # Entity content is typically a name like "Django" or "Alice"
+                entity_tokens = _content_tokens(content)
+                if q_tokens & entity_tokens:
+                    matched_entity_ids.append(node.get("item_id"))
+
+            if not matched_entity_ids:
+                logger.debug("No entity nodes match query tokens %s", q_tokens)
+                return None  # Fall through to vector search
+
+            # Traverse edges from matched entities to find linked memories
+            seen_ids = set()
+            memory_items = []
+            for entity_id in matched_entity_ids:
+                edges = self.backend.get_edges_for_node(entity_id)
+                for edge in edges:
+                    edge_type = edge.get("edge_type", "")
+                    # Follow MENTIONED_IN (entity→memory) and CONTAINS_ENTITY (memory→entity)
+                    if edge_type == "MENTIONED_IN":
+                        target_id = edge.get("target_id")
+                    elif edge_type == "CONTAINS_ENTITY":
+                        target_id = edge.get("source_id")
+                    else:
+                        continue
+
+                    if target_id and target_id not in seen_ids and target_id != entity_id:
+                        seen_ids.add(target_id)
+                        try:
+                            item = self.nodes.get_node(target_id)
+                            if item and getattr(item, "memory_type", "") not in ("entity", "relation"):
+                                memory_items.append(item)
+                        except Exception:
+                            continue
+
+            if memory_items:
+                logger.info("Graph entity search found %d memories via %d entities for: %s",
+                            len(memory_items), len(matched_entity_ids), query_str)
+            return memory_items if memory_items else None
+
+        except Exception as e:
+            logger.warning("Graph entity search failed: %s", e)
+            return None
+
     def _search_with_vector_embeddings(self, query_str: str, top_k: int = 5, **kwargs):
         """Primary search method using vector embeddings for semantic similarity."""
         try:
