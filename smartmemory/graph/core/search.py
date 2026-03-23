@@ -18,6 +18,8 @@ _PUNCT_RE = re.compile(r"[''\"?!.,;:()]+")
 
 # Common English stop words that should not contribute to token overlap scoring.
 # Without this, "What is Django?" matches every memory containing "is".
+# Only function words with no semantic content.  Negation (not, no, nor),
+# exclusivity (only, just), and similar meaning-bearing words are kept.
 _STOP_WORDS = frozenset({
     "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
     "have", "has", "had", "do", "does", "did", "will", "would", "shall",
@@ -25,11 +27,11 @@ _STOP_WORDS = frozenset({
     "i", "me", "my", "we", "our", "you", "your", "he", "she", "it", "its",
     "they", "them", "their", "this", "that", "these", "those",
     "what", "which", "who", "whom", "how", "when", "where", "why",
-    "and", "or", "but", "if", "then", "so", "not", "no", "nor",
+    "and", "or", "but", "if", "then", "so",
     "in", "on", "at", "to", "for", "of", "with", "by", "from", "as",
     "into", "about", "between", "through", "after", "before", "during",
     "up", "down", "out", "off", "over", "under", "again", "further",
-    "just", "also", "very", "too", "only", "now", "here", "there",
+    "also", "very", "too", "now", "here", "there",
 })
 
 
@@ -114,16 +116,47 @@ class SmartGraphSearch:
         is_text_only_backend = self._is_text_only_backend()
 
         if is_text_only_backend:
-            # Graph-first: entity lookup via graph edges is exact and avoids
-            # the false-positive problem of returning all memories for queries
-            # like "What is Django?" where vector similarity is above zero
-            # for everything.  Vector search fills remaining slots.
-            fallback_attempts = [
-                self._search_with_graph_entities,
-                self._search_with_vector_embeddings,
-                self._search_with_simple_contains,
-                self._search_with_keyword_matching,
+            # Graph-first + semantic fill: entity lookup is exact, vector
+            # search supplements with semantically related memories that
+            # don't have direct entity edges.
+            graph_results = self._search_with_graph_entities(query_str, top_k, **kwargs) or []
+            if len(graph_results) < top_k:
+                # Fill remaining slots with vector/text matches
+                seen_ids = {getattr(r, "item_id", None) for r in graph_results}
+                for fill_method in [
+                    self._search_with_vector_embeddings,
+                    self._search_with_simple_contains,
+                    self._search_with_keyword_matching,
+                ]:
+                    try:
+                        fill = fill_method(query_str, top_k, **kwargs)
+                        if fill:
+                            for item in fill:
+                                iid = getattr(item, "item_id", None)
+                                if iid not in seen_ids:
+                                    seen_ids.add(iid)
+                                    graph_results.append(item)
+                                    if len(graph_results) >= top_k:
+                                        break
+                        if len(graph_results) >= top_k:
+                            break
+                    except Exception as e:
+                        logger.warning("Fill method %s failed: %s", fill_method.__name__, e)
+                        continue
+            # Apply system node filter + sort + truncate
+            graph_results = [
+                r for r in graph_results
+                if getattr(r, "memory_type", None) not in SYSTEM_NODE_TYPES
             ]
+            sort_by = kwargs.get("sort_by")
+            if sort_by == "recency":
+                def _rk(r):
+                    v = getattr(r, "created_at", None)
+                    if v is None:
+                        return "0000-00-00"
+                    return v.isoformat() if hasattr(v, "isoformat") else str(v)
+                graph_results.sort(key=_rk, reverse=True)
+            return graph_results[:top_k] if graph_results else []
         elif use_ssg:
             # SSG-enhanced fallback chain (server mode with FalkorDB)
             fallback_attempts = [
