@@ -53,11 +53,14 @@ class StoreStage:
         )
 
         # Build ontology_extraction payload.
-        # When OntologyConstrainStage is skipped (enable_ontology=False in lite mode),
-        # state.entities stays empty because the merge from ruler_entities → entities
-        # happens in that stage. Fall back to ruler_entities so entity nodes still
-        # get created in the graph.
-        entities = state.entities or state.ruler_entities or []
+        # When OntologyConstrainStage ran, it sets state.entities (accepted)
+        # and state.rejected (rejected). Even if entities=[] and rejected=[],
+        # that means the stage ran and found nothing — respect that.
+        # When OntologyConstrainStage was skipped entirely, state.entities
+        # and state.rejected are both unset (None/empty) but ruler_entities
+        # has extractions — use those so entity nodes get created.
+        ontology_ran = bool(state.entities) or bool(getattr(state, "rejected", None))
+        entities = state.entities if ontology_ran else (state.ruler_entities or [])
         relations = state.relations
         ontology_extraction = None
         if entities or relations:

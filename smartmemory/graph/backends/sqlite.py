@@ -363,23 +363,22 @@ class SQLiteBackend(SmartGraphBackend):
             self.add_edge(item_id, entity_id, "CONTAINS_ENTITY", {})
             self.add_edge(entity_id, item_id, "MENTIONED_IN", {})
 
-            # Process entity-to-entity relations if present.
-            # Relations use target_index (index into entity_nodes array) to
-            # reference other entities, matching the FalkorDB implementation.
+        # Second pass: create entity-to-entity relation edges now that all
+        # entity_ids are populated. First pass can't do this because
+        # target_index may reference a later entity not yet created.
+        for i, entity_node in enumerate(entity_nodes):
             for rel in entity_node.get("relations", []):
                 rel_type = rel.get("relation_type") or rel.get("type", "RELATED")
                 target_idx = rel.get("target_index")
                 if target_idx is not None and target_idx < len(entity_ids):
-                    target_id = entity_ids[target_idx]
-                    self.add_edge(entity_id, target_id, rel_type, {})
+                    self.add_edge(entity_ids[i], entity_ids[target_idx], rel_type, {})
                 else:
-                    # Fallback: try name-based lookup for legacy relation format
                     target_name = rel.get("target_name") or rel.get("target", "")
                     if target_name:
                         target_key = f"{target_name.lower()}::{rel.get('target_type', 'entity').lower()}"
                         tid = self._find_entity_by_canonical_key(target_key)
                         if tid:
-                            self.add_edge(entity_id, tid, rel_type, {})
+                            self.add_edge(entity_ids[i], tid, rel_type, {})
 
         return {
             "memory_node_id": item_id,

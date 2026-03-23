@@ -120,20 +120,18 @@ class SmartGraphSearch:
             # search supplements with semantically related memories that
             # don't have direct entity edges.
             graph_results = self._search_with_graph_entities(query_str, top_k, **kwargs) or []
-            graph_found_exact = len(graph_results) > 0
             if len(graph_results) < top_k:
-                # Fill remaining slots with text matches only.
-                # Vector search is excluded when graph found exact matches —
-                # it has no quality threshold and fills with irrelevant results
-                # on small corpora ("Alice" search returning Django, Kubernetes).
-                # Vector only runs when nothing else found anything.
+                # Fill with text methods first (precise, stop-word filtered).
                 seen_ids = {getattr(r, "item_id", None) for r in graph_results}
                 fill_methods = [
                     self._search_with_simple_contains,
                     self._search_with_keyword_matching,
                 ]
-                if not graph_found_exact:
-                    fill_methods.append(self._search_with_vector_embeddings)
+                # Vector search only if NOTHING was found by graph + text.
+                # When graph/text found results, vector adds noise on small
+                # corpora (returns top_k regardless of relevance). When
+                # nothing matched, vector is the last resort for semantic discovery.
+                # This check runs after text fill below.
                 for fill_method in fill_methods:
                     try:
                         fill = fill_method(query_str, top_k, **kwargs)
@@ -150,6 +148,20 @@ class SmartGraphSearch:
                     except Exception as e:
                         logger.warning("Fill method %s failed: %s", fill_method.__name__, e)
                         continue
+                # Vector fallback: only when graph + text found nothing
+                if not graph_results and len(graph_results) < top_k:
+                    try:
+                        fill = self._search_with_vector_embeddings(query_str, top_k, **kwargs)
+                        if fill:
+                            for item in fill:
+                                iid = getattr(item, "item_id", None)
+                                if iid not in seen_ids:
+                                    seen_ids.add(iid)
+                                    graph_results.append(item)
+                                    if len(graph_results) >= top_k:
+                                        break
+                    except Exception as e:
+                        logger.warning("Vector fallback failed: %s", e)
             # Apply system node filter + sort + truncate
             graph_results = [
                 r for r in graph_results
