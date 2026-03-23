@@ -16,6 +16,22 @@ SYSTEM_NODE_TYPES = frozenset({"Version"})
 _POSSESSIVE_RE = re.compile(r"['']s$")
 _PUNCT_RE = re.compile(r"[''\"?!.,;:()]+")
 
+# Common English stop words that should not contribute to token overlap scoring.
+# Without this, "What is Django?" matches every memory containing "is".
+_STOP_WORDS = frozenset({
+    "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+    "have", "has", "had", "do", "does", "did", "will", "would", "shall",
+    "should", "may", "might", "must", "can", "could",
+    "i", "me", "my", "we", "our", "you", "your", "he", "she", "it", "its",
+    "they", "them", "their", "this", "that", "these", "those",
+    "what", "which", "who", "whom", "how", "when", "where", "why",
+    "and", "or", "but", "if", "then", "so", "not", "no", "nor",
+    "in", "on", "at", "to", "for", "of", "with", "by", "from", "as",
+    "into", "about", "between", "through", "after", "before", "during",
+    "up", "down", "out", "off", "over", "under", "again", "further",
+    "just", "also", "very", "too", "only", "now", "here", "there",
+})
+
 
 def _normalize_tokens(text: str) -> set[str]:
     """Split text into lowercase tokens with punctuation and possessives stripped.
@@ -31,6 +47,16 @@ def _normalize_tokens(text: str) -> set[str]:
         if w:
             tokens.add(w)
     return tokens
+
+
+def _content_tokens(text: str) -> set[str]:
+    """Normalize tokens from text, keeping stop words (for content matching)."""
+    return _normalize_tokens(text)
+
+
+def _query_tokens(text: str) -> set[str]:
+    """Normalize tokens from a search query, removing stop words."""
+    return _normalize_tokens(text) - _STOP_WORDS
 
 
 class SmartGraphSearch:
@@ -393,10 +419,13 @@ class SmartGraphSearch:
                     if query_lower in searchable_lower:
                         filtered_nodes.append(node_dict)
                     else:
-                        query_tokens = _normalize_tokens(query_str)
-                        text_tokens = _normalize_tokens(searchable_text)
-                        overlap = len(query_tokens & text_tokens)
-                        if overlap >= max(1, len(query_tokens) // 2):
+                        q_tokens = _query_tokens(query_str)
+                        text_tokens = _content_tokens(searchable_text)
+                        if not q_tokens:
+                            # Query was entirely stop words — skip token overlap
+                            continue
+                        overlap = len(q_tokens & text_tokens)
+                        if overlap >= max(1, len(q_tokens) // 2):
                             filtered_nodes.append(node_dict)
                         logger.debug(f"Found match: {getattr(node_dict, 'item_id', 'No ID')}")
                         if len(filtered_nodes) >= top_k:
@@ -418,7 +447,9 @@ class SmartGraphSearch:
         # Get all nodes and use keyword matching
         if hasattr(self.backend, 'get_all_nodes'):
             nodes = self.backend.get_all_nodes()
-            query_words = _normalize_tokens(query_str)
+            query_words = _query_tokens(query_str)
+            if not query_words:
+                return None  # All stop words — let next fallback handle
             scored_nodes = []
 
             for node in nodes:
@@ -430,7 +461,7 @@ class SmartGraphSearch:
                 description = getattr(node_dict, 'metadata', {}).get('description', '').lower()
 
                 all_text = f"{content} {title} {description}"
-                text_words = _normalize_tokens(all_text)
+                text_words = _content_tokens(all_text)
 
                 if query_words and text_words:
                     intersection = len(query_words & text_words)
