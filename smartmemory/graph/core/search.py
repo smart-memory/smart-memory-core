@@ -123,10 +123,14 @@ class SmartGraphSearch:
             if len(graph_results) < top_k:
                 # Fill remaining slots with vector/text matches
                 seen_ids = {getattr(r, "item_id", None) for r in graph_results}
+                # Text methods first — they use stop word filtering and are
+                # precise for small corpora. Vector search last — it always
+                # returns top_k results regardless of relevance, which floods
+                # results when the corpus is small.
                 for fill_method in [
-                    self._search_with_vector_embeddings,
                     self._search_with_simple_contains,
                     self._search_with_keyword_matching,
+                    self._search_with_vector_embeddings,
                 ]:
                     try:
                         fill = fill_method(query_str, top_k, **kwargs)
