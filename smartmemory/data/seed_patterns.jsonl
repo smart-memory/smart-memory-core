@@ -1,0 +1,1130 @@
+{"name": "Python", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "JavaScript", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "JS", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "TypeScript", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "TS", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Java", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "C", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "C++", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "CPP", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Cpp", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "C#", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "C Sharp", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "CSharp", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Go", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Golang", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Rust", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Swift", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Kotlin", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Ruby", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "PHP", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Scala", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Perl", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "R", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "MATLAB", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Lua", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Dart", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Elixir", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Haskell", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Clojure", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Erlang", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Julia", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Zig", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Nim", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Crystal", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "OCaml", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "F#", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "FSharp", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "F Sharp", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Fortran", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "COBOL", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Assembly", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "ASM", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Objective-C", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "ObjC", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Visual Basic", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "VB", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "VB.NET", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Groovy", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "PowerShell", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Bash", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Shell", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Zsh", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "SQL", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "PL/SQL", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "T-SQL", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Transact-SQL", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "HTML", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "CSS", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "SCSS", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Sass", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Less", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Solidity", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Vyper", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "YAML", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "YML", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "JSON", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "TOML", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "XML", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "GraphQL", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "GQL", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Protobuf", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Protocol Buffers", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Terraform", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "HCL", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Mojo", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Roc", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "V", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Vlang", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Ada", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Pascal", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Delphi", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Prolog", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Lisp", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Common Lisp", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Scheme", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Racket", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Smalltalk", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "D", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Dlang", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Apex", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "ABAP", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Verilog", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "VHDL", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "SystemVerilog", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "WebAssembly", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "WASM", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "Wasm", "label": "LANGUAGE", "confidence": 0.95, "frequency": 2}
+{"name": "CoffeeScript", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "ReasonML", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Elm", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "PureScript", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Idris", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Agda", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Coq", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "Lean", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "CUDA", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "OpenCL", "label": "LANGUAGE", "confidence": 0.99, "frequency": 2}
+{"name": "React", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "ReactJS", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "React.js", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Next.js", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "NextJS", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Next", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Vue", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Vue.js", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "VueJS", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Nuxt", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Nuxt.js", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "NuxtJS", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Angular", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "AngularJS", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Svelte", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "SvelteKit", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Solid", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "SolidJS", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Solid.js", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Astro", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Remix", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Gatsby", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "GatsbyJS", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Express", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Express.js", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "ExpressJS", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Fastify", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Koa", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Koa.js", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Hono", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Nest.js", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "NestJS", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Django", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Flask", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "FastAPI", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Starlette", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Litestar", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Tornado", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Sanic", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Rails", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Ruby on Rails", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "RoR", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Sinatra", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Spring", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Spring Boot", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "SpringBoot", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Quarkus", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Micronaut", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Laravel", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Symfony", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Gin", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Echo", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Fiber", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Chi", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Actix", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Actix Web", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Axum", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Rocket", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Phoenix", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "ASP.NET", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "ASP.NET Core", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Blazor", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "htmx", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "HTMX", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "React Native", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Flutter", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "SwiftUI", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Jetpack Compose", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Expo", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Ionic", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Capacitor", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Tailwind CSS", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Tailwind", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "TailwindCSS", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Bootstrap", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Bulma", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Material UI", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "MUI", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Chakra UI", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Chakra", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Ant Design", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "AntD", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "shadcn/ui", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "shadcn", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Radix", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Radix UI", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Headless UI", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "DaisyUI", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "TensorFlow", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "TF", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "PyTorch", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "JAX", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Keras", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "scikit-learn", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "sklearn", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "XGBoost", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "LightGBM", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "CatBoost", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Hugging Face Transformers", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Transformers", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "LangChain", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "LlamaIndex", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "DSPy", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "spaCy", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "NLTK", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "pandas", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "NumPy", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "SciPy", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Matplotlib", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Plotly", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Seaborn", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Polars", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "DuckDB", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Apache Spark", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Spark", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "PySpark", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Apache Flink", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Flink", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Apache Kafka", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Kafka", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Apache Airflow", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Airflow", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Prefect", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Dagster", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "MLflow", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Weights & Biases", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "W&B", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "WandB", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Ray", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Dask", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Celery", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Jest", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Vitest", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Mocha", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Cypress", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Playwright", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Selenium", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Puppeteer", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "pytest", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "unittest", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "JUnit", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "TestNG", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "RSpec", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Vite", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Webpack", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "esbuild", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Rollup", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Turbopack", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Parcel", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Bun", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Redux", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Zustand", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "MobX", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Jotai", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Recoil", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "XState", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "TanStack Query", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "React Query", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "SWR", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Prisma", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Drizzle", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Drizzle ORM", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "SQLAlchemy", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "TypeORM", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Sequelize", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Mongoose", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Knex", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Knex.js", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Alembic", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Electron", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Tauri", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Qt", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "GTK", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "OpenCV", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "Three.js", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "ThreeJS", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "D3.js", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "D3", "label": "FRAMEWORK", "confidence": 0.95, "frequency": 2}
+{"name": "Socket.IO", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "tRPC", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "gRPC", "label": "FRAMEWORK", "confidence": 0.99, "frequency": 2}
+{"name": "PostgreSQL", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Postgres", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "MySQL", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "MariaDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "SQLite", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Oracle Database", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Oracle DB", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "Oracle", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "Microsoft SQL Server", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "MSSQL", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "SQL Server", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "MongoDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Mongo", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "Redis", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Elasticsearch", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "ES", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "Elastic", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "DynamoDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Amazon DynamoDB", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "Cassandra", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Apache Cassandra", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "CockroachDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "TiDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Vitess", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "PlanetScale", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Supabase", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Neon", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Neo4j", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "FalkorDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "ArangoDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Amazon Neptune", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Neptune", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "ClickHouse", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Apache Druid", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Druid", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "TimescaleDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "InfluxDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Prometheus", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Pinecone", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Weaviate", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Milvus", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Qdrant", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "ChromaDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Chroma", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "pgvector", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Couchbase", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "CouchDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Apache CouchDB", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "RethinkDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "ScyllaDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Memcached", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Valkey", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "etcd", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "FoundationDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "YugabyteDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Firestore", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Cloud Firestore", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "Firebase Realtime Database", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Firebase RTDB", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon RDS", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "RDS", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon Aurora", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Aurora", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon Redshift", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Redshift", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "Google BigQuery", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "BigQuery", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "Snowflake", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Databricks", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Apache HBase", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "HBase", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "Apache Hive", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Hive", "label": "DATABASE", "confidence": 0.95, "frequency": 2}
+{"name": "Dolt", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "SurrealDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "EdgeDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "LanceDB", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "Turso", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "libSQL", "label": "DATABASE", "confidence": 0.99, "frequency": 2}
+{"name": "npm", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "pnpm", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Yarn", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "pip", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "uv", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Poetry", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Conda", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Homebrew", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "brew", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "apt", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "apt-get", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "Cargo", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Maven", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Gradle", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "NuGet", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Composer", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "CocoaPods", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "RubyGems", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "gem", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "Make", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "GNU Make", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "CMake", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Bazel", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Ninja", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Docker", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Docker Compose", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Podman", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Kubernetes", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "K8s", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "k8s", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "Helm", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Pulumi", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Ansible", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Chef", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Puppet", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Vagrant", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "GitHub Actions", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "GHA", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "GitLab CI", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "GitLab CI/CD", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "Jenkins", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "CircleCI", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Travis CI", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Buildkite", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Argo CD", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "ArgoCD", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "Flux", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Tekton", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Dagger", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "ESLint", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Prettier", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Biome", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Ruff", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Black", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Flake8", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "mypy", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Pyright", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "RuboCop", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Clippy", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "golangci-lint", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "ShellCheck", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "hadolint", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "oxlint", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Visual Studio Code", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "VS Code", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "VSCode", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "Neovim", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "nvim", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "Vim", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Emacs", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "IntelliJ IDEA", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "IntelliJ", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "PyCharm", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "WebStorm", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Xcode", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Android Studio", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Zed", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Cursor", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Windsurf", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Git", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "GitHub CLI", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "gh", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "curl", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "wget", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "jq", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "ripgrep", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "rg", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "fd", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "fzf", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "tmux", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Zellij", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "htop", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Nix", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "direnv", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "asdf", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "mise", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "fnm", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "nvm", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "pyenv", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "nodemon", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "PM2", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Supervisor", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "systemd", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Nginx", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Caddy", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Apache HTTP Server", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "httpd", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "HAProxy", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Traefik", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Envoy", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Istio", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Linkerd", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Grafana", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Loki", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Jaeger", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "OpenTelemetry", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "OTel", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "Zipkin", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Vault", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "HashiCorp Vault", "label": "TOOL", "confidence": 0.95, "frequency": 2}
+{"name": "Trivy", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Snyk", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "SonarQube", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Dependabot", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "Renovate", "label": "TOOL", "confidence": 0.99, "frequency": 2}
+{"name": "AWS", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Amazon Web Services", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Google Cloud", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "GCP", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Google Cloud Platform", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Microsoft Azure", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Azure", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "DigitalOcean", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Linode", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Akamai Cloud", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Hetzner", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Hetzner Cloud", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Oracle Cloud", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "OCI", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "IBM Cloud", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Alibaba Cloud", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Aliyun", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon EC2", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "EC2", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon S3", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "S3", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "AWS Lambda", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Lambda", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon ECS", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "ECS", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon EKS", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "EKS", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "AWS Fargate", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Fargate", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon SQS", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "SQS", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon SNS", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "SNS", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon CloudFront", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "CloudFront", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "AWS IAM", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "IAM", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon VPC", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "VPC", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "AWS CloudFormation", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "CloudFormation", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon Route 53", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Route 53", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon ElastiCache", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "ElastiCache", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "AWS Step Functions", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Step Functions", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon EventBridge", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "EventBridge", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "AWS Cognito", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Cognito", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon Kinesis", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Kinesis", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "AWS Secrets Manager", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Amazon SageMaker", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "SageMaker", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "AWS Bedrock", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Bedrock", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Amazon ECR", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "ECR", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Google Cloud Run", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Cloud Run", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Google Cloud Functions", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Cloud Functions", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Google Cloud Storage", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "GCS", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Google Compute Engine", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "GCE", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Google Kubernetes Engine", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "GKE", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Google Cloud Pub/Sub", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Pub/Sub", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Google Cloud SQL", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Cloud SQL", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Google Cloud Spanner", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Spanner", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Vertex AI", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Google Cloud CDN", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Azure Functions", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Azure App Service", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Azure Blob Storage", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Azure Kubernetes Service", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "AKS", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Azure DevOps", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Azure Cosmos DB", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Cosmos DB", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Azure OpenAI Service", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Azure Container Apps", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Vercel", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Netlify", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Cloudflare", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Cloudflare Workers", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Railway", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Render", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Fly.io", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Fly", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Heroku", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Deno Deploy", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Coolify", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "GitHub", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "GitLab", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Bitbucket", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Gitea", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Docker Hub", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "npm Registry", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "PyPI", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "crates.io", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "Nomad", "label": "PLATFORM", "confidence": 0.99, "frequency": 2}
+{"name": "HashiCorp Nomad", "label": "PLATFORM", "confidence": 0.95, "frequency": 2}
+{"name": "Claude", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Claude 3.5 Sonnet", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Claude 3.5 Haiku", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Claude 3 Opus", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Claude 3 Sonnet", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Claude 3 Haiku", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Claude 4 Opus", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Claude 4 Sonnet", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "GPT-4o", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "GPT-4o mini", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "GPT-4 Turbo", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "GPT-4", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "GPT-3.5 Turbo", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "GPT-3.5", "label": "AI_MODEL", "confidence": 0.95, "frequency": 2}
+{"name": "o1", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "o1-mini", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "o1-pro", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "o3", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "o3-mini", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "o4-mini", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "GPT-4.1", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "GPT-4.1 mini", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "GPT-4.1 nano", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Gemini", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Gemini 2.0 Flash", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Gemini 2.0 Pro", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Gemini 1.5 Pro", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Gemini 1.5 Flash", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Gemma", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Gemma 2", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Gemma 3", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Llama", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Llama 3", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Llama 3.1", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Llama 3.2", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Llama 3.3", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Llama 4", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Llama 4 Scout", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Llama 4 Maverick", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "CodeLlama", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Code Llama", "label": "AI_MODEL", "confidence": 0.95, "frequency": 2}
+{"name": "Mistral", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Mistral Large", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Mistral Medium", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Mistral Small", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Mixtral", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Mixtral 8x7B", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Mixtral 8x22B", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Codestral", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Pixtral", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Cohere Command", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Command R", "label": "AI_MODEL", "confidence": 0.95, "frequency": 2}
+{"name": "Command R+", "label": "AI_MODEL", "confidence": 0.95, "frequency": 2}
+{"name": "Cohere Embed", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Cohere Rerank", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Phi-3", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Phi-4", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Qwen", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Qwen 2.5", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "DeepSeek", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "DeepSeek V3", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "DeepSeek R1", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "DeepSeek Coder", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Yi", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Falcon", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "BLOOM", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Stable Diffusion", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "SDXL", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "DALL-E", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "DALL-E 3", "label": "AI_MODEL", "confidence": 0.95, "frequency": 2}
+{"name": "Midjourney", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Whisper", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Suno", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "text-embedding-3-small", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "text-embedding-3-large", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "text-embedding-ada-002", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Voyage", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Voyage AI", "label": "AI_MODEL", "confidence": 0.95, "frequency": 2}
+{"name": "Nomic Embed", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "BGE", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "E5", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "GTE", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "GitHub Copilot", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Copilot", "label": "AI_MODEL", "confidence": 0.95, "frequency": 2}
+{"name": "Claude Code", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Cursor AI", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Cody", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Sourcegraph Cody", "label": "AI_MODEL", "confidence": 0.95, "frequency": 2}
+{"name": "Codex", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "OpenAI Codex", "label": "AI_MODEL", "confidence": 0.95, "frequency": 2}
+{"name": "AlphaCode", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "StarCoder", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "StarCoder2", "label": "AI_MODEL", "confidence": 0.95, "frequency": 2}
+{"name": "WizardCoder", "label": "AI_MODEL", "confidence": 0.99, "frequency": 2}
+{"name": "Google", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Alphabet", "label": "ORGANIZATION", "confidence": 0.95, "frequency": 2}
+{"name": "Microsoft", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Apple", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Amazon", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Meta", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Facebook", "label": "ORGANIZATION", "confidence": 0.95, "frequency": 2}
+{"name": "Netflix", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Nvidia", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "NVIDIA", "label": "ORGANIZATION", "confidence": 0.95, "frequency": 2}
+{"name": "Intel", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "AMD", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Qualcomm", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Samsung", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "IBM", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Salesforce", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Adobe", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Spotify", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Uber", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Airbnb", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Twitter", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "X", "label": "ORGANIZATION", "confidence": 0.95, "frequency": 2}
+{"name": "LinkedIn", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Snap", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Snapchat", "label": "ORGANIZATION", "confidence": 0.95, "frequency": 2}
+{"name": "Pinterest", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Shopify", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Square", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Block", "label": "ORGANIZATION", "confidence": 0.95, "frequency": 2}
+{"name": "Palantir", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Anthropic", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "OpenAI", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "DeepMind", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Google DeepMind", "label": "ORGANIZATION", "confidence": 0.95, "frequency": 2}
+{"name": "Mistral AI", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Cohere", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Stability AI", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Hugging Face", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "HuggingFace", "label": "ORGANIZATION", "confidence": 0.95, "frequency": 2}
+{"name": "Runway", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "xAI", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Inflection AI", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Adept AI", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Character AI", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Perplexity", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Perplexity AI", "label": "ORGANIZATION", "confidence": 0.95, "frequency": 2}
+{"name": "Together AI", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Groq", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Cerebras", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Anyscale", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Modal", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Replicate", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "HashiCorp", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Confluent", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "MongoDB Inc", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Datadog", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Twilio", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Stripe", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "JetBrains", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Atlassian", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Canonical", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Red Hat", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "SUSE", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Grafana Labs", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Kong", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "LaunchDarkly", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "PostHog", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Linux Foundation", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Apache Software Foundation", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Apache Foundation", "label": "ORGANIZATION", "confidence": 0.95, "frequency": 2}
+{"name": "ASF", "label": "ORGANIZATION", "confidence": 0.95, "frequency": 2}
+{"name": "CNCF", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Cloud Native Computing Foundation", "label": "ORGANIZATION", "confidence": 0.95, "frequency": 2}
+{"name": "OpenJS Foundation", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Python Software Foundation", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "PSF", "label": "ORGANIZATION", "confidence": 0.95, "frequency": 2}
+{"name": "Rust Foundation", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Eclipse Foundation", "label": "ORGANIZATION", "confidence": 0.99, "frequency": 2}
+{"name": "Auth0", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Clerk", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Okta", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Firebase Auth", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Supabase Auth", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "FusionAuth", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Keycloak", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "WorkOS", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Stytch", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Plaid", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Braintree", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Adyen", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "PayPal", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Paddle", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "LemonSqueezy", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Lemon Squeezy", "label": "SERVICE", "confidence": 0.95, "frequency": 2}
+{"name": "SendGrid", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Postmark", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Mailgun", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Amazon SES", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "SES", "label": "SERVICE", "confidence": 0.95, "frequency": 2}
+{"name": "Resend", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "MessageBird", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "New Relic", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "PagerDuty", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Sentry", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "LogRocket", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Honeycomb", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Axiom", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "BetterStack", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Better Stack", "label": "SERVICE", "confidence": 0.95, "frequency": 2}
+{"name": "Checkly", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Segment", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Mixpanel", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Amplitude", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Google Analytics", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "GA4", "label": "SERVICE", "confidence": 0.95, "frequency": 2}
+{"name": "Plausible", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Heap", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Contentful", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Sanity", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Strapi", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Directus", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Payload CMS", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Payload", "label": "SERVICE", "confidence": 0.95, "frequency": 2}
+{"name": "WordPress", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Ghost", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Unleash", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "ConfigCat", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Split", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Statsig", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Algolia", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Typesense", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Meilisearch", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Cloudinary", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Imgix", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Uploadthing", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Fastly", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Akamai", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Bunny CDN", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Notion", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Slack", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Discord", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Linear", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Jira", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Confluence", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Figma", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Retool", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Upstash", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "Convex", "label": "SERVICE", "confidence": 0.99, "frequency": 2}
+{"name": "HTTP", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "HTTPS", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "HTTP/2", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "H2", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "HTTP/3", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "H3", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "QUIC", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "WebSocket", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "WebSockets", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "WS", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "Server-Sent Events", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "SSE", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "REST", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "RESTful", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "SOAP", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "TCP", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "UDP", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "DNS", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "FTP", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "SFTP", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "SSH", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "SMTP", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "IMAP", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "MQTT", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "AMQP", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "NATS", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "ZeroMQ", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "ZMQ", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "0MQ", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "RSocket", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "OAuth 2.0", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "OAuth2", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "OAuth", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "OpenID Connect", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "OIDC", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "SAML", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "JWT", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "JSON Web Token", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "JWE", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "PKCE", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "SCIM", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "LDAP", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "Kerberos", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "TLS", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "TLS 1.3", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "mTLS", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "mutual TLS", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "SSL", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "CORS", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "CSP", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "Content Security Policy", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "JSON-RPC", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "XML-RPC", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "MessagePack", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "msgpack", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "Avro", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "Thrift", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "Cap'n Proto", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "FlatBuffers", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "CBOR", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "BSON", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "Raft", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "Paxos", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "CRDT", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "CRDTs", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "Gossip Protocol", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "Two-Phase Commit", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "2PC", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "OpenAPI", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "Swagger", "label": "PROTOCOL", "confidence": 0.95, "frequency": 2}
+{"name": "AsyncAPI", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "JSON Schema", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "JSON-LD", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "OData", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "Webhooks", "label": "PROTOCOL", "confidence": 0.99, "frequency": 2}
+{"name": "Singleton", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Singleton Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Factory", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Factory Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Factory Method", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Abstract Factory", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Builder", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Builder Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Prototype", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Prototype Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Adapter", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Adapter Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Decorator", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Decorator Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Observer", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Observer Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Strategy", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Strategy Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Command", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Command Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Iterator", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Iterator Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "State", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "State Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Proxy", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Proxy Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Facade", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Facade Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Mediator", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Mediator Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Chain of Responsibility", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Template Method", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Visitor", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Visitor Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Flyweight", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Flyweight Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Composite", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Composite Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Bridge", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Bridge Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Repository Pattern", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Unit of Work", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Dependency Injection", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "DI", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Inversion of Control", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "IoC", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Microservices", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Microservice", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Monolith", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Monolithic", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Modular Monolith", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Service-Oriented Architecture", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "SOA", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Event-Driven Architecture", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "EDA", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "CQRS", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Command Query Responsibility Segregation", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Event Sourcing", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Domain-Driven Design", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "DDD", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Hexagonal Architecture", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Ports and Adapters", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Clean Architecture", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Layered Architecture", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Serverless", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Serverless Architecture", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Jamstack", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "JAMstack", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Micro Frontends", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Micro Frontend", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Backend for Frontend", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "BFF", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "API Gateway", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Service Mesh", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Sidecar Pattern", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Strangler Fig", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Strangler Fig Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Saga Pattern", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Saga", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Outbox Pattern", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Circuit Breaker", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Circuit Breaker Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Bulkhead", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Bulkhead Pattern", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Retry Pattern", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Backpressure", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Rate Limiting", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Load Balancing", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "CAP Theorem", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "CAP", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "ACID", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "BASE", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Eventual Consistency", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Strong Consistency", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Linearizability", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Serializability", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Idempotency", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Idempotent", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Sharding", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Horizontal Partitioning", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Replication", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Leader Election", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Consensus", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Vector Clock", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Vector Clocks", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Bloom Filter", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Consistent Hashing", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Write-Ahead Log", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "WAL", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "LSM Tree", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Log-Structured Merge Tree", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "B-Tree", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "B+ Tree", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Merkle Tree", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "CI/CD", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Continuous Integration", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Continuous Deployment", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Infrastructure as Code", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "IaC", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "GitOps", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "DevOps", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "SRE", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Site Reliability Engineering", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Platform Engineering", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Trunk-Based Development", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Feature Flags", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Feature Toggles", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Blue-Green Deployment", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Canary Deployment", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Canary Release", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Rolling Deployment", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "A/B Testing", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Chaos Engineering", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Observability", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Three Pillars of Observability", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "SLI", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Service Level Indicator", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "SLO", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Service Level Objective", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "SLA", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Service Level Agreement", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Twelve-Factor App", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "12-Factor", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "SOLID Principles", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "SOLID", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "DRY", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Don't Repeat Yourself", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "KISS", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Keep It Simple", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "YAGNI", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "You Aren't Gonna Need It", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "TDD", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Test-Driven Development", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "BDD", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Behavior-Driven Development", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Pair Programming", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Code Review", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Technical Debt", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Tech Debt", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Refactoring", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Semantic Versioning", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "SemVer", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Monorepo", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Polyrepo", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "ETL", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Extract Transform Load", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "ELT", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Data Lake", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Data Warehouse", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Data Mesh", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Data Pipeline", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Streaming", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Stream Processing", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Batch Processing", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "MapReduce", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Materialized View", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Change Data Capture", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "CDC", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "RAG", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Retrieval Augmented Generation", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Fine-tuning", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Fine Tuning", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Prompt Engineering", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Few-Shot Learning", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Few-Shot", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Zero-Shot Learning", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Zero-Shot", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Chain of Thought", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "CoT", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Embeddings", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Vector Embeddings", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Attention Mechanism", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Attention", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Transformer", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Transformer Architecture", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Tokenization", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Tokenizer", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "RLHF", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Reinforcement Learning from Human Feedback", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "LoRA", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Low-Rank Adaptation", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Quantization", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Distillation", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Knowledge Distillation", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Agentic AI", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "AI Agents", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Tool Use", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Function Calling", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "MCP", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "Model Context Protocol", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}
+{"name": "Guardrails", "label": "CONCEPT", "confidence": 0.99, "frequency": 2}
+{"name": "AI Guardrails", "label": "CONCEPT", "confidence": 0.95, "frequency": 2}

@@ -32,6 +32,71 @@ def _ensure_spacy_model(model: str = "en_core_web_sm") -> None:
     _print(f"spaCy model '{model}' ready.")
 
 
+def _load_default_patterns(data_path: Path):
+    """Load seed entity patterns from bundled JSONL into a PatternManager.
+
+    Copies bundled seed patterns to the data directory on first use,
+    then loads them via PatternManager. Returns None if loading fails
+    (EntityRuler falls back to spaCy NER only).
+    """
+    try:
+        import json
+        from smartmemory.ontology.pattern_manager import PatternManager
+
+        # Bundled seed patterns ship with the core package
+        seed_file = Path(__file__).parent.parent / "data" / "seed_patterns.jsonl"
+        user_file = data_path / "entity_patterns.jsonl"
+
+        # Copy seed patterns to user data dir on first use
+        if not user_file.exists() and seed_file.exists():
+            import shutil
+            shutil.copy2(seed_file, user_file)
+
+        if not user_file.exists():
+            return None
+
+        # Build a simple pattern dict from the JSONL file (name → label)
+        # PatternManager expects a store with load() → [(name, label), ...]
+        # Use a minimal in-memory store for the core factory.
+        patterns: dict[str, str] = {}
+        with open(user_file) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    freq = entry.get("frequency", 0)
+                    name = entry.get("name", "").lower()
+                    label = entry.get("label", "")
+                    if freq >= 2 and name and label:
+                        patterns[name] = label
+                except (json.JSONDecodeError, KeyError):
+                    continue
+
+        if not patterns:
+            return None
+
+        # PatternManager needs a store, but we can use a duck-typed object
+        # that just returns the patterns we already loaded.
+        class _InMemoryStore:
+            def __init__(self, p: dict):
+                self._patterns = p
+
+            def load(self, workspace_id: str):
+                return list(self._patterns.items())
+
+            def save(self, name, label, confidence=0.85, source="seed", initial_count=2):
+                self._patterns[name.lower()] = label
+
+            def delete(self, name, label):
+                self._patterns.pop(name.lower(), None)
+
+        return PatternManager(store=_InMemoryStore(patterns))
+    except Exception:
+        return None
+
+
 def create_lite_memory(
     data_dir: Optional[str] = None,
     entity_ruler_patterns=None,
@@ -72,6 +137,12 @@ def create_lite_memory(
 
     data_path = Path(data_dir).expanduser() if data_dir else _default_data_dir()
     data_path.mkdir(parents=True, exist_ok=True)
+
+    # Auto-load seed entity patterns when no pattern manager is provided.
+    # Without patterns, EntityRuler only has spaCy NER (people, orgs, locations)
+    # and misses technology names like Django, React, Kubernetes.
+    if entity_ruler_patterns is None:
+        entity_ruler_patterns = _load_default_patterns(data_path)
 
     sqlite_backend = SQLiteBackend(db_path=str(data_path / "memory.db"))
     usearch_backend = UsearchVectorBackend(
