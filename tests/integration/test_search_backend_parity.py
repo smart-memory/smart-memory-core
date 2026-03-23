@@ -79,6 +79,8 @@ def falkordb_memory():
     from smartmemory.smart_memory import SmartMemory
 
     mem = SmartMemory(enable_ontology=True)
+    # Clear stale data from previous test runs
+    mem._graph.backend.clear()
     for text, mt in CORPUS:
         mem.ingest(text, context={"memory_type": mt})
     yield mem
