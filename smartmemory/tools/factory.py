@@ -167,7 +167,7 @@ def create_lite_memory(
 
 @contextmanager
 def lite_context(data_dir: Optional[str] = None, pipeline_profile=None, event_sink=None):
-    """Context manager that creates a Lite SmartMemory and resets all globals on exit.
+    """Context manager that creates a local SmartMemory and resets all globals on exit.
 
     Restores observability env, vector backend, cache override, and closes the SQLite
     connection deterministically. Always use this in tests and scripts:
@@ -176,10 +176,9 @@ def lite_context(data_dir: Optional[str] = None, pipeline_profile=None, event_si
 
     Args:
         data_dir: Directory for SQLite and usearch persistence. Defaults to ~/.smartmemory.
-        pipeline_profile: PipelineConfig to use. Defaults to ``PipelineConfig.lite()``
-            which auto-detects LLM API keys (see ``create_lite_memory()``). Pass
-            ``PipelineConfig.lite(llm_enabled=False)`` to disable LLM extraction, or
-            ``PipelineConfig.default()`` for the full pipeline.
+        pipeline_profile: PipelineConfig override. Defaults to full pipeline.
+            Pass ``PipelineConfig.lite(llm_enabled=False)`` to disable LLM and
+            skip coreference/enrichment for faster tests.
         event_sink: Optional in-process event sink (DIST-LITE-3). Passed to
             ``create_lite_memory()``. Defaults to None.
     """
