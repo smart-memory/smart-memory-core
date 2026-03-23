@@ -98,12 +98,14 @@ class SmartMemory(MemoryBase):
         observability: bool = True,
         pipeline_profile: Optional[Any] = None,
         entity_ruler_patterns=None,
+        ontology_store=None,  # DIST-FULL-LOCAL-1: InMemoryOntologyStore for local mode
         event_sink=None,  # DIST-LITE-3: InProcessQueueSink or None
         public_knowledge_store=None,  # ONTO-PUB-1: PublicKnowledgeStore or None
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self._enable_ontology = enable_ontology
+        self._ontology_store = ontology_store
         self._vector_backend = vector_backend
         self._cache = cache
         self._observability = observability
@@ -395,6 +397,21 @@ class SmartMemory(MemoryBase):
                 type_pair_validator=type_pair_validator,
             )
             self._ontology_constrain_stage = ontology_constrain_stage
+
+        # DIST-FULL-LOCAL-1: When ontology infra is unavailable (no FalkorDB) but
+        # an ontology store is injected, create a lightweight constrain stage.
+        # This unblocks the pipeline on local mode without the full OntologyGraph.
+        if ontology_constrain_stage is None and self._ontology_store is not None:
+            from smartmemory.relations.normalizer import RelationNormalizer
+            from smartmemory.relations.validator import TypePairValidator
+
+            ontology_constrain_stage = OntologyConstrainStage(
+                self._ontology_store,
+                relation_normalizer=RelationNormalizer(),
+                type_pair_validator=TypePairValidator(mode="permissive"),
+            )
+            self._ontology_constrain_stage = ontology_constrain_stage
+            self._ontology_graph = self._ontology_store  # for extraction_worker
 
         # Allow injected pattern manager to override (PatternManager with JSONLPatternStore in Lite
         # mode, where enable_ontology=False leaves pattern_manager=None after the block above).

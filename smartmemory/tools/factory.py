@@ -103,24 +103,20 @@ def create_lite_memory(
     pipeline_profile=None,
     event_sink=None,  # DIST-LITE-3: InProcessQueueSink or None
 ):
-    """Create a SmartMemory instance backed by SQLite + usearch. No Docker required.
+    """Create a SmartMemory instance with local providers. No Docker required.
 
-    Lite mode replaces FalkorDB with SQLite, the FalkorDB vector index with usearch,
-    Redis cache with a no-op, and disables observability event emission. The pipeline
-    defaults to ``PipelineConfig.lite()`` — EntityRuler + local enrichers only, no
-    coreference, no network enrichers, no evolution.
+    Uses SQLite (graph), usearch (vectors), in-memory cache — same full
+    pipeline as server mode, just different storage providers. All 11
+    pipeline stages run: classify, coreference, entity_ruler, llm_extract,
+    ontology_constrain, store, link, enrich, ground, evolve.
 
-    LLM extraction is auto-detected (DEGRADE-1d): if ``OPENAI_API_KEY`` or
-    ``GROQ_API_KEY`` is set in the environment, LLM extraction is enabled
-    automatically. To force it off, pass
-    ``pipeline_profile=PipelineConfig.lite(llm_enabled=False)``.
+    LLM extraction is auto-detected: if ``OPENAI_API_KEY`` or ``GROQ_API_KEY``
+    is set, LLM extraction is enabled automatically.
 
     Args:
         data_dir: Directory for SQLite and usearch persistence. Defaults to ~/.smartmemory.
         entity_ruler_patterns: Optional pattern manager injected into EntityRulerStage.
-        pipeline_profile: PipelineConfig to use. Defaults to ``PipelineConfig.lite()``
-            which auto-detects LLM API keys. Pass ``PipelineConfig.lite(llm_enabled=False)``
-            to disable LLM extraction, or ``PipelineConfig.default()`` for the full pipeline.
+        pipeline_profile: PipelineConfig override. Defaults to full pipeline.
         event_sink: Optional in-process event sink (DIST-LITE-3). When provided, pipeline
             events are dispatched to this sink instead of Redis. Defaults to None.
     """
@@ -133,7 +129,7 @@ def create_lite_memory(
     from smartmemory.utils.cache import NoOpCache
 
     if pipeline_profile is None:
-        pipeline_profile = PipelineConfig.lite()
+        pipeline_profile = PipelineConfig.default()
 
     data_path = Path(data_dir).expanduser() if data_dir else _default_data_dir()
     data_path.mkdir(parents=True, exist_ok=True)
@@ -151,9 +147,15 @@ def create_lite_memory(
     )
     graph = SmartGraph(backend=sqlite_backend)
 
+    # DIST-FULL-LOCAL-1: Inject InMemoryOntologyStore so OntologyConstrainStage
+    # runs even without FalkorDB. enable_ontology stays False (skips FalkorDB-
+    # dependent OntologyGraph), but the injected store unblocks the stage.
+    from smartmemory.ontology.in_memory_store import InMemoryOntologyStore
+
     return SmartMemory(
         graph=graph,
         enable_ontology=False,
+        ontology_store=InMemoryOntologyStore(),
         vector_backend=usearch_backend,
         cache=NoOpCache(),
         observability=False,
