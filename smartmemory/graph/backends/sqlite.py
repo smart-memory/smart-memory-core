@@ -305,6 +305,91 @@ class SQLiteBackend(SmartGraphBackend):
         result["item_id"] = item_id
         return result
 
+    def add_dual_node(
+        self,
+        item_id: str,
+        memory_properties: Dict[str, Any],
+        memory_type: str,
+        entity_nodes: Optional[List[Dict[str, Any]]] = None,
+        is_global: bool = False,
+    ) -> Dict[str, Any]:
+        """Add a memory node + entity nodes with CONTAINS_ENTITY/MENTIONED_IN edges.
+
+        Mirrors the FalkorDB dual-node architecture on SQLite so that
+        graph-first search can traverse entity edges on lite mode.
+        """
+        # 1. Create memory node
+        mem_props = dict(memory_properties)
+        mem_props["memory_type"] = memory_type
+        self.add_node(item_id, mem_props, memory_type=memory_type, is_global=is_global)
+
+        entity_ids: List[str] = []
+        if not entity_nodes:
+            return {"memory_node_id": item_id, "entity_node_ids": [], "entity_count": 0}
+
+        for entity_node in entity_nodes:
+            entity_type = entity_node.get("entity_type", "entity")
+            props = entity_node.get("properties") or {}
+            entity_name = props.get("name") or props.get("content", "")
+
+            if not entity_name:
+                continue
+
+            # Canonical key for entity dedup
+            canonical_key = props.get("canonical_key", "")
+            if not canonical_key and entity_name:
+                canonical_key = f"{entity_name.lower()}::{entity_type.lower()}"
+
+            # Check if entity already exists (by canonical_key)
+            existing_id = self._find_entity_by_canonical_key(canonical_key)
+
+            if existing_id:
+                entity_id = existing_id
+            else:
+                entity_id = str(uuid.uuid4())
+                entity_props = {
+                    "content": entity_name,
+                    "name": entity_name,
+                    "entity_type": entity_type,
+                    "canonical_key": canonical_key,
+                    "memory_type": "entity",
+                }
+                entity_props.update({k: v for k, v in props.items() if k not in entity_props})
+                self.add_node(entity_id, entity_props, memory_type="entity", is_global=is_global)
+
+            entity_ids.append(entity_id)
+
+            # Create bidirectional edges
+            self.add_edge(item_id, entity_id, "CONTAINS_ENTITY", {})
+            self.add_edge(entity_id, item_id, "MENTIONED_IN", {})
+
+            # Process entity-to-entity relations if present
+            for rel in entity_node.get("relations", []):
+                target_name = rel.get("target_name") or rel.get("target", "")
+                rel_type = rel.get("type") or rel.get("relation_type", "RELATED")
+                if target_name:
+                    target_key = f"{target_name.lower()}::{rel.get('target_type', 'entity').lower()}"
+                    target_id = self._find_entity_by_canonical_key(target_key)
+                    if target_id:
+                        self.add_edge(entity_id, target_id, rel_type, {})
+
+        return {
+            "memory_node_id": item_id,
+            "entity_node_ids": entity_ids,
+            "entity_count": len(entity_ids),
+        }
+
+    def _find_entity_by_canonical_key(self, canonical_key: str) -> Optional[str]:
+        """Find an existing entity node by canonical_key."""
+        if not canonical_key:
+            return None
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT item_id FROM nodes WHERE json_extract(properties, '$.canonical_key') = ?",
+                (canonical_key,),
+            ).fetchone()
+        return row[0] if row else None
+
     def clear(self) -> None:
         with self._lock:
             with self._auto_commit():
