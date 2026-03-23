@@ -52,8 +52,12 @@ class StoreStage:
             metadata=metadata,
         )
 
-        # Build ontology_extraction payload
-        entities = state.entities
+        # Build ontology_extraction payload.
+        # When OntologyConstrainStage is skipped (enable_ontology=False in lite mode),
+        # state.entities stays empty because the merge from ruler_entities → entities
+        # happens in that stage. Fall back to ruler_entities so entity nodes still
+        # get created in the graph.
+        entities = state.entities or state.ruler_entities or []
         relations = state.relations
         ontology_extraction = None
         if entities or relations:

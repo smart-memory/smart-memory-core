@@ -82,6 +82,55 @@ class TestGoldenFlow:
             memory_nodes = [n for n in all_nodes if n.get("memory_type") not in ("Version",)]
             assert len(memory_nodes) >= 5, f"Expected >=5 memory nodes, got {len(memory_nodes)}"
 
+            # ── 6a. GRAPH INTEGRITY: entity nodes exist ──────────────────
+            # This catches the silent-degradation bug where add_dual_node
+            # falls back to single-node creation and drops all entities.
+            entity_nodes = [n for n in all_nodes if n.get("memory_type") == "entity"]
+            assert len(entity_nodes) >= 1, (
+                f"No entity nodes in graph! Found {len(all_nodes)} total nodes "
+                f"but 0 entities. add_dual_node may be silently falling back. "
+                f"Node types: {set(n.get('memory_type') for n in all_nodes)}"
+            )
+            # At minimum, spaCy + seed patterns should extract Alice (PERSON)
+            # and Django (FRAMEWORK from seed patterns)
+            entity_names = {(n.get("content") or n.get("name") or "").lower() for n in entity_nodes}
+            assert any("alice" in name for name in entity_names), (
+                f"Entity 'Alice' not found in graph. Entities: {entity_names}"
+            )
+
+            # ── 6b. GRAPH INTEGRITY: entity edges exist ──────────────────
+            all_edges = memory._graph.backend.get_all_edges()
+            contains_edges = [e for e in all_edges if e.get("edge_type") == "CONTAINS_ENTITY"]
+            mentioned_edges = [e for e in all_edges if e.get("edge_type") == "MENTIONED_IN"]
+            assert len(contains_edges) >= 1, (
+                f"No CONTAINS_ENTITY edges! Entities exist but aren't linked to memories. "
+                f"Edge types: {set(e.get('edge_type') for e in all_edges)}"
+            )
+            assert len(mentioned_edges) >= 1, (
+                f"No MENTIONED_IN edges! Graph traversal from entities to memories won't work."
+            )
+
+            # ── 6c. GRAPH SEARCH: entity traversal finds correct memory ──
+            # spaCy extracts "Acme Corp" as ORG. Search should find it via
+            # graph entity lookup and return the linked memories FIRST.
+            acme_results = memory.search("Acme Corp", top_k=5)
+            assert len(acme_results) >= 1, "Search for 'Acme Corp' via graph returned nothing"
+            acme_contents = [r.content for r in acme_results]
+            assert any("Acme" in c for c in acme_contents), (
+                f"'Acme Corp' search didn't return the Acme memory: {[c[:40] for c in acme_contents]}"
+            )
+            # Graph-linked results should come FIRST (position 0 and 1)
+            # The remaining slots may fill with other memories via text/vector.
+            top_2_contents = [r.content for r in acme_results[:2]]
+            assert all("Acme" in c for c in top_2_contents), (
+                f"Graph results not prioritized — top 2 should both mention Acme: "
+                f"{[c[:40] for c in top_2_contents]}"
+            )
+            # Entity nodes themselves should never appear in user-facing results
+            assert not any(getattr(r, "memory_type", "") == "entity" for r in acme_results), (
+                "Entity nodes leaked into search results"
+            )
+
             # ── 7. Recall (empty query, recency sort) ───────────────────
             recall_results = memory.search("", top_k=5, sort_by="recency")
             assert len(recall_results) >= 1, "Recall returned nothing"
@@ -148,11 +197,14 @@ class TestGoldenFlow:
             dry_stats = importer_dry.run(export_path, resume=False, dry_run=True)
             assert dry_stats.imported >= 5, f"Dry-run validated {dry_stats.imported}, expected >=5"
 
-            # Verify dry-run didn't add duplicates
+            # Verify dry-run didn't change node count
+            user_types = {"semantic", "episodic", "procedural", "working", "zettel",
+                          "reasoning", "opinion", "observation", "decision"}
             nodes_after_dry = memory._graph.backend.get_all_nodes()
-            mem_nodes_after_dry = [n for n in nodes_after_dry if n.get("memory_type") not in ("Version",)]
-            assert len(mem_nodes_after_dry) == len(memory_nodes) + 1, \
-                f"Dry-run changed node count: {len(memory_nodes) + 1} → {len(mem_nodes_after_dry)}"
+            user_count_after_dry = len([n for n in nodes_after_dry if n.get("memory_type") in user_types])
+            # We have 6 user memories (5 initial + 1 from step 13)
+            assert user_count_after_dry == 6, \
+                f"Dry-run changed user memory count: expected 6, got {user_count_after_dry}"
 
             # ── 17. Clear all ───────────────────────────────────────────
             backend = memory._graph.backend

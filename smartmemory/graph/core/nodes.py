@@ -151,7 +151,17 @@ class SmartGraphNodes:
 
             return result
         else:
-            # Fallback to legacy single-node creation with normalized return shape
+            # Fallback to legacy single-node creation with normalized return shape.
+            # WARNING: This means entity nodes are NOT created — the knowledge
+            # graph will have no entity edges, breaking graph-first search.
+            entity_count = len(entity_nodes) if entity_nodes else 0
+            if entity_count > 0:
+                logger.warning(
+                    "Backend %s does not support add_dual_node — %d entities "
+                    "DROPPED for memory %s. Graph-first search will not work. "
+                    "Implement add_dual_node on the backend to fix this.",
+                    type(self.backend).__name__, entity_count, item_id,
+                )
             node_result = self.add_node(item_id, memory_properties, memory_type=memory_type)
             mem_id = item_id
             if isinstance(node_result, dict):

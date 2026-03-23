@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger(__name__)
 
 
-SYSTEM_NODE_TYPES = frozenset({"Version"})
+SYSTEM_NODE_TYPES = frozenset({"Version", "entity", "relation"})
 
 # Strip possessives, trailing punctuation, and common noise from search tokens.
 _POSSESSIVE_RE = re.compile(r"['']s$")
