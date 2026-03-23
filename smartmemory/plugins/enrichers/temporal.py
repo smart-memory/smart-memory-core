@@ -4,9 +4,12 @@ from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 
 from smartmemory.integration.llm.prompts.prompt_provider import get_prompt_value, apply_placeholders
+from smartmemory.integration.llm.response_parser import ResponseParser
 from smartmemory.models.base import MemoryBaseModel, StageRequest
 from smartmemory.observability.tracing import trace_span
 from smartmemory.plugins.base import EnricherPlugin, PluginMetadata
+
+_response_parser = ResponseParser()
 
 
 @dataclass
@@ -82,9 +85,14 @@ class TemporalEnricher(EnricherPlugin):
                 self._track_usage(response)
 
                 result = response.choices[0].message.content
-                temporal = json.loads(result)
-            except Exception:
-                logging.exception("TemporalEnricher: failed to obtain or parse OpenAI response")
+                if not result or not result.strip():
+                    logging.warning("TemporalEnricher: LLM returned empty content")
+                    temporal = {}
+                else:
+                    parsed = _response_parser.parse_json_response(result)
+                    temporal = parsed if isinstance(parsed, dict) else {}
+            except Exception as exc:
+                logging.warning("TemporalEnricher: LLM call failed: %s", exc)
                 temporal = {}
         return {"temporal": temporal}
 
