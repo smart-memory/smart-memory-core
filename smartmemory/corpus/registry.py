@@ -47,10 +47,12 @@ class PackRegistry:
             import httpx
 
             response = httpx.get(self._url, timeout=10.0)
-            response.raise_for_status()
+            if response.status_code != 200:
+                logger.debug("Pack registry returned %d", response.status_code)
+                return []
             data = response.json()
-        except Exception as e:
-            logger.error("Failed to fetch pack registry: %s", e)
+        except Exception:
+            logger.debug("Pack registry not reachable")
             return []
 
         packs_data = data.get("packs", {})
