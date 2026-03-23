@@ -121,18 +121,14 @@ class SmartGraphSearch:
             # don't have direct entity edges.
             graph_results = self._search_with_graph_entities(query_str, top_k, **kwargs) or []
             if len(graph_results) < top_k:
-                # Fill with text methods first (precise, stop-word filtered).
+                # Fill: graph first (done above), then text (precise), then
+                # vector (semantic, 0.5 threshold filters irrelevant hits).
                 seen_ids = {getattr(r, "item_id", None) for r in graph_results}
-                fill_methods = [
+                for fill_method in [
                     self._search_with_simple_contains,
                     self._search_with_keyword_matching,
-                ]
-                # Vector search only if NOTHING was found by graph + text.
-                # When graph/text found results, vector adds noise on small
-                # corpora (returns top_k regardless of relevance). When
-                # nothing matched, vector is the last resort for semantic discovery.
-                # This check runs after text fill below.
-                for fill_method in fill_methods:
+                    self._search_with_vector_embeddings,
+                ]:
                     try:
                         fill = fill_method(query_str, top_k, **kwargs)
                         if fill:
@@ -148,20 +144,6 @@ class SmartGraphSearch:
                     except Exception as e:
                         logger.warning("Fill method %s failed: %s", fill_method.__name__, e)
                         continue
-                # Vector fallback: only when graph + text found nothing
-                if not graph_results and len(graph_results) < top_k:
-                    try:
-                        fill = self._search_with_vector_embeddings(query_str, top_k, **kwargs)
-                        if fill:
-                            for item in fill:
-                                iid = getattr(item, "item_id", None)
-                                if iid not in seen_ids:
-                                    seen_ids.add(iid)
-                                    graph_results.append(item)
-                                    if len(graph_results) >= top_k:
-                                        break
-                    except Exception as e:
-                        logger.warning("Vector fallback failed: %s", e)
             # Apply system node filter + sort + truncate
             graph_results = [
                 r for r in graph_results
@@ -383,6 +365,16 @@ class SmartGraphSearch:
             if not vector_results:
                 logger.debug(f"No vector results found for query: {query_str}, triggering fallback")
                 return None  # Return None to trigger fallback chain
+
+            # Filter below minimum similarity. Without this, vector search
+            # returns top_k results regardless of relevance on small corpora.
+            # 0.5 cosine similarity is conservative — relevant hits score 0.7+,
+            # irrelevant cross-topic content scores 0.3-0.45.
+            MIN_SIMILARITY = 0.5
+            vector_results = [r for r in vector_results if r.get("score", 0.0) >= MIN_SIMILARITY]
+            if not vector_results:
+                logger.debug("All vector results below similarity threshold %.2f", MIN_SIMILARITY)
+                return None
 
             # Convert vector results to MemoryItems by retrieving from graph
             memory_items = []
