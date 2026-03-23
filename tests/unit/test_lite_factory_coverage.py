@@ -83,14 +83,27 @@ def test_create_lite_memory_creates_db_file(tmp_path):
 # ── _apply_lite_pipeline_profile correctness ──────────────────────────────────
 
 
-def test_apply_lite_pipeline_profile_disables_coreference(tmp_path):
-    """The patched _build_pipeline_config sets coreference.enabled=False."""
+def test_default_pipeline_enables_coreference(tmp_path):
+    """create_lite_memory defaults to full pipeline — coreference is enabled."""
     from smartmemory.stores.vector.vector_store import VectorStore
 
     try:
         memory = create_lite_memory(str(tmp_path))
         config = memory._build_pipeline_config()
-        assert config.coreference.enabled is False, "coreference must be disabled in lite pipeline profile"
+        assert config.coreference.enabled is True, "default pipeline must enable coreference"
+    finally:
+        VectorStore.set_default_backend(None)
+
+
+def test_explicit_lite_profile_disables_coreference(tmp_path):
+    """Explicit PipelineConfig.lite() still disables coreference."""
+    from smartmemory.pipeline.config import PipelineConfig
+    from smartmemory.stores.vector.vector_store import VectorStore
+
+    try:
+        memory = create_lite_memory(str(tmp_path), pipeline_profile=PipelineConfig.lite())
+        config = memory._build_pipeline_config()
+        assert config.coreference.enabled is False, "lite profile must disable coreference"
     finally:
         VectorStore.set_default_backend(None)
 
@@ -109,37 +122,28 @@ def test_apply_lite_pipeline_profile_disables_llm_extract(tmp_path):
         VectorStore.set_default_backend(None)
 
 
-def test_apply_lite_pipeline_profile_limits_enrichers(tmp_path):
-    """The patched _build_pipeline_config limits enrichers to local-only enrichers (no HTTP)."""
+def test_default_pipeline_includes_all_enrichers(tmp_path):
+    """create_lite_memory defaults to full pipeline — all enrichers enabled."""
     from smartmemory.stores.vector.vector_store import VectorStore
 
     try:
         memory = create_lite_memory(str(tmp_path))
         config = memory._build_pipeline_config()
-        # Lite mode runs all local enrichers; HTTP-dependent ones (wikipedia, link_expansion) are excluded.
-        assert config.enrich.enricher_names == [
-            "basic_enricher",
-            "sentiment_enricher",
-            "temporal_enricher",
-            "topic_enricher",
-        ], "lite mode must exclude HTTP enrichers (wikipedia, link_expansion) but keep local ones"
+        # Default pipeline: enricher_names is None (= all enrichers run, no filter)
+        assert config.enrich.enricher_names is None, "default pipeline must not filter enrichers (None = all)"
     finally:
         VectorStore.set_default_backend(None)
 
 
-def test_apply_lite_pipeline_profile_disables_wikidata(tmp_path):
-    """The patched _build_pipeline_config keeps wikidata enabled but disables SPARQL HTTP."""
+def test_default_pipeline_enables_wikidata(tmp_path):
+    """create_lite_memory defaults to full pipeline — wikidata + SPARQL enabled."""
     from smartmemory.stores.vector.vector_store import VectorStore
 
     try:
         memory = create_lite_memory(str(tmp_path))
         config = memory._build_pipeline_config()
-        # DEGRADE-1c: wikidata.enabled stays True (SQLite alias lookup still works),
-        # but sparql_enabled is False (no HTTP calls to Wikidata SPARQL endpoint).
-        assert config.enrich.wikidata.enabled is True, (
-            "wikidata must stay enabled in lite mode (SQLite alias lookup works without HTTP)"
-        )
-        assert config.enrich.wikidata.sparql_enabled is False, "SPARQL must be disabled in lite mode (no HTTP calls)"
+        # Default pipeline enables wikidata + SPARQL (will gracefully degrade without network)
+        assert config.enrich.wikidata.enabled is True, "wikidata must be enabled"
     finally:
         VectorStore.set_default_backend(None)
 

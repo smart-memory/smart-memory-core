@@ -187,9 +187,9 @@ def lite_context(data_dir: Optional[str] = None, pipeline_profile=None, event_si
         memory = create_lite_memory(data_dir, pipeline_profile=pipeline_profile, event_sink=event_sink)
         yield memory
     finally:
-        # Close the SQLite backend explicitly — don't rely on GC for WAL flush.
+        # Close SmartMemory — shuts down evolution worker, then closes SQLite backend.
         if memory is not None:
             try:
-                memory._graph.backend.close()
+                memory.close()
             except Exception:
                 pass
