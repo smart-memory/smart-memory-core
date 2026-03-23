@@ -70,11 +70,11 @@ class ResponseParser:
             return parsed_data
 
         except json.JSONDecodeError as e:
-            self.logger.error(f"Failed to parse JSON response: {e}")
-            self.logger.debug(f"Response content: {response_content[:500]}...")
+            self.logger.warning("Failed to parse JSON response: %s", e)
+            self.logger.debug("Response content: %s...", response_content[:500])
             return None
         except Exception as e:
-            self.logger.error(f"Response validation failed: {e}")
+            self.logger.warning("Response validation failed: %s", e)
             return None
 
     def _clean_json_response(self, content: str) -> str:

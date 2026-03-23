@@ -96,6 +96,6 @@ class TestTemporalEnricherMalformedResponses:
         with caplog.at_level("WARNING"):
             result = enricher.enrich(FakeItem())
         assert result == {"temporal": {}}
-        # Should not have ERROR-level log entries from the enricher
-        error_records = [r for r in caplog.records if r.levelname == "ERROR" and "TemporalEnricher" in r.getMessage()]
-        assert len(error_records) == 0
+        # No ERROR-level log entries from enricher OR parser
+        error_records = [r for r in caplog.records if r.levelname == "ERROR"]
+        assert len(error_records) == 0, f"Unexpected ERROR logs: {[r.getMessage() for r in error_records]}"
